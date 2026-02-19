@@ -14,17 +14,27 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://invoicetodata.com";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.invoicetodata.com";
 
 export const metadata: Metadata = {
-  title: "AI PDF to Excel Converter - Fast & Accurate Extraction",
+  title: {
+    default: "Free AI PDF to Excel Converter - Extract Data Instantly",
+    template: "%s | AI PDF to Excel Converter",
+  },
   description:
-    "Free online tool to extract data from any PDF, Invoice, or Form into structured Excel files using Powerful AI Model.",
+    "Convert invoices, tax forms, and complex PDFs to Excel spreadsheets with AI. Keep rows and columns perfectly aligned. Free online tool, no sign-up required.",
+  keywords: [
+    "pdf to excel",
+    "ai data extraction",
+    "convert invoice to excel",
+    "pdf to google sheets",
+    "gemini ai converter",
+  ],
   metadataBase: new URL(siteUrl),
   openGraph: {
-    title: "AI PDF to Excel Converter - Fast & Accurate Extraction",
+    title: "Free AI PDF to Excel Converter - Extract Data Instantly",
     description:
-      "Free online tool to extract data from any PDF, Invoice, or Form into structured Excel files using Powerful AI Model.",
+      "Convert invoices, tax forms, and complex PDFs to Excel spreadsheets with AI. Keep rows and columns perfectly aligned. Free online tool, no sign-up required.",
     url: siteUrl,
     siteName: "InvoiceToData",
     locale: "en_US",
@@ -32,9 +42,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI PDF to Excel Converter - Fast & Accurate Extraction",
+    title: "Free AI PDF to Excel Converter - Extract Data Instantly",
     description:
-      "Free online tool to extract data from any PDF, Invoice, or Form into structured Excel files using Powerful AI Model.",
+      "Convert invoices, tax forms, and complex PDFs to Excel spreadsheets with AI. Free online tool, no sign-up required.",
   },
 };
 
