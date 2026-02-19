@@ -23,6 +23,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import AdBanner from "@/components/AdBanner";
+import { canConvert, incrementUsage } from "@/lib/pdfUsage";
+import QuotaLimitModal from "@/components/QuotaLimitModal";
 
 const ACCEPT = ".pdf,image/*";
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -107,6 +109,7 @@ export default function PdfToExcelPage() {
   const [extractedFileName, setExtractedFileName] = useState<string>("");
   const [tableExpanded, setTableExpanded] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
+  const [showQuotaModal, setShowQuotaModal] = useState(false);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -136,6 +139,10 @@ export default function PdfToExcelPage() {
   const setFileWithValidation = useCallback((file: File | null) => {
     if (!file) {
       setSelectedFile(null);
+      return;
+    }
+    if (!canConvert()) {
+      setShowQuotaModal(true);
       return;
     }
     if (!isValidFileType(file)) {
@@ -175,6 +182,10 @@ export default function PdfToExcelPage() {
 
   const handleExtract = useCallback(() => {
     if (!selectedFile) return;
+    if (!canConvert()) {
+      setShowQuotaModal(true);
+      return;
+    }
     setExtractError(null);
     setExtractionResult([]);
     setExtractedFileName("");
@@ -210,6 +221,7 @@ export default function PdfToExcelPage() {
         setProgress(100);
 
         if (res.ok && Array.isArray(json.data) && json.data.every((r: unknown) => Array.isArray(r))) {
+          incrementUsage();
           setExtractionResult(json.data as GridData);
           setExtractedFileName(nameForResult);
         } else {
@@ -385,7 +397,7 @@ export default function PdfToExcelPage() {
               >
                 Extract to Google Sheet
                 <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-500">
-                  Coming Soon
+                  
                 </span>
               </button>
             </div>
@@ -526,6 +538,7 @@ export default function PdfToExcelPage() {
           </section>
         </div>
       </main>
+      <QuotaLimitModal open={showQuotaModal} onClose={() => setShowQuotaModal(false)} />
     </div>
   );
 }

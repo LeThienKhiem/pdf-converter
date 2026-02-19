@@ -83,7 +83,6 @@ export default function Header() {
                   className="block px-4 py-2 text-sm text-slate-500 hover:bg-slate-50"
                 >
                   PDF to Google Sheet
-                  <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-500">Coming Soon</span>
                 </Link>
               </div>
             )}

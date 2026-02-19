@@ -8,6 +8,7 @@ import {
   FileDown,
   Sparkles,
   ArrowRight,
+  FileBarChart,
 } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
 
@@ -16,22 +17,31 @@ export default function Home() {
     <div className="min-h-screen bg-white text-slate-900">
       <main>
         {/* Hero */}
-        <section className="relative overflow-hidden border-b border-slate-200/80 bg-gradient-to-b from-slate-50 to-white px-4 py-12 sm:px-6 sm:py-16 lg:px-8" aria-labelledby="hero-heading">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.12),transparent)]" />
-          <div className="mx-auto max-w-3xl text-center">
-            <h1 id="hero-heading" className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              Free AI-Powered PDF to Excel Converter
+        <section className="relative overflow-hidden border-b border-slate-200/80 bg-gradient-to-b from-slate-50 to-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="hero-heading">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.08),transparent)]" />
+          <div className="mx-auto max-w-4xl text-center">
+            <h1 id="hero-heading" className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
+              Automate Your Invoice Data Extraction
             </h1>
-            <p className="mt-4 text-lg text-slate-600">
-              Upload a PDF or image. We preserve the exact layout and give you a downloadable Excel file using Powerful AI Model.
+            <p className="mt-5 text-lg text-slate-600 sm:text-xl">
+              Instantly convert your PDF invoices and reports into structured Google Sheets or Excel files.
             </p>
-            <Link
-              href="/tools/pdf-to-excel"
-              className="mt-8 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-blue-700"
-            >
-              Convert PDF to Excel
-              <ArrowRight className="h-5 w-5" />
-            </Link>
+            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
+              <Link
+                href="/tools/pdf-to-excel"
+                className="inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-[#217346] px-6 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-[#1d603d] hover:shadow-lg sm:w-auto"
+              >
+                <FileBarChart className="h-5 w-5 shrink-0" aria-hidden />
+                Convert PDF to Excel
+              </Link>
+              <Link
+                href="/tools/pdf-to-gsheet"
+                className="inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0F9D58] to-[#1a73e8] px-6 py-4 text-base font-semibold text-white shadow-md transition-all hover:opacity-95 hover:shadow-lg sm:w-auto"
+              >
+                <FileSpreadsheet className="h-5 w-5 shrink-0" aria-hidden />
+                Convert PDF to Google Sheet
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -81,9 +91,9 @@ export default function Home() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                   <FileSpreadsheet className="h-6 w-6" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold text-slate-900">Export to Excel</h3>
+                <h3 className="mt-4 text-lg font-semibold text-slate-900">Excel & Google Sheets</h3>
                 <p className="mt-2 text-slate-600">
-                  Download structured data as Excel. Layout and headers are preserved with styling and auto-fit columns.
+                  Download as Excel or get a Google Sheet you can copy to your Drive. Layout and headers are preserved with styling.
                 </p>
               </div>
             </div>
@@ -125,23 +135,23 @@ export default function Home() {
                   <FileDown className="h-7 w-7" />
                 </div>
                 <div className="mt-4 font-mono text-sm font-medium text-blue-600">Step 3</div>
-                <h3 className="mt-1 text-lg font-semibold text-slate-900">Download</h3>
-                <p className="mt-2 text-slate-600">Get your Excel file with styled headers and auto-fit columns.</p>
+                <h3 className="mt-1 text-lg font-semibold text-slate-900">Download or Copy</h3>
+                <p className="mt-2 text-slate-600">Get Excel with styled headers or make a copy to Google Sheets.</p>
               </div>
             </div>
             <div className="mt-12 flex flex-wrap items-center justify-center gap-4">
               <Link
                 href="/tools/pdf-to-excel"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-blue-700"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#217346] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all hover:bg-[#1d603d] hover:shadow-md"
               >
-                Try PDF to Excel
+                Convert PDF to Excel
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                href="/signup"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-6 py-3.5 text-base font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                href="/tools/pdf-to-gsheet"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0F9D58] to-[#1a73e8] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all hover:opacity-95 hover:shadow-md"
               >
-                Get Started
+                Convert PDF to Google Sheet
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -200,17 +210,26 @@ export default function Home() {
         </section>
 
         {/* CTA */}
-        <section className="bg-blue-600 px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <section className="bg-slate-900 px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Ready to automate your invoice data?</h2>
-            <p className="mt-4 text-lg text-blue-100">Join teams that save hours every week with InvoiceToData.</p>
-            <Link
-              href="/tools/pdf-to-excel"
-              className="mt-8 inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-3.5 text-base font-semibold text-blue-600 transition-colors hover:bg-blue-50"
-            >
-              Convert PDF to Excel
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <p className="mt-4 text-lg text-slate-300">Convert PDFs to Excel or Google Sheets in seconds—no sign-up required.</p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
+              <Link
+                href="/tools/pdf-to-excel"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#217346] px-6 py-3.5 text-base font-semibold text-white shadow-md transition-all hover:bg-[#1d603d] hover:shadow-lg"
+              >
+                Convert PDF to Excel
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/tools/pdf-to-gsheet"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-base font-semibold text-slate-900 shadow-md transition-all hover:bg-slate-100 hover:shadow-lg"
+              >
+                Convert PDF to Google Sheet
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
         </section>
       </main>

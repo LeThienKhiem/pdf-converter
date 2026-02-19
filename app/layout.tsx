@@ -60,6 +60,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* Google AdSense - loads async, available for all AdBanner instances */}
         <Script
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8938853828038526"
           strategy="afterInteractive"
