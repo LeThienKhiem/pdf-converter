@@ -11,11 +11,11 @@ import {
 export const metadata: Metadata = {
   title: "How It Works - PDF to Excel Converter | Step-by-Step Guide",
   description:
-    "Learn how to convert PDF to Excel in 3 steps: upload your document, let Gemini AI extract the layout, and download your styled Excel file. Supports invoices, forms, and tax documents.",
+    "Learn how to convert PDF to Excel in 3 steps: upload your document, let Powerful AI Model extract the layout, and download your styled Excel file. Supports invoices, forms, and tax documents.",
   openGraph: {
     title: "How It Works - PDF to Excel Converter | Step-by-Step Guide",
     description:
-      "Learn how to convert PDF to Excel in 3 steps: upload your document, let Gemini AI extract the layout, and download your styled Excel file.",
+      "Learn how to convert PDF to Excel in 3 steps: upload your document, let Powerful AI Model extract the layout, and download your styled Excel file.",
     type: "article",
   },
   twitter: {
@@ -85,7 +85,7 @@ export default function HowItWorksPage() {
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">Step 2: AI extracts the layout</h3>
                 <p className="mt-2 text-slate-600">
-                  Click &quot;Extract&quot; and our tool sends your document to Google&apos;s Gemini 1.5 Robotics-ER model. It analyzes the page as a visual grid and returns a row-by-row, column-by-column representation—so the Excel output matches the original layout. A progress bar shows status; when extraction finishes, you&apos;re ready to download.
+                  Click &quot;Extract&quot; and our tool sends your document to Google&apos;s Powerful AI Model. It analyzes the page as a visual grid and returns a row-by-row, column-by-column representation—so the Excel output matches the original layout. A progress bar shows status; when extraction finishes, you&apos;re ready to download.
                 </p>
               </div>
             </section>
@@ -105,10 +105,10 @@ export default function HowItWorksPage() {
 
           <section className="mt-14 border-t border-slate-200 pt-10" aria-labelledby="tech-heading">
             <h2 id="tech-heading" className="text-2xl font-bold text-slate-900">
-              Technology: Gemini 1.5 Robotics-ER
+              Technology: Powerful AI Model
             </h2>
             <p className="mt-4 text-slate-600">
-              We use Google&apos;s Gemini 1.5 Robotics-ER model for layout-aware document understanding. Unlike plain text extraction, it &quot;sees&quot; the document as a grid—so tables, multi-column sections, and form fields stay in the correct rows and columns. The result is an array of rows (AOA) that we write to Excel with styling, so your PDF structure is preserved in the spreadsheet.
+              We use Google&apos;s Powerful AI Model for layout-aware document understanding. Unlike plain text extraction, it &quot;sees&quot; the document as a grid—so tables, multi-column sections, and form fields stay in the correct rows and columns. The result is an array of rows (AOA) that we write to Excel with styling, so your PDF structure is preserved in the spreadsheet.
             </p>
           </section>
 
@@ -134,16 +134,6 @@ export default function HowItWorksPage() {
           </p>
         </article>
       </main>
-
-      <footer className="border-t border-slate-200 bg-white px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
-          <p className="text-sm text-slate-500">© {new Date().getFullYear()} InvoiceToData.com. All rights reserved.</p>
-          <div className="flex gap-6">
-            <Link href="/privacy" className="text-sm text-slate-500 hover:text-slate-700">Privacy</Link>
-            <Link href="/terms" className="text-sm text-slate-500 hover:text-slate-700">Terms</Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
