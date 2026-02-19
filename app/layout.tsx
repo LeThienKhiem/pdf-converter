@@ -3,6 +3,7 @@ import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import FirebaseProvider from "@/app/components/FirebaseProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -64,6 +65,7 @@ export default function RootLayout({
           strategy="afterInteractive"
           crossOrigin="anonymous"
         />
+        <FirebaseProvider />
         <Header />
         {children}
         <Footer />
