@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import AdBanner from "@/components/AdBanner";
 
 const ACCEPT = ".pdf,image/*";
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -305,8 +306,9 @@ export default function PdfToExcelPage() {
                 </div>
               </div>
             </div>
-            <div className="mt-6 flex justify-center rounded-lg border border-slate-200 bg-slate-50 py-8 text-center text-sm text-slate-500">
-              Ad placeholder (loading)
+            <div className="mt-6 rounded-lg border border-slate-200 bg-gray-50 p-4">
+              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+              <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_LOADING ?? "0000000002"} />
             </div>
           </section>
         )}
@@ -388,8 +390,9 @@ export default function PdfToExcelPage() {
               </button>
             </div>
 
-            <div className="mt-8 flex justify-center rounded-lg border border-slate-200 bg-slate-50 py-8 text-center text-sm text-slate-500">
-              Ad placeholder (after download)
+            <div className="mt-8 rounded-lg border border-slate-200 bg-gray-50 p-4">
+              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+              <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
             </div>
           </>
         )}

@@ -9,6 +9,7 @@ import {
   Sparkles,
   ArrowRight,
 } from "lucide-react";
+import AdBanner from "@/components/AdBanner";
 
 export default function Home() {
   return (
@@ -33,6 +34,14 @@ export default function Home() {
             </Link>
           </div>
         </section>
+
+        {/* Ad Placement 1: below Hero */}
+        <div className="border-b border-slate-200/80 bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl">
+            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+            <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HERO ?? "0000000000"} />
+          </div>
+        </div>
 
         {/* Features */}
         <section id="features" className="border-b border-slate-200/80 bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="features-heading">
@@ -138,6 +147,14 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* Ad Placement 2: before FAQ */}
+        <div className="border-b border-slate-200/80 bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl">
+            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+            <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+          </div>
+        </div>
 
         {/* FAQ */}
         <section className="border-b border-slate-200/80 bg-white px-4 py-16 sm:px-6 lg:px-8" aria-labelledby="faq-heading">
