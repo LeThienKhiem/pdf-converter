@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelName = "gemini-robotics-er-1.5-preview";
+    const modelName = "gemini-flash-lite-latest";
     console.log("[Extract API] Using model:", modelName);
     const model = genAI.getGenerativeModel({
       model: modelName,

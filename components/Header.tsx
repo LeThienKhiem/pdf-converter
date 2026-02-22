@@ -64,11 +64,11 @@ export default function Header() {
         How it Works
       </Link>
       <Link
-        href="/blogs"
+        href="/blog"
         onClick={closeMobileMenu}
         className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
       >
-        Blogs
+        Blog
       </Link>
       <div className="relative" ref={dropdownRef}>
         <button
@@ -187,11 +187,11 @@ export default function Header() {
                   How it Works
                 </Link>
                 <Link
-                  href="/blogs"
+                  href="/blog"
                   onClick={closeMobileMenu}
                   className="rounded-lg px-4 py-3 text-base font-medium text-slate-700 hover:bg-slate-100"
                 >
-                  Blogs
+                  Blog
                 </Link>
                 <div className="border-t border-slate-200 pt-2">
                   <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Tools</p>
