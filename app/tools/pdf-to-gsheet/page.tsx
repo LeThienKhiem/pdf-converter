@@ -1,206 +1,128 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import Link from "next/link";
-import { FileUp, Loader2, FileSpreadsheet, ExternalLink } from "lucide-react";
-import { canConvert, incrementUsage } from "@/lib/pdfUsage";
-import QuotaLimitModal from "@/components/QuotaLimitModal";
+import { Users, Sparkles, Cloud, Receipt, Database, ClipboardCheck, Upload, Scan, FileCheck, ChevronRight } from "lucide-react";
+import PdfToGsheetTool from "@/components/PdfToGsheetTool";
 
 export default function PdfToGsheetPage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [copyUrl, setCopyUrl] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [showQuotaModal, setShowQuotaModal] = useState(false);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    if (!canConvert()) {
-      setShowQuotaModal(true);
-      return;
-    }
-    const f = e.dataTransfer.files?.[0];
-    if (f?.type === "application/pdf") {
-      setFile(f);
-      setErrorMessage(null);
-    } else if (f) {
-      setErrorMessage("Only PDF files are accepted.");
-      setFile(null);
-    }
-  }, []);
-
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!canConvert()) {
-      setShowQuotaModal(true);
-      e.target.value = "";
-      return;
-    }
-    const f = e.target.files?.[0];
-    if (f?.type === "application/pdf") {
-      setFile(f);
-      setErrorMessage(null);
-    } else if (f) {
-      setErrorMessage("Only PDF files are accepted.");
-      setFile(null);
-    } else {
-      setFile(null);
-    }
-    e.target.value = "";
-  }, []);
-
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSuccessMessage(null);
-    setCopyUrl(null);
-    setErrorMessage(null);
-
-    if (!file) {
-      setErrorMessage("Please select a PDF file.");
-      return;
-    }
-    if (!canConvert()) {
-      setShowQuotaModal(true);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/gsheet", {
-        method: "POST",
-        body: formData,
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        setErrorMessage(json?.error ?? "Something went wrong. Please try again.");
-        return;
-      }
-
-      incrementUsage();
-      setSuccessMessage(json?.message ?? "Your sheet is ready.");
-      setCopyUrl(json?.copyUrl ?? null);
-      setFile(null);
-    } catch {
-      setErrorMessage("Network error. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [file]);
-
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <main className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          PDF to Google Sheets
-        </h1>
-        <p className="mt-2 text-slate-600">
-          Upload a PDF. We extract table and invoice data with AI and create a Google Sheet you can copy to your Drive.
-        </p>
+      <main>
+        {/* Narrow container: tool only */}
+        <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+          <PdfToGsheetTool
+            title="PDF to Google Sheets"
+            subtitle="Upload a PDF. We extract table and invoice data with AI and create a Google Sheet you can copy to your Drive."
+            showExcelLink={true}
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} className="mt-10 space-y-8">
-          {/* PDF upload zone */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700">PDF file</label>
-            <input
-              type="file"
-              accept=".pdf,application/pdf"
-              onChange={handleFileChange}
-              className="sr-only"
-              id="gsheet-file-input"
-              aria-label="Upload PDF"
-            />
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => document.getElementById("gsheet-file-input")?.click()}
-              onKeyDown={(e) => e.key === "Enter" && document.getElementById("gsheet-file-input")?.click()}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`mt-2 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors ${
-                isDragging
-                  ? "border-blue-500 bg-blue-50/60"
-                  : "border-slate-300 bg-slate-50/50 hover:border-slate-400 hover:bg-slate-100/50"
-              }`}
-            >
-              <FileUp className="h-12 w-12 text-slate-400" />
-              <span className="mt-4 font-medium text-slate-700">
-                {file ? file.name : "Drop a PDF here or click to browse"}
+        {/* Full-width SEO section */}
+        <section className="w-full bg-slate-50 py-24" aria-labelledby="why-extract-heading">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <h2 id="why-extract-heading" className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">
+              Why Extract PDF Data Directly to Google Sheets?
+            </h2>
+            <div className="mt-14 grid grid-cols-1 gap-8 md:grid-cols-3">
+              <div className="flex h-full flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600" aria-hidden>
+                  <Users className="h-6 w-6" />
+                </span>
+                <h3 className="mt-5 text-lg font-semibold text-slate-900">Real-Time Collaboration</h3>
+                <p className="mt-3 flex-1 text-slate-600">
+                  Share and edit extracted data with your team instantly in Google Sheets.
+                </p>
+              </div>
+              <div className="flex h-full flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600" aria-hidden>
+                  <Sparkles className="h-6 w-6" />
+                </span>
+                <h3 className="mt-5 text-lg font-semibold text-slate-900">AI Precision</h3>
+                <p className="mt-3 flex-1 text-slate-600">
+                  Powered by Gemini 2.5 Flash-Lite to maintain table structure, merged cells, and complex formatting.
+                </p>
+              </div>
+              <div className="flex h-full flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600" aria-hidden>
+                  <Cloud className="h-6 w-6" />
+                </span>
+                <h3 className="mt-5 text-lg font-semibold text-slate-900">Cloud Workflow</h3>
+                <p className="mt-3 flex-1 text-slate-600">
+                  Direct export to Drive. No manual downloads, no file conversion headaches.
+                </p>
+              </div>
+            </div>
+
+            <h2 id="how-it-works-heading" className="mt-24 text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">
+              How It Works
+            </h2>
+            <div className="mt-14 flex flex-col items-stretch gap-8 md:flex-row md:items-center md:justify-between md:gap-4">
+              <div className="group flex flex-1 flex-col items-center rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md md:flex-[1]">
+                <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white" aria-hidden>Step 1</span>
+                <span className="mt-5 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-transform duration-300 group-hover:scale-110" aria-hidden>
+                  <Upload className="h-6 w-6" />
+                </span>
+                <h3 className="mt-5 text-xl font-bold text-gray-900">Upload PDF</h3>
+                <p className="mt-2 text-sm text-gray-500">Select your invoice or report.</p>
+              </div>
+              <span className="hidden shrink-0 text-gray-300 md:block" aria-hidden>
+                <ChevronRight className="h-8 w-8" />
               </span>
-              <span className="mt-1 text-sm text-slate-500">PDF only, max 5MB</span>
+              <div className="group flex flex-1 flex-col items-center rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md md:flex-[1]">
+                <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white" aria-hidden>Step 2</span>
+                <span className="mt-5 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-transform duration-300 group-hover:scale-110" aria-hidden>
+                  <Scan className="h-6 w-6" />
+                </span>
+                <h3 className="mt-5 text-xl font-bold text-gray-900">AI Extraction</h3>
+                <p className="mt-2 text-sm text-gray-500">Our engine scans and structures the data.</p>
+              </div>
+              <span className="hidden shrink-0 text-gray-300 md:block" aria-hidden>
+                <ChevronRight className="h-8 w-8" />
+              </span>
+              <div className="group flex flex-1 flex-col items-center rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md md:flex-[1]">
+                <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white" aria-hidden>Step 3</span>
+                <span className="mt-5 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-transform duration-300 group-hover:scale-110" aria-hidden>
+                  <FileCheck className="h-6 w-6" />
+                </span>
+                <h3 className="mt-5 text-xl font-bold text-gray-900">Direct Sync</h3>
+                <p className="mt-2 text-sm text-gray-500">Data appears in your Google Sheet automatically.</p>
+              </div>
+            </div>
+
+            <h2 id="perfect-for-heading" className="mt-24 text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">
+              Perfect for Business Workflows
+            </h2>
+            <div className="mt-14 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="flex h-full flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl lg:col-span-2">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600" aria-hidden>
+                  <Receipt className="h-6 w-6" />
+                </span>
+                <div className="mt-5 flex flex-1 flex-col">
+                  <h3 className="text-lg font-semibold text-slate-900">Accounts Payable</h3>
+                  <p className="mt-2 flex-1 text-slate-600">Turn vendor invoices and statements into sheets for reconciliation and approval.</p>
+                </div>
+              </div>
+              <div className="flex h-full flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-600" aria-hidden>
+                  <Database className="h-6 w-6" />
+                </span>
+                <div className="mt-5 flex flex-1 flex-col">
+                  <h3 className="text-lg font-semibold text-slate-900">Data Migration</h3>
+                  <p className="mt-2 flex-1 text-slate-600">Move tables from legacy PDFs into Google Sheets for reporting and analysis.</p>
+                </div>
+              </div>
+              <div className="flex h-full flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-600" aria-hidden>
+                  <ClipboardCheck className="h-6 w-6" />
+                </span>
+                <div className="mt-5 flex flex-1 flex-col">
+                  <h3 className="text-lg font-semibold text-slate-900">Financial Auditing</h3>
+                  <p className="mt-2 flex-1 text-slate-600">Extract transaction lists and summaries into a single sheet for review and audit trails.</p>
+                </div>
+              </div>
             </div>
           </div>
-
-          {/* Error */}
-          {errorMessage && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
-              {errorMessage}
-            </div>
-          )}
-
-          {/* Success + Make a Copy CTA */}
-          {successMessage && copyUrl && (
-            <div className="rounded-xl border border-green-200 bg-green-50 p-6" role="status">
-              <p className="font-medium text-green-800">{successMessage}</p>
-              <a
-                href={copyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3.5 font-semibold text-white shadow-sm transition-colors hover:bg-green-700"
-              >
-                🎉 Success! Click here to Make a Copy of your Data
-                <ExternalLink className="h-5 w-5 shrink-0" aria-hidden />
-              </a>
-            </div>
-          )}
-
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={isLoading || !file}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                Converting…
-              </>
-            ) : (
-              <>
-                <FileSpreadsheet className="h-5 w-5" />
-                Convert to Google Sheet
-              </>
-            )}
-          </button>
-        </form>
-
-        <p className="mt-10 text-sm text-slate-500">
-          <Link href="/tools/pdf-to-excel" className="text-blue-600 hover:underline">
-            Prefer to download as Excel instead?
-          </Link>
-        </p>
+        </section>
       </main>
-      <QuotaLimitModal open={showQuotaModal} onClose={() => setShowQuotaModal(false)} />
     </div>
   );
 }

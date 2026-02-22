@@ -3,6 +3,8 @@ import Link from "next/link";
 import { ArrowRight, FileSpreadsheet, Upload, Sparkles, Download } from "lucide-react";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Free AI PDF to Excel & Google Sheets Converters | Invoice To Data",
   description:
@@ -16,6 +18,11 @@ type BlogRow = {
   created_at: string;
 };
 
+type LandingPageRow = {
+  slug: string;
+  industry: string | null;
+};
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",
@@ -26,16 +33,20 @@ function formatDate(iso: string): string {
 
 export default async function ToolsPage() {
   let latestPosts: BlogRow[] = [];
+  let landingPages: LandingPageRow[] = [];
 
   if (hasSupabaseConfig) {
     try {
       const supabase = getSupabase();
-      const { data } = await supabase
-        .from("blogs")
-        .select("id, title, slug, created_at")
-        .order("created_at", { ascending: false })
-        .limit(3);
-      if (data) latestPosts = data as BlogRow[];
+      const [postsRes, pagesRes] = await Promise.all([
+        supabase.from("blogs").select("id, title, slug, created_at").order("created_at", { ascending: false }).limit(3),
+        supabase.from("landing_pages").select("slug, industry"),
+      ]);
+      if (postsRes.error) console.error("Supabase Fetch Error:", postsRes.error);
+      if (pagesRes.error) console.error("Supabase Fetch Error:", pagesRes.error);
+      if (postsRes.data) latestPosts = postsRes.data as BlogRow[];
+      if (pagesRes.data) landingPages = (pagesRes.data as LandingPageRow[]).filter((r) => r.slug?.trim());
+      console.log("Fetched Data:", landingPages);
     } catch {
       // ignore
     }
@@ -171,6 +182,28 @@ export default async function ToolsPage() {
             </p>
           )}
         </section>
+
+        {/* Directory: auto-updates from landing_pages */}
+        {landingPages.length > 0 && (
+          <section className="mt-20 w-full bg-gray-50 py-12" aria-labelledby="directory-heading">
+            <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+              <h2 id="directory-heading" className="text-center text-2xl font-bold tracking-tight text-slate-900">
+                Specialized PDF Tools by Industry
+              </h2>
+              <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                {landingPages.map((row) => (
+                  <Link
+                    key={row.slug}
+                    href={`/tools/${row.slug}`}
+                    className="text-gray-600 hover:text-blue-600 hover:underline"
+                  >
+                    PDF to Excel for {row.industry?.trim() || row.slug}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         <p className="mt-16 text-slate-500">
           <Link href="/" className="text-blue-600 hover:underline">

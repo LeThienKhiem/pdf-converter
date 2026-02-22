@@ -96,13 +96,6 @@ export default function Header() {
         </button>
       </div>
       <Link
-        href="/login"
-        onClick={closeMobileMenu}
-        className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-      >
-        Log in
-      </Link>
-      <Link
         href="/tools/pdf-to-excel"
         onClick={closeMobileMenu}
         className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
@@ -234,16 +227,9 @@ export default function Header() {
                 </div>
                 <div className="border-t border-slate-200 pt-2">
                   <Link
-                    href="/login"
-                    onClick={closeMobileMenu}
-                    className="block rounded-lg px-4 py-3 text-base font-medium text-slate-700 hover:bg-slate-100"
-                  >
-                    Log in
-                  </Link>
-                  <Link
                     href="/tools/pdf-to-excel"
                     onClick={closeMobileMenu}
-                    className="mt-2 block rounded-lg bg-blue-600 px-4 py-3 text-center text-base font-semibold text-white hover:bg-blue-700"
+                    className="block rounded-lg bg-blue-600 px-4 py-3 text-center text-base font-semibold text-white hover:bg-blue-700"
                   >
                     Get Started
                   </Link>
