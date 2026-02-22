@@ -11,16 +11,29 @@ export default function Header() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
+        const portal = document.getElementById("tools-dropdown-portal");
+        if (portal?.contains(target)) return;
         setToolsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (toolsOpen && dropdownRef.current && typeof document !== "undefined") {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      setDropdownRect({ top: rect.bottom + 4, left: Math.max(8, rect.right - 200) });
+    } else {
+      setDropdownRect(null);
+    }
+  }, [toolsOpen]);
 
   // Freeze background scroll when mobile menu is open (reliable on iOS with position: fixed)
   useEffect(() => {
@@ -81,30 +94,6 @@ export default function Header() {
           Tools
           <ChevronDown className={`h-4 w-4 transition-transform ${toolsOpen ? "rotate-180" : ""}`} />
         </button>
-        {toolsOpen && (
-          <div
-            className="absolute right-0 top-full mt-1 min-w-[200px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
-            role="menu"
-          >
-            <Link
-              href="/tools/pdf-to-excel"
-              onClick={() => { setToolsOpen(false); closeMobileMenu(); }}
-              role="menuitem"
-              className={`block px-4 py-2 text-sm ${isPdfToExcel ? "bg-blue-50 font-medium text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
-            >
-              PDF to Excel
-              {isPdfToExcel && <span className="ml-2 text-xs text-blue-600">(Current)</span>}
-            </Link>
-            <Link
-              href="/tools/pdf-to-gsheet"
-              onClick={() => { setToolsOpen(false); closeMobileMenu(); }}
-              role="menuitem"
-              className="block px-4 py-2 text-sm text-slate-500 hover:bg-slate-50"
-            >
-              PDF to Google Sheet
-            </Link>
-          </div>
-        )}
       </div>
       <Link
         href="/login"
@@ -149,6 +138,38 @@ export default function Header() {
           <Menu className="h-6 w-6" />
         </button>
       </div>
+
+      {/* Tools dropdown: portal so header can use overflow-hidden (no scroll) */}
+      {toolsOpen &&
+        dropdownRect &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            id="tools-dropdown-portal"
+            role="menu"
+            className="fixed z-[100] min-w-[200px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+            style={{ top: dropdownRect.top, left: dropdownRect.left }}
+          >
+            <Link
+              href="/tools/pdf-to-excel"
+              onClick={() => setToolsOpen(false)}
+              role="menuitem"
+              className={`block px-4 py-2 text-sm ${isPdfToExcel ? "bg-blue-50 font-medium text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
+            >
+              PDF to Excel
+              {isPdfToExcel && <span className="ml-2 text-xs text-blue-600">(Current)</span>}
+            </Link>
+            <Link
+              href="/tools/pdf-to-gsheet"
+              onClick={() => setToolsOpen(false)}
+              role="menuitem"
+              className="block px-4 py-2 text-sm text-slate-500 hover:bg-slate-50"
+            >
+              PDF to Google Sheet
+            </Link>
+          </div>,
+          document.body
+        )}
 
       {/* Mobile menu overlay: rendered via portal so it is not clipped by header overflow-hidden */}
       {mobileMenuOpen &&

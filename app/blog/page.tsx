@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
+import AdBanner from "@/components/AdBanner";
 
 export const metadata: Metadata = {
   title: "Blog | Convert PDF to Excel & Bank Statements with AI",
@@ -59,6 +60,11 @@ export default async function BlogPage() {
           Guides and tips on converting PDFs to Excel and Google Sheets without losing format—powered by AI.
         </p>
 
+        <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+          <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+        </div>
+
         {error && (
           <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800" role="alert">
             <p className="font-medium">Unable to load posts</p>
@@ -103,6 +109,11 @@ export default async function BlogPage() {
             ))}
           </ul>
         )}
+
+        <div className="mt-12 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+          <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+        </div>
 
         <p className="mt-12 text-slate-500">
           <Link href="/" className="text-blue-600 hover:underline">

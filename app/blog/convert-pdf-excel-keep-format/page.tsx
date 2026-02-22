@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import AdBanner from "@/components/AdBanner";
 
 export const metadata: Metadata = {
   title: "How to Convert PDF to Excel Without Messing Up the Format | Fix Broken Rows & Keep Formatting",
@@ -26,6 +27,11 @@ export default function ConvertPdfExcelKeepFormatPage() {
           <p className="mt-6 text-xl text-slate-600">
             You’ve been there: copy-pasting from a PDF into Excel, only to get broken columns, merged cells, and a layout that looks nothing like the original. Fixing it takes longer than retyping everything. Here’s how to convert PDF to Excel and actually keep the format—no more guessing where rows start and end.
           </p>
+
+          <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+            <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+          </div>
 
           <div className="my-10 flex justify-center">
             <Link
@@ -57,6 +63,11 @@ export default function ConvertPdfExcelKeepFormatPage() {
             >
               Try Invoice To Data – 3 Free Conversions Today
             </Link>
+          </div>
+
+          <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+            <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
           </div>
 
           <p className="mt-12 text-slate-500">
