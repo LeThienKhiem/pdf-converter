@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FileUp, Loader2, FileSpreadsheet, ExternalLink } from "lucide-react";
 import { canConvert, incrementUsage } from "@/lib/pdfUsage";
 import QuotaLimitModal from "@/components/QuotaLimitModal";
+import AdBanner from "@/components/AdBanner";
 
 type PdfToGsheetToolProps = {
   title?: string;
@@ -179,6 +180,12 @@ export default function PdfToGsheetTool({
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
             <p className="text-center text-sm font-medium text-slate-700">Converting to Google Sheet…</p>
             <p className="text-center text-xs text-slate-500">Please wait while our AI processes your document.</p>
+            <div className="mt-4 w-full rounded-lg border border-slate-200 bg-white p-3">
+              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+              <div className="min-h-[250px] flex justify-center items-center">
+                <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_LOADING ?? "0000000002"} />
+              </div>
+            </div>
           </div>
         )}
 

@@ -318,6 +318,12 @@ export default function PdfToExcelPage() {
                 </div>
               </div>
             </div>
+            <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
+              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+              <div className="min-h-[250px] flex justify-center items-center">
+                <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_LOADING ?? "0000000002"} />
+              </div>
+            </div>
           </section>
         )}
 
@@ -451,6 +457,14 @@ export default function PdfToExcelPage() {
             </div>
           </section>
 
+          {/* Ad: above Why Choose Our AI */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+            <div className="min-h-[100px] flex justify-center items-center">
+              <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+            </div>
+          </div>
+
           <section className="prose prose-slate max-w-4xl mx-auto py-12 px-4" aria-labelledby="why-ai-heading">
             <h2 id="why-ai-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               Why Choose Our AI?
@@ -563,6 +577,14 @@ export default function PdfToExcelPage() {
               </details>
             </div>
           </section>
+
+          {/* Ad: below FAQ */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+            <div className="min-h-[100px] flex justify-center items-center">
+              <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
+            </div>
+          </div>
         </div>
       </main>
       <QuotaLimitModal open={showQuotaModal} onClose={() => setShowQuotaModal(false)} />

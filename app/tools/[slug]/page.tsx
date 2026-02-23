@@ -85,6 +85,14 @@ export default async function ToolLandingPage({ params }: Props) {
           <PdfToGsheetTool showExcelLink={true} />
         </div>
 
+        {/* Ad: above first content section */}
+        <div className="mt-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+          <div className="min-h-[100px] flex justify-center items-center">
+            <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+          </div>
+        </div>
+
         {/* Industry-specific challenges */}
         <section className="prose prose-slate mt-16 max-w-4xl rounded-2xl border border-slate-200 bg-white px-6 py-10 sm:px-8 sm:py-12" aria-labelledby="industry-challenges-heading">
           <h2 id="industry-challenges-heading" className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
@@ -149,6 +157,14 @@ export default async function ToolLandingPage({ params }: Props) {
           </dl>
         </section>
 
+        {/* Ad: below FAQ */}
+        <div className="mt-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+          <div className="min-h-[100px] flex justify-center items-center">
+            <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
+          </div>
+        </div>
+
         {/* SEO content */}
         <section className="mt-16 rounded-2xl border border-slate-200 bg-slate-50/60 px-6 py-10 sm:px-8 sm:py-12" aria-labelledby="benefits-heading">
           <h2 id="benefits-heading" className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
@@ -159,8 +175,11 @@ export default async function ToolLandingPage({ params }: Props) {
           </p>
         </section>
 
-        <div className="my-12 flex min-h-[120px] justify-center">
-          <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+        <div className="my-12 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+          <div className="min-h-[120px] flex justify-center items-center">
+            <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+          </div>
         </div>
       </main>
     </div>

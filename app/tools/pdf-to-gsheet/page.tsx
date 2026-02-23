@@ -2,6 +2,7 @@
 
 import { Users, Sparkles, Cloud, Receipt, Database, ClipboardCheck, Upload, Scan, FileCheck, ChevronRight } from "lucide-react";
 import PdfToGsheetTool from "@/components/PdfToGsheetTool";
+import AdBanner from "@/components/AdBanner";
 
 export default function PdfToGsheetPage() {
   return (
@@ -14,6 +15,16 @@ export default function PdfToGsheetPage() {
             subtitle="Upload a PDF. We extract table and invoice data with AI and create a Google Sheet you can copy to your Drive."
             showExcelLink={true}
           />
+        </div>
+
+        {/* Ad: above first content section */}
+        <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+            <div className="min-h-[100px] flex justify-center items-center">
+              <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+            </div>
+          </div>
         </div>
 
         {/* Full-width SEO section */}
@@ -163,6 +174,16 @@ export default function PdfToGsheetPage() {
                   <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">What AI model do you use?</summary>
                   <p className="pb-4 text-slate-600">We use Google&apos;s Gemini model (including Gemini 2.5 Flash-Lite) for layout-aware extraction. It analyzes your document as a visual structure so tables, forms, and multi-section layouts are converted with high fidelity to Google Sheets.</p>
                 </details>
+              </div>
+            </div>
+
+            {/* Ad: below FAQ */}
+            <div className="mx-auto max-w-4xl px-4 py-8">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+                <div className="min-h-[100px] flex justify-center items-center">
+                  <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
+                </div>
               </div>
             </div>
           </div>

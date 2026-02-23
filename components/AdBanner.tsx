@@ -24,21 +24,26 @@ export default function AdBanner({
   className = "",
 }: AdBannerProps) {
   useEffect(() => {
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (err) {
-      // Prevent hydration or route-change crashes; AdSense may not be loaded yet
-    }
+    const t = setTimeout(() => {
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch (err) {
+        // Prevent hydration or route-change crashes; AdSense may not be loaded yet
+      }
+    }, 100);
+    return () => clearTimeout(t);
   }, []);
 
   return (
-    <ins
-      className={`adsbygoogle ${className}`}
-      data-ad-client={dataAdClient}
-      data-ad-slot={dataAdSlot}
-      data-ad-format={dataAdFormat}
-      data-full-width-responsive="true"
-      style={{ display: "block" }}
-    />
+    <div className="min-w-[320px] w-full" style={{ minHeight: 50 }}>
+      <ins
+        className={`adsbygoogle ${className}`}
+        data-ad-client={dataAdClient}
+        data-ad-slot={dataAdSlot}
+        data-ad-format={dataAdFormat}
+        data-full-width-responsive="true"
+        style={{ display: "block", minWidth: 320 }}
+      />
+    </div>
   );
 }
