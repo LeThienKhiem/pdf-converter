@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const META_DESC_MAX = 160;
 
@@ -168,9 +169,9 @@ export default function BlogEditor({ initial, onSave, isSaving = false }: BlogEd
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-400">
               Live Preview
             </p>
-            <div className="prose prose-slate max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-p:text-slate-600 prose-li:text-slate-600">
+            <div className="prose prose-slate max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-p:text-slate-600 prose-li:text-slate-600 prose-table:border-collapse prose-th:bg-gray-50 prose-th:p-4 prose-th:border prose-th:border-gray-200 prose-td:p-4 prose-td:border prose-td:border-gray-200 prose-table:w-full">
               {content ? (
-                <ReactMarkdown>{content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
               ) : (
                 <p className="text-slate-400">Nothing to preview yet.</p>
               )}

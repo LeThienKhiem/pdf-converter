@@ -1,7 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, FileSpreadsheet, Upload, Sparkles, Download } from "lucide-react";
+import { ArrowRight, FileSpreadsheet, Upload, Sparkles, Download, ChevronRight } from "lucide-react";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
+
+const SEO_KEYWORDS = [
+  "Accountants", "Logistics", "Real Estate", "Healthcare", "E-commerce", "Law Firms", "Construction", "Insurance",
+  "Bank Statements", "Invoices", "Purchase Orders", "Payday Stubs", "Freight Bills", "Medical Records", "Tax Returns",
+  "Utility Bills", "Credit Card Statements", "Non-Profits", "Audit Teams", "HR & Payroll",
+] as const;
+
+function slugifyKeyword(label: string): string {
+  return label
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/&/g, "and")
+    .replace(/[^\w-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +68,19 @@ export default async function ToolsPage() {
       // ignore
     }
   }
+
+  const dynamicSlugs = new Set(landingPages.map((r) => r.slug));
+  const dynamicItems = landingPages.map((row) => ({
+    slug: row.slug,
+    label: row.industry?.trim() || row.slug,
+    href: `/tools/${row.slug}`,
+  }));
+  const staticItems = SEO_KEYWORDS.filter((kw) => !dynamicSlugs.has(slugifyKeyword(kw))).map((label) => ({
+    slug: slugifyKeyword(label),
+    label,
+    href: `/tools/pdf-to-excel-for-${slugifyKeyword(label)}`,
+  }));
+  const directoryItems = [...dynamicItems, ...staticItems];
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -183,27 +213,31 @@ export default async function ToolsPage() {
           )}
         </section>
 
-        {/* Directory: auto-updates from landing_pages */}
-        {landingPages.length > 0 && (
-          <section id="all-tools" className="mt-20 w-full bg-gray-50 py-12" aria-labelledby="directory-heading">
-            <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-              <h2 id="directory-heading" className="text-center text-2xl font-bold tracking-tight text-slate-900">
-                Specialized PDF Tools by Industry
-              </h2>
-              <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-                {landingPages.map((row) => (
-                  <Link
-                    key={row.slug}
-                    href={`/tools/${row.slug}`}
-                    className="text-gray-600 hover:text-blue-600 hover:underline"
-                  >
-                    PDF to Excel for {row.industry?.trim() || row.slug}
-                  </Link>
-                ))}
-              </div>
+        {/* Directory: dynamic (Supabase) + static SEO keywords */}
+        <section id="all-tools" className="mt-20 w-full bg-gray-50 py-16" aria-labelledby="directory-heading">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <h2 id="directory-heading" className="text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Specialized PDF Tools by Industry
+            </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-center text-slate-600">
+              AI-powered data extraction tailored for every professional sector.
+            </p>
+            <div className="mt-10 grid grid-cols-1 gap-3 md:grid-cols-2">
+              {directoryItems.map((item) => (
+                <Link
+                  key={item.slug}
+                  href={item.href}
+                  className="group flex items-center justify-between gap-4 rounded-xl border border-gray-100 bg-white p-6 shadow-sm transition-all duration-200 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 hover:shadow-md"
+                >
+                  <span className="min-w-0 flex-1 text-base font-medium text-slate-700 group-hover:text-blue-600">
+                    PDF to Excel for {item.label}
+                  </span>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-600" aria-hidden />
+                </Link>
+              ))}
             </div>
-          </section>
-        )}
+          </div>
+        </section>
 
         <p className="mt-16 text-slate-500">
           <Link href="/" className="text-blue-600 hover:underline">
