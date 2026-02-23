@@ -318,10 +318,6 @@ export default function PdfToExcelPage() {
                 </div>
               </div>
             </div>
-            <div className="mt-6 rounded-lg border border-slate-200 bg-gray-50 p-4">
-              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-              <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_LOADING ?? "0000000002"} />
-            </div>
           </section>
         )}
 
@@ -455,6 +451,21 @@ export default function PdfToExcelPage() {
             </div>
           </section>
 
+          <section className="prose prose-slate max-w-4xl mx-auto py-12 px-4" aria-labelledby="why-ai-heading">
+            <h2 id="why-ai-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Why Choose Our AI?
+            </h2>
+            <p className="mt-6 text-slate-600">
+              Traditional OCR tools treat your PDF as a flat stream of text, which often breaks table layout, merges cells incorrectly, and loses the visual structure that makes your data meaningful. Our converter uses Google&apos;s Gemini model to understand the document as a visual grid: it recognizes rows, columns, headers, and sections the way a human would, so your Excel output matches the original layout. This approach preserves merged cells, indentation, and multi-level headings that generic OCR simply cannot handle.
+            </p>
+            <p className="mt-4 text-slate-600">
+              Speed is another key advantage. AI-based extraction processes pages in seconds instead of requiring manual correction of misaligned columns or misread numbers. Gemini is optimized for both native digital PDFs and scanned images, so whether your source is a generated report or a photographed form, you get fast, consistent results. There&apos;s no need to re-upload or tweak settings for different document types—the same pipeline delivers high-quality output across invoices, tax forms, and statement tables.
+            </p>
+            <p className="mt-4 text-slate-600">
+              Accuracy matters especially when the data feeds into finance, auditing, or compliance workflows. Our AI is trained to preserve numeric precision, date formats, and text exactly as they appear in the source. Combined with layout retention and speed, this makes the tool suitable for professionals who need reliable PDF-to-Excel conversion without manual cleanup. You get a spreadsheet that mirrors your document, ready for analysis or import into your existing systems.
+            </p>
+          </section>
+
           <section aria-labelledby="why-choose-heading">
             <h2 id="why-choose-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               Why Choose Our PDF to Excel Converter?
@@ -512,18 +523,26 @@ export default function PdfToExcelPage() {
             <div className="mt-8 space-y-2">
               <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
                 <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
-                  Is the PDF to Excel converter free?
+                  Is my data safe?
                 </summary>
                 <p className="pb-4 text-slate-600">
-                  Yes. You can convert PDFs to Excel at no cost. No sign-up is required for basic use. Upload your file, run the extraction, and download your spreadsheet.
+                  Yes. We do not store your documents. Files are processed in memory and deleted immediately after extraction. Your PDFs and the extracted data are never retained on our servers, so your sensitive invoices and financial data stay private.
                 </p>
               </details>
               <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
                 <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
-                  Will it keep my formatting intact?
+                  How accurate is the conversion?
                 </summary>
                 <p className="pb-4 text-slate-600">
-                  Our AI preserves the visual layout of your document: rows and columns map directly to spreadsheet cells. Section headers (e.g. Part I, Invoice) are detected and styled with bold and light grey background in the Excel output.
+                  Our AI delivers high accuracy for tables, invoices, and forms. Rows and columns are preserved from the original layout, and numeric values, dates, and text are extracted as they appear. For complex or scanned documents, results are typically ready to use with minimal or no manual correction.
+                </p>
+              </details>
+              <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
+                <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
+                  Will my tables look the same?
+                </summary>
+                <p className="pb-4 text-slate-600">
+                  Yes. Our AI preserves the visual layout: rows and columns map directly to spreadsheet cells. Section headers (e.g. Part I, Invoice) are detected and styled with bold and light grey background in the Excel output. Merged cells and table structure are maintained so your spreadsheet mirrors the original document.
                 </p>
               </details>
               <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
@@ -531,7 +550,15 @@ export default function PdfToExcelPage() {
                   What is the maximum file size?
                 </summary>
                 <p className="pb-4 text-slate-600">
-                  5MB for fast processing. We recommend keeping files under this limit for the best experience. For larger documents, consider splitting the PDF or compressing images.
+                  5MB per file for fast, reliable processing. We recommend keeping files under this limit for the best experience. For larger documents, consider splitting the PDF or compressing images before upload.
+                </p>
+              </details>
+              <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
+                <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
+                  What AI model do you use?
+                </summary>
+                <p className="pb-4 text-slate-600">
+                  We use Google&apos;s Gemini model for layout-aware extraction. It analyzes your document as a visual structure rather than plain text, so tables, forms, and multi-section layouts are converted with high fidelity. The same pipeline handles both native PDFs and scanned images.
                 </p>
               </details>
             </div>

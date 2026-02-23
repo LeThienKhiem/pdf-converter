@@ -185,7 +185,7 @@ export default async function ToolsPage() {
 
         {/* Directory: auto-updates from landing_pages */}
         {landingPages.length > 0 && (
-          <section className="mt-20 w-full bg-gray-50 py-12" aria-labelledby="directory-heading">
+          <section id="all-tools" className="mt-20 w-full bg-gray-50 py-12" aria-labelledby="directory-heading">
             <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
               <h2 id="directory-heading" className="text-center text-2xl font-bold tracking-tight text-slate-900">
                 Specialized PDF Tools by Industry

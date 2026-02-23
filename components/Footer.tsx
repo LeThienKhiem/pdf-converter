@@ -8,6 +8,9 @@ export default function Footer() {
           © {new Date().getFullYear()} InvoiceToData.com. All rights reserved.
         </p>
         <div className="flex gap-6">
+          <Link href="/contact" className="text-sm text-slate-500 hover:text-slate-700">
+            Contact Us
+          </Link>
           <Link href="/privacy" className="text-sm text-slate-500 hover:text-slate-700">
             Privacy
           </Link>

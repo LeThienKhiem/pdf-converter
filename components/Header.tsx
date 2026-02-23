@@ -83,18 +83,28 @@ export default function Header() {
       >
         Blog
       </Link>
-      <div className="relative" ref={dropdownRef}>
-        <button
-          type="button"
-          onClick={() => setToolsOpen((o) => !o)}
+      <div
+        className="relative"
+        ref={dropdownRef}
+        onMouseEnter={() => setToolsOpen(true)}
+        aria-expanded={toolsOpen}
+        aria-haspopup="true"
+      >
+        <Link
+          href="/tools"
           className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-          aria-expanded={toolsOpen}
-          aria-haspopup="true"
         >
           Tools
           <ChevronDown className={`h-4 w-4 transition-transform ${toolsOpen ? "rotate-180" : ""}`} />
-        </button>
+        </Link>
       </div>
+      <Link
+        href="/business"
+        onClick={closeMobileMenu}
+        className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-700"
+      >
+        Business
+      </Link>
       <Link
         href="/tools/pdf-to-excel"
         onClick={closeMobileMenu}
@@ -160,6 +170,14 @@ export default function Header() {
             >
               PDF to Google Sheet
             </Link>
+            <Link
+              href="/tools#all-tools"
+              onClick={() => setToolsOpen(false)}
+              role="menuitem"
+              className="block border-t border-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              All Tools
+            </Link>
           </div>,
           document.body
         )}
@@ -224,8 +242,22 @@ export default function Header() {
                   >
                     PDF to Google Sheet
                   </Link>
+                  <Link
+                    href="/tools#all-tools"
+                    onClick={closeMobileMenu}
+                    className="block rounded-lg px-4 py-3 text-base font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    All Tools
+                  </Link>
                 </div>
                 <div className="border-t border-slate-200 pt-2">
+                  <Link
+                    href="/business"
+                    onClick={closeMobileMenu}
+                    className="block rounded-md bg-green-600 px-4 py-3 text-center text-base font-semibold text-white hover:bg-green-700"
+                  >
+                    Business
+                  </Link>
                   <Link
                     href="/tools/pdf-to-excel"
                     onClick={closeMobileMenu}

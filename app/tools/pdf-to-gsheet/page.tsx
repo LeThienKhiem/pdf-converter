@@ -120,6 +120,51 @@ export default function PdfToGsheetPage() {
                 </div>
               </div>
             </div>
+
+            {/* Why Choose Our AI – thick content */}
+            <div className="prose prose-slate mx-auto max-w-4xl py-12 px-4" aria-labelledby="why-ai-heading">
+              <h2 id="why-ai-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                Why Choose Our AI?
+              </h2>
+              <p className="mt-6 text-slate-600">
+                Traditional OCR treats your PDF as a flat stream of text, which often breaks table layout and loses the visual structure that makes your data useful. Our converter uses Google&apos;s Gemini model to understand the document as a visual grid: it recognizes rows, columns, headers, and sections the way a human would, so your Google Sheet output matches the original layout. Merged cells, indentation, and multi-level headings are preserved in a way that generic OCR cannot achieve.
+              </p>
+              <p className="mt-4 text-slate-600">
+                Speed is a major advantage. AI-based extraction processes pages in seconds instead of requiring manual correction of misaligned columns or misread numbers. Gemini handles both native digital PDFs and scanned images, so whether your source is a generated report or a photographed form, you get fast, consistent results. The same pipeline delivers high-quality output for invoices, tax forms, and statement tables without re-uploading or changing settings.
+              </p>
+              <p className="mt-4 text-slate-600">
+                Accuracy is critical when data feeds into finance, auditing, or compliance. Our AI preserves numeric precision, date formats, and text exactly as they appear in the source. Together with layout retention and speed, this makes the tool suitable for professionals who need reliable PDF-to-Sheets conversion without manual cleanup—ready for analysis or import into your workflows.
+              </p>
+            </div>
+
+            {/* Comprehensive FAQ */}
+            <div className="mx-auto max-w-4xl px-4 pb-16" aria-labelledby="faq-heading">
+              <h2 id="faq-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                Frequently Asked Questions
+              </h2>
+              <div className="mt-8 space-y-2">
+                <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
+                  <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">Is my data safe?</summary>
+                  <p className="pb-4 text-slate-600">Yes. We do not store your documents. Files are processed in memory and deleted immediately after extraction. Your PDFs and extracted data are never retained on our servers.</p>
+                </details>
+                <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
+                  <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">How accurate is the conversion?</summary>
+                  <p className="pb-4 text-slate-600">Our AI delivers high accuracy for tables, invoices, and forms. Rows and columns are preserved from the original layout; numeric values, dates, and text are extracted as they appear, with minimal or no manual correction needed.</p>
+                </details>
+                <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
+                  <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">Will my tables look the same?</summary>
+                  <p className="pb-4 text-slate-600">Yes. Our AI preserves the visual layout so rows and columns map directly to sheet cells. Section headers and table structure are maintained in the Google Sheet output.</p>
+                </details>
+                <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
+                  <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">What is the maximum file size?</summary>
+                  <p className="pb-4 text-slate-600">5MB per file for fast, reliable processing. We recommend keeping files under this limit. For larger documents, consider splitting the PDF or compressing images first.</p>
+                </details>
+                <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
+                  <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">What AI model do you use?</summary>
+                  <p className="pb-4 text-slate-600">We use Google&apos;s Gemini model (including Gemini 2.5 Flash-Lite) for layout-aware extraction. It analyzes your document as a visual structure so tables, forms, and multi-section layouts are converted with high fidelity to Google Sheets.</p>
+                </details>
+              </div>
+            </div>
           </div>
         </section>
       </main>

@@ -9,6 +9,11 @@ import {
   Sparkles,
   ArrowRight,
   FileBarChart,
+  Calculator,
+  FileSearch,
+  Briefcase,
+  Database,
+  ShieldCheck,
 } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
 
@@ -154,6 +159,83 @@ export default function Home() {
                 Convert PDF to Google Sheet
                 <ArrowRight className="h-4 w-4" />
               </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Comprehensive Benefits – 300+ words for AdSense, premium B2B layout */}
+        <section className="border-b border-slate-200/80 bg-white px-4 py-16 sm:px-6 lg:px-8" aria-labelledby="benefits-heading">
+          <div className="mx-auto max-w-6xl">
+            <h2 id="benefits-heading" className="text-center text-3xl font-bold tracking-tight text-gray-900 mb-6 md:text-4xl">
+              Comprehensive Benefits of AI-Powered PDF Extraction
+            </h2>
+            <p className="mx-auto max-w-3xl text-center text-lg text-gray-600 mb-12">
+              Invoice To Data is built for professionals who need to turn PDF invoices, reports, and forms into structured data quickly and accurately. Our SaaS value proposition centers on three pillars: reducing manual work, preserving the integrity of your data, and fitting seamlessly into the tools you already use—whether that is Excel for desktop analysis or Google Sheets for collaboration and cloud workflows.
+            </p>
+
+            <p className="mb-6 text-center text-slate-700 font-medium">We serve a broad target audience.</p>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600" aria-hidden>
+                  <Calculator className="h-6 w-6" />
+                </span>
+                <h3 className="mt-4 text-lg font-semibold text-slate-900">Finance &amp; Accounting</h3>
+                <p className="mt-2 text-slate-600">
+                  Finance and accounting teams use the tool to digitize vendor invoices and statements for reconciliation and approval workflows.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600" aria-hidden>
+                  <FileSearch className="h-6 w-6" />
+                </span>
+                <h3 className="mt-4 text-lg font-semibold text-slate-900">Auditors &amp; Compliance</h3>
+                <p className="mt-2 text-slate-600">
+                  Auditors and compliance staff extract tables from reports and tax documents without re-typing.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600" aria-hidden>
+                  <Briefcase className="h-6 w-6" />
+                </span>
+                <h3 className="mt-4 text-lg font-semibold text-slate-900">Small Business &amp; Freelancers</h3>
+                <p className="mt-2 text-slate-600">
+                  Small business owners and freelancers convert receipts and estimates into spreadsheets for bookkeeping.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600" aria-hidden>
+                  <Database className="h-6 w-6" />
+                </span>
+                <h3 className="mt-4 text-lg font-semibold text-slate-900">Data &amp; Operations</h3>
+                <p className="mt-2 text-slate-600">
+                  Data and operations teams migrate legacy PDFs into structured formats for reporting and integration.
+                </p>
+              </div>
+            </div>
+            <p className="mt-6 text-center text-slate-600 max-w-3xl mx-auto">
+              In every case, the goal is the same: get from PDF to usable data in minutes, not hours, and avoid the errors that come with manual entry.
+            </p>
+
+            <div className="my-12 flex flex-col gap-8 rounded-3xl border border-green-100 bg-green-50 p-8 md:flex-row md:items-center md:p-10">
+              <span className="flex shrink-0 items-center justify-center text-green-600" aria-hidden>
+                <ShieldCheck className="h-16 w-16 md:h-[64px] md:w-[64px]" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-slate-700">
+                  Data privacy and security are non-negotiable. We do not store your documents or the data we extract. Files are processed in memory and discarded immediately after the request completes. We do not use your content to train models or share it with third parties. This approach aligns with data minimization and supports compliance with common privacy expectations in business and regulated environments. You keep full control of your data; we simply provide a fast, accurate conversion service that runs when you need it and leaves no trace afterward.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-8 rounded-3xl border border-slate-200 bg-slate-50 p-8 md:flex-row md:items-start">
+              <span className="flex shrink-0 items-center justify-center text-indigo-600" aria-hidden>
+                <Sparkles className="h-14 w-14 md:h-16 md:w-16" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-slate-600">
+                  The underlying technology uses advanced AI to understand your document as a visual layout—rows, columns, headers, and sections—rather than as a flat stream of text. That is why tables stay aligned, numbers stay in the right cells, and multi-section documents are converted in one go. Whether your source is a native PDF or a scanned image, the same pipeline delivers consistent, high-quality output. No sign-up is required to try the free tools; you can convert PDFs to Excel or Google Sheets in seconds and see the benefits for yourself.
+                </p>
+              </div>
             </div>
           </div>
         </section>
