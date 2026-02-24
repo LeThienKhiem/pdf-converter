@@ -36,7 +36,8 @@ export default async function BlogPage() {
       const { data, error: fetchError } = await supabase
         .from("blogs")
         .select("id, title, slug, meta_description, created_at")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(10000);
 
       if (fetchError) {
         error = fetchError.message;
