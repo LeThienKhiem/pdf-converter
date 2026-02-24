@@ -3,6 +3,8 @@ import Link from "next/link";
 import { ArrowRight, FileSpreadsheet, Upload, Sparkles, Download, ChevronRight } from "lucide-react";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 
+export const revalidate = 0;
+
 const SEO_KEYWORDS = [
   "Accountants", "Logistics", "Real Estate", "Healthcare", "E-commerce", "Law Firms", "Construction", "Insurance",
   "Bank Statements", "Invoices", "Purchase Orders", "Payday Stubs", "Freight Bills", "Medical Records", "Tax Returns",
@@ -56,7 +58,7 @@ export default async function ToolsPage() {
     try {
       const supabase = getSupabase();
       const [postsRes, pagesRes] = await Promise.all([
-        supabase.from("blogs").select("id, title, slug, created_at").order("created_at", { ascending: false }).limit(3),
+        supabase.from("blogs").select("id, title, slug, created_at").order("created_at", { ascending: false }),
         supabase.from("landing_pages").select("slug, industry"),
       ]);
       if (postsRes.error) console.error("Supabase Fetch Error:", postsRes.error);
