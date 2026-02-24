@@ -83,6 +83,9 @@ export default function PdfToGsheetTool({
     setSuccessMessage(null);
     setCopyUrl(null);
     setErrorMessage(null);
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "click_convert", { target_format: "gsheet" });
+    }
     if (!file) {
       setErrorMessage("Please select a PDF file.");
       return;

@@ -1,6 +1,24 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+const GEMINI_MODEL = "gemini-flash-lite-latest";
+const MAX_RETRIES = 3;
+const BACKOFF_MS = [2000, 4000]; // after 1st and 2nd 429
+
+function is429(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const status = (err as { status?: number; statusCode?: number; code?: number }).status
+    ?? (err as { status?: number; statusCode?: number; code?: number }).statusCode
+    ?? (err as { status?: number; statusCode?: number; code?: number }).code;
+  if (typeof status === "number" && status === 429) return true;
+  const msg = (err as Error).message ?? String(err);
+  return typeof msg === "string" && (msg.includes("429") || msg.includes("Too Many Requests") || msg.includes("RESOURCE_EXHAUSTED"));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 const SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as a visual grid and reproduce its exact layout.
 
 **Vision-to-Grid Mapping**
@@ -120,21 +138,43 @@ export async function POST(request: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelName = "gemini-flash-lite-latest";
-    console.log("[Extract API] Using model:", modelName);
+    console.log("[Extract API] Using model:", GEMINI_MODEL);
     const model = genAI.getGenerativeModel({
-      model: modelName,
+      model: GEMINI_MODEL,
       systemInstruction: SYSTEM_PROMPT,
     });
 
-    const result = await model.generateContent([
+    const payload = [
       {
         inlineData: {
           mimeType,
           data: base64,
         },
       },
-    ]);
+    ] as Parameters<typeof model.generateContent>[0];
+
+    let result: Awaited<ReturnType<typeof model.generateContent>> | null = null;
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        result = await model.generateContent(payload);
+        lastError = null;
+        break;
+      } catch (err) {
+        lastError = err;
+        if (!is429(err)) throw err;
+        if (attempt === MAX_RETRIES - 1) break;
+        console.warn("[Extract API] 429 Too Many Requests, retrying after backoff. Attempt:", attempt + 1, "of", MAX_RETRIES, err);
+        await sleep(BACKOFF_MS[attempt] ?? 4000);
+      }
+    }
+
+    if (result == null || lastError != null) {
+      return NextResponse.json(
+        { error: "Our AI is currently processing a high volume of documents. Please try again in a few seconds." },
+        { status: 503 }
+      );
+    }
 
     const response = result.response;
     if (!response) {

@@ -186,6 +186,9 @@ export default function PdfToExcelPage() {
       setShowQuotaModal(true);
       return;
     }
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "click_convert", { target_format: "excel" });
+    }
     setExtractError(null);
     setExtractionResult([]);
     setExtractedFileName("");
