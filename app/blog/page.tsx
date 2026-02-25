@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Fragment } from "react";
 import { ArrowRight } from "lucide-react";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import AdBanner from "@/components/AdBanner";
+
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Blog | Convert PDF to Excel & Bank Statements with AI",
@@ -81,37 +84,47 @@ export default async function BlogPage() {
 
         {!error && posts.length > 0 && (
           <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:gap-8" aria-label="Blog articles">
-            {posts.map((post) => (
-              <li key={post.id}>
-                <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-slate-300 hover:shadow-md sm:p-8">
-                  <time
-                    className="text-sm font-medium text-slate-500"
-                    dateTime={post.created_at}
-                  >
-                    {formatDate(post.created_at)}
-                  </time>
-                  <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-                    {post.title}
-                  </h2>
-                  {post.meta_description && (
-                    <p className="mt-3 flex-1 text-slate-600 line-clamp-3">
-                      {post.meta_description}
+            {posts.map((post, index) => (
+              <Fragment key={post.id}>
+                <li>
+                  <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-slate-300 hover:shadow-md sm:p-8">
+                    <time
+                      className="text-sm font-medium text-slate-500"
+                      dateTime={post.created_at}
+                    >
+                      {formatDate(post.created_at)}
+                    </time>
+                    <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
+                      {post.title}
+                    </h2>
+                    {post.meta_description && (
+                      <p className="mt-3 flex-1 text-slate-600 line-clamp-3">
+                        {post.meta_description}
+                      </p>
+                    )}
+                    <Link
+                      href={`/blog/${post.slug}`}
+                      className="group mt-4 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:gap-2 hover:text-blue-700"
+                    >
+                      Read Article
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                  </article>
+                </li>
+                {(index + 1) % 6 === 0 && index !== posts.length - 1 && (
+                  <li className="col-span-full my-8 w-full rounded-xl border border-dashed border-gray-300 bg-gray-100 p-8 text-center">
+                    <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">
+                      Advertisement
                     </p>
-                  )}
-                  <Link
-                    href={`/blog/${post.slug}`}
-                    className="group mt-4 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:gap-2 hover:text-blue-700"
-                  >
-                    Read Article
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                </article>
-              </li>
+                    <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+                  </li>
+                )}
+              </Fragment>
             ))}
           </ul>
         )}
 
-        <div className="mt-12 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+        <div className="my-8 w-full rounded-xl border border-slate-200 bg-slate-50/50 p-4">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
           <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
         </div>
