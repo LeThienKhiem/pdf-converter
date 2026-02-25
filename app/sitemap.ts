@@ -7,9 +7,10 @@ export const dynamic = "force-dynamic";
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.invoicetodata.com";
 
 const staticRoutes: MetadataRoute.Sitemap = [
-  { url: baseUrl, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
+  { url: `${baseUrl}/tools/pdf-to-excel`, lastModified: new Date(), changeFrequency: "weekly", priority: 1.0 },
+  { url: `${baseUrl}/tools/pdf-to-gsheet`, lastModified: new Date(), changeFrequency: "weekly", priority: 1.0 },
   { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
-  { url: `${baseUrl}/tools`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
+  { url: baseUrl, lastModified: new Date(), changeFrequency: "weekly", priority: 1.0 },
 ];
 
 type BlogRow = { slug: string; updated_at: string | null; created_at?: string };
