@@ -44,6 +44,46 @@ function toSheetsValues(rows: (string | null)[][]): string[][] {
   return rows.map((row) => row.map((cell) => (cell == null ? "" : String(cell))));
 }
 
+/** Exchange provider_refresh_token for a new Google access token. */
+async function refreshGoogleAccessToken(refreshToken: string): Promise<string> {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new Error("Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
+  }
+  const body = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    refresh_token: refreshToken,
+    grant_type: "refresh_token",
+  });
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  const data = (await res.json()) as { access_token?: string; error?: string; error_description?: string };
+  if (!res.ok || !data.access_token) {
+    const msg = data.error_description ?? data.error ?? res.statusText;
+    throw new Error(msg || "Failed to refresh Google access token");
+  }
+  return data.access_token;
+}
+
+function isGoogleTokenError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  const code = (err as { response?: { status?: number } })?.response?.status;
+  const dataError = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+  return (
+    code === 401 ||
+    dataError === "invalid_grant" ||
+    dataError === "invalid_token" ||
+    msg.includes("invalid_grant") ||
+    msg.includes("Token has been expired") ||
+    msg.includes("invalid_token")
+  );
+}
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -149,15 +189,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // --- OAuth2 + Sheets + Drive ---
+    // --- OAuth2 + Sheets + Drive (use provider_refresh_token from session when present) ---
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+    const headerRefreshToken = request.headers.get("X-Google-Refresh-Token")?.trim();
+    const envRefreshToken = process.env.GOOGLE_REFRESH_TOKEN?.trim();
+    const refreshToken = headerRefreshToken || envRefreshToken;
 
-    if (!clientId || !clientSecret || !refreshToken) {
+    if (!clientId || !clientSecret) {
       return NextResponse.json(
-        { error: "Server is missing Google OAuth credentials (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN)." },
+        { error: "Server is missing Google OAuth credentials (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)." },
         { status: 500 }
+      );
+    }
+    if (!refreshToken) {
+      return NextResponse.json(
+        { error: "Google_Token_Expired" },
+        { status: 401 }
       );
     }
 
@@ -168,79 +216,112 @@ export async function POST(request: Request) {
     );
     oauth2Client.setCredentials({ refresh_token: refreshToken });
 
-    const sheets = google.sheets({ version: "v4", auth: oauth2Client });
-    const drive = google.drive({ version: "v3", auth: oauth2Client });
+    const runSheetsAndDrive = async (): Promise<string> => {
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+      const drive = google.drive({ version: "v3", auth: oauth2Client });
 
-    // --- (b) Create a brand new spreadsheet ---
-    const createRes = await sheets.spreadsheets.create({
-      requestBody: {
-        properties: { title: NEW_SPREADSHEET_TITLE },
-      },
-    });
+      const createRes = await sheets.spreadsheets.create({
+        requestBody: {
+          properties: { title: NEW_SPREADSHEET_TITLE },
+        },
+      });
 
-    const spreadsheetId = createRes.data.spreadsheetId;
-    if (!spreadsheetId) {
-      return NextResponse.json(
-        { error: "Failed to create spreadsheet." },
-        { status: 500 }
-      );
-    }
+      const spreadsheetId = createRes.data.spreadsheetId;
+      if (!spreadsheetId) {
+        throw new Error("Failed to create spreadsheet.");
+      }
 
-    // --- (c) Append extracted data to Sheet1!A1 ---
-    await sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: "Sheet1!A1",
-      valueInputOption: "USER_ENTERED",
-      requestBody: { values },
-    });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: "Sheet1!A1",
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values },
+      });
 
-    // --- (d) Format header row: bold + light blue ---
-    const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
-    const firstSheetId = spreadsheet.data.sheets?.[0]?.properties?.sheetId ?? 0;
-    const endColumnIndex = Math.max(26, values[0]?.length ?? 26);
+      const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+      const firstSheetId = spreadsheet.data.sheets?.[0]?.properties?.sheetId ?? 0;
+      const endColumnIndex = Math.max(26, values[0]?.length ?? 26);
 
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      requestBody: {
-        requests: [
-          {
-            repeatCell: {
-              range: {
-                sheetId: firstSheetId,
-                startRowIndex: 0,
-                endRowIndex: 1,
-                startColumnIndex: 0,
-                endColumnIndex,
-              },
-              cell: {
-                userEnteredFormat: {
-                  backgroundColor: { red: 227 / 255, green: 242 / 255, blue: 253 / 255 },
-                  textFormat: { bold: true },
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              repeatCell: {
+                range: {
+                  sheetId: firstSheetId,
+                  startRowIndex: 0,
+                  endRowIndex: 1,
+                  startColumnIndex: 0,
+                  endColumnIndex,
                 },
+                cell: {
+                  userEnteredFormat: {
+                    backgroundColor: { red: 227 / 255, green: 242 / 255, blue: 253 / 255 },
+                    textFormat: { bold: true },
+                  },
+                },
+                fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat",
               },
-              fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat",
             },
-          },
-        ],
-      },
-    });
+          ],
+        },
+      });
 
-    // --- (e) Set permission: anyone with the link can view (so they can Make a Copy) ---
-    await drive.permissions.create({
-      fileId: spreadsheetId,
-      requestBody: {
-        role: "reader",
-        type: "anyone",
-      },
-    });
+      await drive.permissions.create({
+        fileId: spreadsheetId,
+        requestBody: {
+          role: "reader",
+          type: "anyone",
+        },
+      });
 
-    // --- (f) Copy URL (opens Google's "Make a copy" flow in a new tab) ---
-    const copyUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/copy`;
+      return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/copy`;
+    };
+
+    let copyUrl: string;
+    try {
+      copyUrl = await runSheetsAndDrive();
+    } catch (firstErr) {
+      if (!isGoogleTokenError(firstErr)) throw firstErr;
+      if (!refreshToken) {
+        return NextResponse.json(
+          { error: "Google_Token_Expired" },
+          { status: 401 }
+        );
+      }
+      try {
+        const newAccessToken = await refreshGoogleAccessToken(refreshToken);
+        oauth2Client.setCredentials({
+          refresh_token: refreshToken,
+          access_token: newAccessToken,
+        });
+        copyUrl = await runSheetsAndDrive();
+      } catch (retryErr) {
+        if (isGoogleTokenError(retryErr)) {
+          return NextResponse.json(
+            { error: "Google_Token_Expired" },
+            { status: 401 }
+          );
+        }
+        throw retryErr;
+      }
+    }
 
     return NextResponse.json({ success: true, copyUrl, message: "Your sheet is ready. Make a copy to save it to your Drive." });
   } catch (err) {
     console.error("[GSheet API] Error:", err);
-    const message = err instanceof Error ? err.message : "An error occurred while creating your Google Sheet.";
+    const errMsg = err instanceof Error ? err.message : "";
+    const errData = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+    const isInvalidGrant =
+      errMsg?.includes("invalid_grant") || errData === "invalid_grant";
+    if (isInvalidGrant) {
+      return NextResponse.json(
+        { error: "Google_Token_Expired" },
+        { status: 401 }
+      );
+    }
+    const message = errMsg || "An error occurred while creating your Google Sheet.";
     return NextResponse.json(
       { error: message },
       { status: 500 }

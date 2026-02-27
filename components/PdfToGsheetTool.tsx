@@ -1,11 +1,15 @@
 "use client";
 
-import { useCallback, useState, useId } from "react";
+import { useCallback, useMemo, useState, useId } from "react";
 import Link from "next/link";
+import { createClient } from "@supabase/supabase-js";
 import { FileUp, Loader2, FileSpreadsheet, ExternalLink } from "lucide-react";
 import { canConvert, incrementUsage } from "@/lib/pdfUsage";
 import QuotaLimitModal from "@/components/QuotaLimitModal";
 import AdBanner from "@/components/AdBanner";
+
+const GOOGLE_SHEETS_SCOPES =
+  "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file";
 
 type PdfToGsheetToolProps = {
   title?: string;
@@ -28,6 +32,13 @@ export default function PdfToGsheetTool({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showQuotaModal, setShowQuotaModal] = useState(false);
+
+  const supabaseBrowser = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    return url && anon ? createClient(url, anon) : null;
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -78,42 +89,88 @@ export default function PdfToGsheetTool({
     e.target.value = "";
   }, []);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSuccessMessage(null);
-    setCopyUrl(null);
-    setErrorMessage(null);
-    if (typeof window !== "undefined" && window.gtag) {
-      window.gtag("event", "click_convert", { target_format: "gsheet" });
-    }
-    if (!file) {
-      setErrorMessage("Please select a PDF file.");
-      return;
-    }
-    if (!canConvert()) {
-      setShowQuotaModal(true);
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/gsheet", { method: "POST", body: formData });
-      const json = await res.json();
-      if (!res.ok) {
-        setErrorMessage(json?.error ?? "Something went wrong. Please try again.");
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setSuccessMessage(null);
+      setCopyUrl(null);
+      setErrorMessage(null);
+      if (typeof window !== "undefined" && window.gtag) {
+        window.gtag("event", "click_convert", { target_format: "gsheet" });
+      }
+      if (!file) {
+        setErrorMessage("Please select a PDF file.");
         return;
       }
-      incrementUsage();
-      setSuccessMessage(json?.message ?? "Your sheet is ready.");
-      setCopyUrl(json?.copyUrl ?? null);
-      setFile(null);
-    } catch {
-      setErrorMessage("Network error. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [file]);
+      if (!canConvert()) {
+        setShowQuotaModal(true);
+        return;
+      }
+      setIsLoading(true);
+      let isAuthRedirect = false;
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const headers: Record<string, string> = {};
+        if (supabaseBrowser) {
+          const { data: { session } } = await supabaseBrowser.auth.getSession();
+          const providerRefresh = session?.provider_refresh_token;
+          if (providerRefresh) headers["X-Google-Refresh-Token"] = providerRefresh;
+        }
+        const res = await fetch("/api/gsheet", {
+          method: "POST",
+          headers,
+          body: formData,
+        });
+        const json = await res.json();
+
+        if (!res.ok) {
+          const isAuthError =
+            res.status === 401 ||
+            json?.error === "Google_Token_Expired" ||
+            /token|auth|unauthorized|invalid_grant/i.test(json?.error ?? "");
+          if (isAuthError && supabaseBrowser && typeof window !== "undefined") {
+            isAuthRedirect = true;
+            await supabaseBrowser.auth.signInWithOAuth({
+              provider: "google",
+              options: {
+                scopes: GOOGLE_SHEETS_SCOPES,
+                queryParams: { access_type: "offline", prompt: "consent" },
+                redirectTo: window.location.href,
+              },
+            });
+            return;
+          }
+          setErrorMessage(json?.error ?? "Something went wrong. Please try again.");
+          return;
+        }
+
+        incrementUsage();
+        setSuccessMessage(json?.message ?? "Your sheet is ready.");
+        setCopyUrl(json?.copyUrl ?? null);
+        setFile(null);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const isAuthError = /token|auth|unauthorized|invalid_grant|401/i.test(msg);
+        if (isAuthError && supabaseBrowser && typeof window !== "undefined") {
+          isAuthRedirect = true;
+          await supabaseBrowser.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+              scopes: GOOGLE_SHEETS_SCOPES,
+              queryParams: { access_type: "offline", prompt: "consent" },
+              redirectTo: window.location.href,
+            },
+          });
+          return;
+        }
+        setErrorMessage("Network error. Please try again.");
+      } finally {
+        if (!isAuthRedirect) setIsLoading(false);
+      }
+    },
+    [file, supabaseBrowser]
+  );
 
   return (
     <div className={className}>
@@ -157,7 +214,7 @@ export default function PdfToGsheetTool({
           </div>
         </div>
 
-        {errorMessage && (
+        {errorMessage && errorMessage !== "Google_Token_Expired" && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
             {errorMessage}
           </div>
