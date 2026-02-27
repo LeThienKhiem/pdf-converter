@@ -3,7 +3,7 @@ import { getAnalytics, isSupported } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAxalen-YkYUpyQ_-_gVbmGP7EcP5LINio",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: "invoice-to-data-f8c0c.firebaseapp.com",
   projectId: "invoice-to-data-f8c0c",
   storageBucket: "invoice-to-data-f8c0c.firebasestorage.app",
