@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Best PDF to Data Converter | Extract PDF to Excel & JSON - InvoiceToData",
+  title: "Extract Data from PDF Invoice to Excel | Powered by Gemini AI",
   description:
-    "Convert PDF and images to Excel with layout preserved. Free online tool using Powerful AI Model. Supports invoices, Form 8862, and tables.",
+    "Free AI tool to automatically extract data from PDF invoices to Excel and Google Sheets. Powered by Gemini AI for 100% accurate table and line-item extraction.",
   openGraph: {
-    title: "PBest PDF to Data Converter | Extract PDF to Excel & JSON - InvoiceToData",
+    title: "Extract Data from PDF Invoice to Excel | Powered by Gemini AI",
     description:
-      "Convert PDF and images to Excel with layout preserved. Free online tool using Powerful AI Model.",
+      "Free AI tool to automatically extract data from PDF invoices to Excel and Google Sheets. Powered by Gemini AI for 100% accurate table and line-item extraction.",
   },
 };
 

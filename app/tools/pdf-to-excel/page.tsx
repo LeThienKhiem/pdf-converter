@@ -263,10 +263,10 @@ export default function PdfToExcelPage() {
     <div className="min-h-screen bg-white text-slate-900">
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          PDF to Excel
+          Extract Data from PDF Invoice to Excel
         </h1>
         <p className="mt-2 text-slate-600">
-          Upload a PDF or image. We preserve the exact layout and give you a downloadable Excel file using Powerful AI Model.
+          Upload a PDF or image to extract data from PDF invoice to Excel or Google Sheets. We preserve the exact layout and give you a downloadable Excel file.
         </p>
 
         <input
@@ -292,6 +292,11 @@ export default function PdfToExcelPage() {
           </span>
           <span className="mt-1 text-sm text-slate-500">PDF and images under 5MB</span>
         </div>
+        <p className="mt-3 text-center text-xs font-medium text-slate-500">
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-2.5 py-1 text-slate-600 shadow-sm">
+            ✨ Powered by Google Gemini AI Vision
+          </span>
+        </p>
 
         <div className="mt-6">
           <button
