@@ -329,7 +329,7 @@ export default function PdfToExcelPage() {
             <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
               <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
               <div className="min-h-[250px] flex justify-center items-center">
-                <SmartAdBanner adsterraKey={process.env.NEXT_PUBLIC_ADSTERRA_KEY ?? ""} adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_LOADING ?? "0000000002"} />
+                <SmartAdBanner width={300} height={250} />
               </div>
             </div>
           </section>
@@ -414,7 +414,7 @@ export default function PdfToExcelPage() {
 
             <div className="mt-8 rounded-lg border border-slate-200 bg-gray-50 p-4">
               <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-              <SmartAdBanner adsterraKey={process.env.NEXT_PUBLIC_ADSTERRA_KEY ?? ""} adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
+              <SmartAdBanner width={300} height={250} />
             </div>
           </>
         )}
@@ -469,7 +469,7 @@ export default function PdfToExcelPage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
             <div className="min-h-[100px] flex justify-center items-center">
-              <SmartAdBanner adsterraKey={process.env.NEXT_PUBLIC_ADSTERRA_KEY ?? ""} adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+              <SmartAdBanner width={728} height={90} />
             </div>
           </div>
 
@@ -590,7 +590,7 @@ export default function PdfToExcelPage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
             <div className="min-h-[100px] flex justify-center items-center">
-              <SmartAdBanner adsterraKey={process.env.NEXT_PUBLIC_ADSTERRA_KEY ?? ""} adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
+              <SmartAdBanner width={728} height={90} />
             </div>
           </div>
         </div>
