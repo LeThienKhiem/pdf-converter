@@ -180,6 +180,29 @@ export default function PdfToGsheetTool({
       {subtitle && <p className="mt-2 text-slate-600">{subtitle}</p>}
 
       <form onSubmit={handleSubmit} className={title || subtitle ? "mt-10 space-y-8" : "space-y-8"}>
+        {/* Ad: just above PDF upload dropzone */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+          <div className="hidden md:flex justify-center w-full my-4">
+            <SmartAdBanner
+              adsterraKey="b3662358be8395c8672e53202ec0a48a"
+              width={728}
+              height={90}
+              adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"}
+              adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"}
+            />
+          </div>
+          <div className="flex md:hidden justify-center w-full my-4">
+            <SmartAdBanner
+              adsterraKey="1654aeff2f39b714a74818e0704e0fda"
+              width={300}
+              height={250}
+              adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"}
+              adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"}
+            />
+          </div>
+        </div>
+
         <div>
           <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">
             PDF file
@@ -221,18 +244,42 @@ export default function PdfToGsheetTool({
         )}
 
         {successMessage && copyUrl && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-6" role="status">
-            <p className="font-medium text-green-800">{successMessage}</p>
-            <a
-              href={copyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3.5 font-semibold text-white shadow-sm transition-colors hover:bg-green-700"
-            >
-              🎉 Success! Click here to Make a Copy of your Data
-              <ExternalLink className="h-5 w-5 shrink-0" aria-hidden />
-            </a>
-          </div>
+          <>
+            <div className="rounded-xl border border-green-200 bg-green-50 p-6" role="status">
+              <p className="font-medium text-green-800">{successMessage}</p>
+              <a
+                href={copyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3.5 font-semibold text-white shadow-sm transition-colors hover:bg-green-700"
+              >
+                🎉 Success! Click here to Make a Copy of your Data
+                <ExternalLink className="h-5 w-5 shrink-0" aria-hidden />
+              </a>
+            </div>
+            {/* Ad: right below Google Sheet results */}
+            <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
+              <div className="hidden md:flex justify-center w-full my-4">
+                <SmartAdBanner
+                  adsterraKey="b3662358be8395c8672e53202ec0a48a"
+                  width={728}
+                  height={90}
+                  adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"}
+                  adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"}
+                />
+              </div>
+              <div className="flex md:hidden justify-center w-full my-4">
+                <SmartAdBanner
+                  adsterraKey="1654aeff2f39b714a74818e0704e0fda"
+                  width={300}
+                  height={250}
+                  adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"}
+                  adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"}
+                />
+              </div>
+            </div>
+          </>
         )}
 
         {isLoading && (

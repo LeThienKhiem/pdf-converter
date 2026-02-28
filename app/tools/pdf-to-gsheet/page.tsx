@@ -2,7 +2,7 @@
 
 import { Users, Sparkles, Cloud, Receipt, Database, ClipboardCheck, Upload, Scan, FileCheck, ChevronRight } from "lucide-react";
 import PdfToGsheetTool from "@/components/PdfToGsheetTool";
-import AdBanner from "@/components/AdBanner";
+import SmartAdBanner from "@/components/SmartAdBanner";
 
 export default function PdfToGsheetPage() {
   return (
@@ -21,8 +21,25 @@ export default function PdfToGsheetPage() {
         <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="min-h-[100px] flex justify-center items-center">
-              <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+            <div className="min-h-[100px] flex flex-col items-center justify-center gap-4">
+              <div className="hidden md:flex justify-center w-full my-4">
+                <SmartAdBanner
+                  adsterraKey="b3662358be8395c8672e53202ec0a48a"
+                  width={728}
+                  height={90}
+                  adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"}
+                  adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"}
+                />
+              </div>
+              <div className="flex md:hidden justify-center w-full my-4">
+                <SmartAdBanner
+                  adsterraKey="1654aeff2f39b714a74818e0704e0fda"
+                  width={300}
+                  height={250}
+                  adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"}
+                  adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -181,8 +198,25 @@ export default function PdfToGsheetPage() {
             <div className="mx-auto max-w-4xl px-4 py-8">
               <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                 <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-                <div className="min-h-[100px] flex justify-center items-center">
-                  <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
+                <div className="min-h-[100px] flex flex-col items-center justify-center gap-4">
+                  <div className="hidden md:flex justify-center w-full my-4">
+                    <SmartAdBanner
+                      adsterraKey="b3662358be8395c8672e53202ec0a48a"
+                      width={728}
+                      height={90}
+                      adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"}
+                      adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"}
+                    />
+                  </div>
+                  <div className="flex md:hidden justify-center w-full my-4">
+                    <SmartAdBanner
+                      adsterraKey="1654aeff2f39b714a74818e0704e0fda"
+                      width={300}
+                      height={250}
+                      adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"}
+                      adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
