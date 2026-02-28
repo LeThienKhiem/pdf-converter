@@ -99,20 +99,23 @@ export default function SmartAdBanner({
     fetchAdSettings();
   }, []);
 
-  // Adsterra: inject (a) inline script for atOptions with key, width, height (b) external invoke.js; on script onerror fallback to AdSense
+  // Adsterra: atOptions injected via dangerouslySetInnerHTML in JSX; here we inject external invoke.js and ensure atOptions runs (scripts in innerHTML don't execute)
   useEffect(() => {
     if (!showAd || configLoading || currentNetwork !== "adsterra" || !adsterraKey || !adsterraContainerRef.current || !config?.enable_adsterra) return;
 
-    const container = adsterraContainerRef.current;
-    container.innerHTML = "";
+    console.log("SmartAdBanner: Injecting Adsterra", adsterraKey);
 
-    const inlineScript = document.createElement("script");
-    inlineScript.type = "text/javascript";
-    inlineScript.textContent = [
-      "window.atOptions = window.atOptions || {};",
-      `window.atOptions = { key: "${adsterraKey.replace(/"/g, '\\"')}", format: "iframe", width: ${width}, height: ${height} };`,
-    ].join("\n");
-    container.appendChild(inlineScript);
+    const container = adsterraContainerRef.current;
+    const scriptContainer = container.querySelector("[data-adsterra-scripts]");
+    if (!scriptContainer) return;
+
+    // Ensure atOptions is set (script in dangerouslySetInnerHTML does not execute)
+    (window as Window).atOptions = {
+      key: adsterraKey,
+      format: "iframe",
+      width,
+      height,
+    };
 
     const externalScript = document.createElement("script");
     externalScript.src = `https://www.highperformanceformat.com/${adsterraKey}/invoke.js`;
@@ -120,26 +123,44 @@ export default function SmartAdBanner({
     externalScript.onerror = () => {
       if (config?.enable_adsense) setCurrentNetwork("adsense");
     };
-    container.appendChild(externalScript);
+    scriptContainer.appendChild(externalScript);
 
     return () => {
-      container.innerHTML = "";
+      externalScript.remove();
     };
   }, [showAd, configLoading, currentNetwork, adsterraKey, width, height, config?.enable_adsterra, config?.enable_adsense]);
 
-  // AdSense: push slot in useEffect
+  // AdSense: inject script only when showing AdSense (no global script), then push. This is the ONLY place AdSense loads.
   useEffect(() => {
-    if (!showAd || configLoading || currentNetwork !== "adsense" || !config?.enable_adsense) return;
+    if (!showAd || configLoading || currentNetwork !== "adsense" || !config?.enable_adsense || typeof window === "undefined") return;
 
-    const t = setTimeout(() => {
+    const client = adsenseClient;
+    const pushSlot = () => {
       try {
         (window.adsbygoogle = window.adsbygoogle || []).push({});
       } catch {
         if (config?.enable_adsterra && adsterraKey) setCurrentNetwork("adsterra");
       }
-    }, 100);
-    return () => clearTimeout(t);
-  }, [showAd, configLoading, currentNetwork, config?.enable_adsense, config?.enable_adsterra, adsterraKey]);
+    };
+
+    const scriptId = "adsbygoogle-script";
+    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement("script");
+      script.id = scriptId;
+      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client}`;
+      script.crossOrigin = "anonymous";
+      script.async = true;
+      script.onload = pushSlot;
+      script.onerror = () => {
+        if (config?.enable_adsterra && adsterraKey) setCurrentNetwork("adsterra");
+      };
+      document.head.appendChild(script);
+    } else {
+      const t = setTimeout(pushSlot, 100);
+      return () => clearTimeout(t);
+    }
+  }, [showAd, configLoading, currentNetwork, config?.enable_adsense, config?.enable_adsterra, adsterraKey, adsenseClient]);
 
   if (configLoading) {
     return <div className={className} style={{ minWidth: width, minHeight: height }} />;
@@ -152,9 +173,24 @@ export default function SmartAdBanner({
   const renderAdsense = currentNetwork === "adsense" && config.enable_adsense;
 
   if (renderAdsterra) {
+    const containerId = `adsterra-${adsterraKey.replace(/[^a-zA-Z0-9-_]/g, "-")}`;
+    const atOptionsScript = [
+      "window.atOptions = window.atOptions || {};",
+      `window.atOptions = { key: "${adsterraKey.replace(/"/g, '\\"')}", format: "iframe", width: ${width}, height: ${height} };`,
+    ].join("\n");
     return (
-      <div className={className} style={{ minWidth: width, minHeight: height }}>
-        <div ref={adsterraContainerRef} />
+      <div
+        id={containerId}
+        className={className}
+        style={{ minWidth: width, minHeight: height }}
+        ref={adsterraContainerRef}
+      >
+        <div
+          data-adsterra-scripts
+          dangerouslySetInnerHTML={{
+            __html: `<script type="text/javascript">${atOptionsScript}</script>`,
+          }}
+        />
       </div>
     );
   }
