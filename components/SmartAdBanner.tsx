@@ -12,7 +12,8 @@ type SmartAdBannerProps = { width?: number; height?: number };
 export default function SmartAdBanner({ width = 300, height = 250 }: SmartAdBannerProps) {
   const bannerRef = useRef<HTMLDivElement>(null);
   const [showAdsterra, setShowAdsterra] = useState(false);
-  const adsterraKey = width >= 728
+  // Single global key by size: Desktop 728x90, Mobile 300x250. Ignores any adsterraKey from parents.
+  const activeKey = width >= 728
     ? (process.env.NEXT_PUBLIC_ADSTERRA_KEY_728 ?? '')
     : (process.env.NEXT_PUBLIC_ADSTERRA_KEY_300 ?? '');
 
@@ -34,7 +35,7 @@ export default function SmartAdBanner({ width = 300, height = 250 }: SmartAdBann
   }, []);
 
   useEffect(() => {
-    if (!showAdsterra || !bannerRef.current || !adsterraKey) return;
+    if (!showAdsterra || !bannerRef.current || !activeKey) return;
 
     bannerRef.current.innerHTML = '';
 
@@ -42,7 +43,7 @@ export default function SmartAdBanner({ width = 300, height = 250 }: SmartAdBann
     confScript.type = 'text/javascript';
     confScript.textContent = `
       atOptions = {
-        'key' : '${adsterraKey.replace(/'/g, "\\'")}',
+        'key' : '${activeKey.replace(/'/g, "\\'")}',
         'format' : 'iframe',
         'height' : ${height},
         'width' : ${width},
@@ -53,9 +54,9 @@ export default function SmartAdBanner({ width = 300, height = 250 }: SmartAdBann
 
     const adScript = document.createElement('script');
     adScript.type = 'text/javascript';
-    adScript.src = `https://www.highperformanceformat.com/${adsterraKey}/invoke.js`;
+    adScript.src = `https://www.highperformanceformat.com/${activeKey}/invoke.js`;
     bannerRef.current.appendChild(adScript);
-  }, [showAdsterra, adsterraKey, width, height]);
+  }, [showAdsterra, activeKey, width, height]);
 
   if (!showAdsterra) return null;
 
