@@ -6,7 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { FileUp, Loader2, FileSpreadsheet, ExternalLink } from "lucide-react";
 import { canConvert, incrementUsage } from "@/lib/pdfUsage";
 import QuotaLimitModal from "@/components/QuotaLimitModal";
-import AdBanner from "@/components/AdBanner";
+import SmartAdBanner from "@/components/SmartAdBanner";
 
 const GOOGLE_SHEETS_SCOPES =
   "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file";
@@ -242,8 +242,25 @@ export default function PdfToGsheetTool({
             <p className="text-center text-xs text-slate-500">Please wait while our AI processes your document.</p>
             <div className="mt-4 w-full rounded-lg border border-slate-200 bg-white p-3">
               <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-              <div className="min-h-[250px] flex justify-center items-center">
-                <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_LOADING ?? "0000000002"} />
+              <div className="min-h-[250px] flex flex-col items-center justify-center gap-4">
+                <div className="hidden md:flex justify-center w-full my-4">
+                  <SmartAdBanner
+                    adsterraKey="b3662358be8395c8672e53202ec0a48a"
+                    width={728}
+                    height={90}
+                    adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"}
+                    adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_LOADING ?? "0000000002"}
+                  />
+                </div>
+                <div className="flex md:hidden justify-center w-full my-4">
+                  <SmartAdBanner
+                    adsterraKey="1654aeff2f39b714a74818e0704e0fda"
+                    width={300}
+                    height={250}
+                    adsenseClient={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526"}
+                    adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_LOADING ?? "0000000002"}
+                  />
+                </div>
               </div>
             </div>
           </div>
