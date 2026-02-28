@@ -50,29 +50,31 @@ export default function SmartAdBanner({
 
   // Fetch ad_settings from Supabase
   useEffect(() => {
-    const supabase = getSupabaseBrowser();
-    if (!supabase) {
-      setConfigLoading(false);
-      setConfig({
-        enable_adsterra: false,
-        enable_adsense: true,
-        primary_network: "adsense",
-      });
-      return;
-    }
-    supabase
-      .from("ad_settings")
-      .select("enable_adsterra, enable_adsense, primary_network")
-      .limit(1)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    const fetchAdSettings = async () => {
+      const supabase = getSupabaseBrowser();
+      if (!supabase) {
         setConfigLoading(false);
-        if (error || !data) {
+        setConfig({
+          enable_adsterra: false,
+          enable_adsense: true,
+          primary_network: "adsense",
+        });
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from("ad_settings")
+          .select("enable_adsterra, enable_adsense, primary_network")
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) {
           setConfig({
             enable_adsterra: false,
             enable_adsense: true,
             primary_network: "adsense",
           });
+          setConfigLoading(false);
           return;
         }
         const primary = (data.primary_network === "adsterra" ? "adsterra" : "adsense") as "adsterra" | "adsense";
@@ -83,16 +85,18 @@ export default function SmartAdBanner({
         });
         setCurrentNetwork(primary);
         setShowAd(Boolean(data.enable_adsterra) || Boolean(data.enable_adsense));
-      })
-      .catch(() => {
-        setConfigLoading(false);
+      } catch {
         setConfig({
           enable_adsterra: false,
           enable_adsense: true,
           primary_network: "adsense",
         });
         setShowAd(true);
-      });
+      } finally {
+        setConfigLoading(false);
+      }
+    };
+    fetchAdSettings();
   }, []);
 
   // Adsterra: inject (a) inline script for atOptions with key, width, height (b) external invoke.js; on script onerror fallback to AdSense
