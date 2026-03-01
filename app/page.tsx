@@ -54,11 +54,13 @@ export default function Home() {
         <div className="border-b border-slate-200/80 bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="hidden md:flex justify-center w-full my-4">
-              <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HERO ?? "0000000000"} />
-            </div>
-            <div className="flex md:hidden justify-center w-full my-4">
-              <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HERO ?? "0000000000"} />
+            <div className="w-full flex justify-center my-8">
+              <div className="hidden md:block">
+                <SmartAdBanner width={728} height={90} />
+              </div>
+              <div className="block md:hidden">
+                <SmartAdBanner width={300} height={250} />
+              </div>
             </div>
           </div>
         </div>
@@ -249,11 +251,13 @@ export default function Home() {
         <div className="border-b border-slate-200/80 bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="hidden md:flex justify-center w-full my-4">
-              <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
-            </div>
-            <div className="flex md:hidden justify-center w-full my-4">
-              <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+            <div className="w-full flex justify-center my-8">
+              <div className="hidden md:block">
+                <SmartAdBanner width={728} height={90} />
+              </div>
+              <div className="block md:hidden">
+                <SmartAdBanner width={300} height={250} />
+              </div>
             </div>
           </div>
         </div>
