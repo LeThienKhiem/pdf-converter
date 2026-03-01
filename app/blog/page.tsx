@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { ArrowRight } from "lucide-react";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
-import AdBanner from "@/components/AdBanner";
+import SmartAdBanner from "@/components/SmartAdBanner";
 
 export const revalidate = 0;
 
@@ -66,7 +66,12 @@ export default async function BlogPage() {
 
         <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-          <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+          <div className="hidden md:flex justify-center w-full my-4">
+            <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+          </div>
+          <div className="flex md:hidden justify-center w-full my-4">
+            <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+          </div>
         </div>
 
         {error && (
@@ -116,7 +121,12 @@ export default async function BlogPage() {
                     <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">
                       Advertisement
                     </p>
-                    <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+                    <div className="hidden md:flex justify-center w-full my-4">
+                      <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+                    </div>
+                    <div className="flex md:hidden justify-center w-full my-4">
+                      <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+                    </div>
                   </li>
                 )}
               </Fragment>
@@ -126,7 +136,12 @@ export default async function BlogPage() {
 
         <div className="my-8 w-full rounded-xl border border-slate-200 bg-slate-50/50 p-4">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-          <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+          <div className="hidden md:flex justify-center w-full my-4">
+            <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+          </div>
+          <div className="flex md:hidden justify-center w-full my-4">
+            <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+          </div>
         </div>
 
         <p className="mt-12 text-slate-500">

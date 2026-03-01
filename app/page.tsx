@@ -15,7 +15,7 @@ import {
   Database,
   ShieldCheck,
 } from "lucide-react";
-import AdBanner from "@/components/AdBanner";
+import SmartAdBanner from "@/components/SmartAdBanner";
 
 export default function Home() {
   return (
@@ -54,7 +54,12 @@ export default function Home() {
         <div className="border-b border-slate-200/80 bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HERO ?? "0000000000"} />
+            <div className="hidden md:flex justify-center w-full my-4">
+              <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HERO ?? "0000000000"} />
+            </div>
+            <div className="flex md:hidden justify-center w-full my-4">
+              <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HERO ?? "0000000000"} />
+            </div>
           </div>
         </div>
 
@@ -244,7 +249,12 @@ export default function Home() {
         <div className="border-b border-slate-200/80 bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+            <div className="hidden md:flex justify-center w-full my-4">
+              <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+            </div>
+            <div className="flex md:hidden justify-center w-full my-4">
+              <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+            </div>
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import AdBanner from "@/components/AdBanner";
+import SmartAdBanner from "@/components/SmartAdBanner";
 
 export const metadata: Metadata = {
   title: "How to Convert PDF to Excel Without Messing Up the Format | Fix Broken Rows & Keep Formatting",
@@ -30,7 +30,12 @@ export default function ConvertPdfExcelKeepFormatPage() {
 
           <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+            <div className="hidden md:flex justify-center w-full my-4">
+              <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+            </div>
+            <div className="flex md:hidden justify-center w-full my-4">
+              <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+            </div>
           </div>
 
           <div className="my-10 flex justify-center">
@@ -67,7 +72,12 @@ export default function ConvertPdfExcelKeepFormatPage() {
 
           <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <AdBanner dataAdSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+            <div className="hidden md:flex justify-center w-full my-4">
+              <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+            </div>
+            <div className="flex md:hidden justify-center w-full my-4">
+              <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+            </div>
           </div>
 
           <p className="mt-12 text-slate-500">

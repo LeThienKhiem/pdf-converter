@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
-import AdBanner from "@/components/AdBanner";
+import SmartAdBanner from "@/components/SmartAdBanner";
 import { BlogPostContent } from "./BlogPostContent";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -80,7 +80,12 @@ export default async function BlogSlugPage({ params }: Props) {
 
           <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <AdBanner dataAdSlot={adSlot} />
+            <div className="hidden md:flex justify-center w-full my-4">
+              <SmartAdBanner width={728} height={90} adsenseSlot={adSlot} />
+            </div>
+            <div className="flex md:hidden justify-center w-full my-4">
+              <SmartAdBanner width={300} height={250} adsenseSlot={adSlot} />
+            </div>
           </div>
 
           {post.content ? (
@@ -91,7 +96,12 @@ export default async function BlogSlugPage({ params }: Props) {
 
           <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <AdBanner dataAdSlot={adSlot} />
+            <div className="hidden md:flex justify-center w-full my-4">
+              <SmartAdBanner width={728} height={90} adsenseSlot={adSlot} />
+            </div>
+            <div className="flex md:hidden justify-center w-full my-4">
+              <SmartAdBanner width={300} height={250} adsenseSlot={adSlot} />
+            </div>
           </div>
 
           <p className="mt-12 text-slate-500">
