@@ -21,11 +21,14 @@ export default function PdfToGsheetPage() {
         <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="min-h-[100px] flex flex-col items-center justify-center gap-4">
-              <div className="hidden md:flex justify-center w-full my-4">
+            <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
+              {/* Desktop Banner - Safe for large screens */}
+              <div className="hidden lg:flex justify-center w-full overflow-hidden">
                 <SmartAdBanner width={728} height={90} />
               </div>
-              <div className="flex md:hidden justify-center w-full my-4">
+
+              {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
+              <div className="flex lg:hidden justify-center w-full">
                 <SmartAdBanner width={300} height={250} />
               </div>
             </div>
@@ -186,11 +189,14 @@ export default function PdfToGsheetPage() {
             <div className="mx-auto max-w-4xl px-4 py-8">
               <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                 <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-                <div className="min-h-[100px] flex flex-col items-center justify-center gap-4">
-                  <div className="hidden md:flex justify-center w-full my-4">
+                <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
+                  {/* Desktop Banner - Safe for large screens */}
+                  <div className="hidden lg:flex justify-center w-full overflow-hidden">
                     <SmartAdBanner width={728} height={90} />
                   </div>
-                  <div className="flex md:hidden justify-center w-full my-4">
+
+                  {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
+                  <div className="flex lg:hidden justify-center w-full">
                     <SmartAdBanner width={300} height={250} />
                   </div>
                 </div>

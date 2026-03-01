@@ -62,7 +62,6 @@ export default async function BlogSlugPage({ params }: Props) {
   }
 
   const post = data as BlogPost;
-  const adSlot = process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG || "0000000004";
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -80,11 +79,16 @@ export default async function BlogSlugPage({ params }: Props) {
 
           <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="hidden md:flex justify-center w-full my-4">
-              <SmartAdBanner width={728} height={90} />
-            </div>
-            <div className="flex md:hidden justify-center w-full my-4">
-              <SmartAdBanner width={300} height={250} />
+            <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
+              {/* Display the 728x90 banner ONLY on large screens (lg) where we are 100% sure it fits */}
+              <div className="hidden lg:flex justify-center w-full overflow-hidden">
+                <SmartAdBanner width={728} height={90} />
+              </div>
+
+              {/* Fallback to the 300x250 banner for mobile AND tablets (medium screens) */}
+              <div className="flex lg:hidden justify-center w-full">
+                <SmartAdBanner width={300} height={250} />
+              </div>
             </div>
           </div>
 
@@ -96,11 +100,16 @@ export default async function BlogSlugPage({ params }: Props) {
 
           <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="hidden md:flex justify-center w-full my-4">
-              <SmartAdBanner width={728} height={90} />
-            </div>
-            <div className="flex md:hidden justify-center w-full my-4">
-              <SmartAdBanner width={300} height={250} />
+            <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
+              {/* Display the 728x90 banner ONLY on large screens (lg) where we are 100% sure it fits */}
+              <div className="hidden lg:flex justify-center w-full overflow-hidden">
+                <SmartAdBanner width={728} height={90} />
+              </div>
+
+              {/* Fallback to the 300x250 banner for mobile AND tablets (medium screens) */}
+              <div className="flex lg:hidden justify-center w-full">
+                <SmartAdBanner width={300} height={250} />
+              </div>
             </div>
           </div>
 

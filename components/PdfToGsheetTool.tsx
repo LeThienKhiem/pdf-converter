@@ -183,11 +183,16 @@ export default function PdfToGsheetTool({
         {/* Ad: just above PDF upload dropzone */}
         <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-          <div className="hidden md:flex justify-center w-full my-4">
-            <SmartAdBanner width={728} height={90} />
-          </div>
-          <div className="flex md:hidden justify-center w-full my-4">
-            <SmartAdBanner width={300} height={250} />
+          <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
+            {/* Desktop Banner - Safe for large screens */}
+            <div className="hidden lg:flex justify-center w-full overflow-hidden">
+              <SmartAdBanner width={728} height={90} />
+            </div>
+
+            {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
+            <div className="flex lg:hidden justify-center w-full">
+              <SmartAdBanner width={300} height={250} />
+            </div>
           </div>
         </div>
 
@@ -248,11 +253,16 @@ export default function PdfToGsheetTool({
             {/* Ad: right below Google Sheet results */}
             <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/50 p-3">
               <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-              <div className="hidden md:flex justify-center w-full my-4">
-                <SmartAdBanner width={728} height={90} />
-              </div>
-              <div className="flex md:hidden justify-center w-full my-4">
-                <SmartAdBanner width={300} height={250} />
+              <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
+                {/* Desktop Banner - Safe for large screens */}
+                <div className="hidden lg:flex justify-center w-full overflow-hidden">
+                  <SmartAdBanner width={728} height={90} />
+                </div>
+
+                {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
+                <div className="flex lg:hidden justify-center w-full">
+                  <SmartAdBanner width={300} height={250} />
+                </div>
               </div>
             </div>
           </>
@@ -265,11 +275,14 @@ export default function PdfToGsheetTool({
             <p className="text-center text-xs text-slate-500">Please wait while our AI processes your document.</p>
             <div className="mt-4 w-full rounded-lg border border-slate-200 bg-white p-3">
               <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-              <div className="min-h-[250px] flex flex-col items-center justify-center gap-4">
-                <div className="hidden md:flex justify-center w-full my-4">
+              <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
+                {/* Desktop Banner - Safe for large screens */}
+                <div className="hidden lg:flex justify-center w-full overflow-hidden">
                   <SmartAdBanner width={728} height={90} />
                 </div>
-                <div className="flex md:hidden justify-center w-full my-4">
+
+                {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
+                <div className="flex lg:hidden justify-center w-full">
                   <SmartAdBanner width={300} height={250} />
                 </div>
               </div>
