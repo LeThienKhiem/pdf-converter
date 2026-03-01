@@ -66,11 +66,13 @@ export default async function BlogPage() {
 
         <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-          <div className="hidden md:flex justify-center w-full my-4">
-            <SmartAdBanner width={728} height={90} />
-          </div>
-          <div className="flex md:hidden justify-center w-full my-4">
-            <SmartAdBanner width={300} height={250} />
+          <div className="w-full flex justify-center my-8">
+            <div className="hidden md:block">
+              <SmartAdBanner width={728} height={90} />
+            </div>
+            <div className="block md:hidden">
+              <SmartAdBanner width={300} height={250} />
+            </div>
           </div>
         </div>
 
@@ -121,11 +123,13 @@ export default async function BlogPage() {
                     <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">
                       Advertisement
                     </p>
-                    <div className="hidden md:flex justify-center w-full my-4">
-                      <SmartAdBanner width={728} height={90} />
-                    </div>
-                    <div className="flex md:hidden justify-center w-full my-4">
-                      <SmartAdBanner width={300} height={250} />
+                    <div className="w-full flex justify-center my-8">
+                      <div className="hidden md:block">
+                        <SmartAdBanner width={728} height={90} />
+                      </div>
+                      <div className="block md:hidden">
+                        <SmartAdBanner width={300} height={250} />
+                      </div>
                     </div>
                   </li>
                 )}
@@ -136,11 +140,13 @@ export default async function BlogPage() {
 
         <div className="my-8 w-full rounded-xl border border-slate-200 bg-slate-50/50 p-4">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-          <div className="hidden md:flex justify-center w-full my-4">
-            <SmartAdBanner width={728} height={90} />
-          </div>
-          <div className="flex md:hidden justify-center w-full my-4">
-            <SmartAdBanner width={300} height={250} />
+          <div className="w-full flex justify-center my-8">
+            <div className="hidden md:block">
+              <SmartAdBanner width={728} height={90} />
+            </div>
+            <div className="block md:hidden">
+              <SmartAdBanner width={300} height={250} />
+            </div>
           </div>
         </div>
 
