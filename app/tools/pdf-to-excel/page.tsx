@@ -330,10 +330,10 @@ export default function PdfToExcelPage() {
               <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
               <div className="min-h-[250px] flex flex-col items-center justify-center gap-4">
                 <div className="hidden md:flex justify-center w-full my-4">
-                  <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_LOADING ?? "0000000002"} />
+                  <SmartAdBanner width={728} height={90} />
                 </div>
                 <div className="flex md:hidden justify-center w-full my-4">
-                  <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_LOADING ?? "0000000002"} />
+                  <SmartAdBanner width={300} height={250} />
                 </div>
               </div>
             </div>
@@ -420,10 +420,10 @@ export default function PdfToExcelPage() {
             <div className="mt-8 rounded-lg border border-slate-200 bg-gray-50 p-4">
               <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
               <div className="hidden md:flex justify-center w-full my-4">
-                <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
+                <SmartAdBanner width={728} height={90} />
               </div>
               <div className="flex md:hidden justify-center w-full my-4">
-                <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
+                <SmartAdBanner width={300} height={250} />
               </div>
             </div>
           </>
@@ -479,10 +479,10 @@ export default function PdfToExcelPage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
             <div className="hidden md:flex justify-center w-full my-4">
-              <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+              <SmartAdBanner width={728} height={90} />
             </div>
             <div className="flex md:hidden justify-center w-full my-4">
-              <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+              <SmartAdBanner width={300} height={250} />
             </div>
           </div>
 
@@ -603,10 +603,10 @@ export default function PdfToExcelPage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
             <div className="hidden md:flex justify-center w-full my-4">
-              <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
+              <SmartAdBanner width={728} height={90} />
             </div>
             <div className="flex md:hidden justify-center w-full my-4">
-              <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
+              <SmartAdBanner width={300} height={250} />
             </div>
           </div>
         </div>

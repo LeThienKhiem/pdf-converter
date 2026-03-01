@@ -89,10 +89,10 @@ export default async function ToolLandingPage({ params }: Props) {
         <div className="mt-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
           <div className="hidden md:flex justify-center w-full my-4">
-            <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+            <SmartAdBanner width={728} height={90} />
           </div>
           <div className="flex md:hidden justify-center w-full my-4">
-            <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+            <SmartAdBanner width={300} height={250} />
           </div>
         </div>
 
@@ -164,10 +164,10 @@ export default async function ToolLandingPage({ params }: Props) {
         <div className="mt-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
           <div className="hidden md:flex justify-center w-full my-4">
-            <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
+            <SmartAdBanner width={728} height={90} />
           </div>
           <div className="flex md:hidden justify-center w-full my-4">
-            <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT ?? "0000000003"} />
+            <SmartAdBanner width={300} height={250} />
           </div>
         </div>
 
@@ -184,10 +184,10 @@ export default async function ToolLandingPage({ params }: Props) {
         <div className="my-12 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
           <div className="hidden md:flex justify-center w-full my-4">
-            <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+            <SmartAdBanner width={728} height={90} />
           </div>
           <div className="flex md:hidden justify-center w-full my-4">
-            <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_MID ?? "0000000001"} />
+            <SmartAdBanner width={300} height={250} />
           </div>
         </div>
       </main>

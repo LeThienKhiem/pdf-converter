@@ -81,10 +81,10 @@ export default async function BlogSlugPage({ params }: Props) {
           <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
             <div className="hidden md:flex justify-center w-full my-4">
-              <SmartAdBanner width={728} height={90} adsenseSlot={adSlot} />
+              <SmartAdBanner width={728} height={90} />
             </div>
             <div className="flex md:hidden justify-center w-full my-4">
-              <SmartAdBanner width={300} height={250} adsenseSlot={adSlot} />
+              <SmartAdBanner width={300} height={250} />
             </div>
           </div>
 
@@ -97,10 +97,10 @@ export default async function BlogSlugPage({ params }: Props) {
           <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
             <div className="hidden md:flex justify-center w-full my-4">
-              <SmartAdBanner width={728} height={90} adsenseSlot={adSlot} />
+              <SmartAdBanner width={728} height={90} />
             </div>
             <div className="flex md:hidden justify-center w-full my-4">
-              <SmartAdBanner width={300} height={250} adsenseSlot={adSlot} />
+              <SmartAdBanner width={300} height={250} />
             </div>
           </div>
 

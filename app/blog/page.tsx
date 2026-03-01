@@ -67,10 +67,10 @@ export default async function BlogPage() {
         <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
           <div className="hidden md:flex justify-center w-full my-4">
-            <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+            <SmartAdBanner width={728} height={90} />
           </div>
           <div className="flex md:hidden justify-center w-full my-4">
-            <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+            <SmartAdBanner width={300} height={250} />
           </div>
         </div>
 
@@ -122,10 +122,10 @@ export default async function BlogPage() {
                       Advertisement
                     </p>
                     <div className="hidden md:flex justify-center w-full my-4">
-                      <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+                      <SmartAdBanner width={728} height={90} />
                     </div>
                     <div className="flex md:hidden justify-center w-full my-4">
-                      <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+                      <SmartAdBanner width={300} height={250} />
                     </div>
                   </li>
                 )}
@@ -137,10 +137,10 @@ export default async function BlogPage() {
         <div className="my-8 w-full rounded-xl border border-slate-200 bg-slate-50/50 p-4">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
           <div className="hidden md:flex justify-center w-full my-4">
-            <SmartAdBanner width={728} height={90} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+            <SmartAdBanner width={728} height={90} />
           </div>
           <div className="flex md:hidden justify-center w-full my-4">
-            <SmartAdBanner width={300} height={250} adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_BLOG ?? "0000000004"} />
+            <SmartAdBanner width={300} height={250} />
           </div>
         </div>
 
