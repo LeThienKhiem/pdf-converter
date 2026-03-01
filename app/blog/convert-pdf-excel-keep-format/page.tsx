@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-
-const SmartAdBanner = dynamic(() => import("@/components/SmartAdBanner"), {
-  ssr: false,
-});
+import SmartAdBanner from "@/components/SmartAdBanner";
 
 export const metadata: Metadata = {
   title: "How to Convert PDF to Excel Without Messing Up the Format | Fix Broken Rows & Keep Formatting",

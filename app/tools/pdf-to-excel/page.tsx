@@ -22,11 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import dynamic from "next/dynamic";
-
-const SmartAdBanner = dynamic(() => import("@/components/SmartAdBanner"), {
-  ssr: false,
-});
+import SmartAdBanner from "@/components/SmartAdBanner";
 import { canConvert, incrementUsage } from "@/lib/pdfUsage";
 import QuotaLimitModal from "@/components/QuotaLimitModal";
 

@@ -6,11 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { FileUp, Loader2, FileSpreadsheet, ExternalLink } from "lucide-react";
 import { canConvert, incrementUsage } from "@/lib/pdfUsage";
 import QuotaLimitModal from "@/components/QuotaLimitModal";
-import dynamic from "next/dynamic";
-
-const SmartAdBanner = dynamic(() => import("@/components/SmartAdBanner"), {
-  ssr: false,
-});
+import SmartAdBanner from "@/components/SmartAdBanner";
 
 const GOOGLE_SHEETS_SCOPES =
   "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file";
