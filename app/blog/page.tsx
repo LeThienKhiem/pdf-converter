@@ -3,7 +3,11 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { ArrowRight } from "lucide-react";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
-import SmartAdBanner from "@/components/SmartAdBanner";
+import dynamic from "next/dynamic";
+
+const SmartAdBanner = dynamic(() => import("@/components/SmartAdBanner"), {
+  ssr: false,
+});
 
 export const revalidate = 0;
 

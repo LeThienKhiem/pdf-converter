@@ -15,7 +15,11 @@ import {
   Database,
   ShieldCheck,
 } from "lucide-react";
-import SmartAdBanner from "@/components/SmartAdBanner";
+import dynamic from "next/dynamic";
+
+const SmartAdBanner = dynamic(() => import("@/components/SmartAdBanner"), {
+  ssr: false,
+});
 
 export default function Home() {
   return (

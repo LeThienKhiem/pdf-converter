@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
-import SmartAdBanner from "@/components/SmartAdBanner";
+import dynamic from "next/dynamic";
+
+const SmartAdBanner = dynamic(() => import("@/components/SmartAdBanner"), {
+  ssr: false,
+});
 import { BlogPostContent } from "./BlogPostContent";
 
 type Props = { params: Promise<{ slug: string }> };

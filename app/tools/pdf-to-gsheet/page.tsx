@@ -2,7 +2,11 @@
 
 import { Users, Sparkles, Cloud, Receipt, Database, ClipboardCheck, Upload, Scan, FileCheck, ChevronRight } from "lucide-react";
 import PdfToGsheetTool from "@/components/PdfToGsheetTool";
-import SmartAdBanner from "@/components/SmartAdBanner";
+import dynamic from "next/dynamic";
+
+const SmartAdBanner = dynamic(() => import("@/components/SmartAdBanner"), {
+  ssr: false,
+});
 
 export default function PdfToGsheetPage() {
   return (
