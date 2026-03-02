@@ -101,8 +101,10 @@ export default function SmartAdBanner({ width = 300, height = 250 }: { width?: n
           >
             <ins
               className="adsbygoogle"
-              style={{ display: 'inline-block', width: width, height: height }}
+              style={{ display: 'block' }}
               data-ad-client="ca-pub-8938853828038526"
+              data-ad-format="auto"
+              data-full-width-responsive="true"
             />
           </div>
         )}
