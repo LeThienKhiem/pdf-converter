@@ -23,7 +23,15 @@ export default function Header() {
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => setUser(session?.user ?? null))
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("Refresh Token") || msg.includes("refresh_token")) {
+          supabase.auth.signOut().then(() => setUser(null));
+        }
+      });
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {

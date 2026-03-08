@@ -42,7 +42,7 @@ export default function PaddleCheckoutButton({
   }, []);
 
   const openCheckout = () => {
-    if (!paddle) return;
+    if (!paddle || !priceId) return;
     paddle.Checkout.open({
       items: [{ priceId, quantity: 1 }],
       ...(userEmail && { customer: { email: userEmail } }),
@@ -50,11 +50,13 @@ export default function PaddleCheckoutButton({
     });
   };
 
+  const ready = Boolean(paddle && priceId);
+
   return (
     <button
       type="button"
       onClick={openCheckout}
-      disabled={loading || !paddle}
+      disabled={loading || !ready}
       className={className}
     >
       {loading ? "Loading…" : children}

@@ -93,13 +93,22 @@ export default async function PricingPage() {
               </li>
             </ul>
             <div className="mt-8 w-full">
-              <PaddleCheckoutButton
-                priceId={process.env.NEXT_PUBLIC_PADDLE_PRICE_ID!}
-                userEmail={user?.email ?? undefined}
-                userId={user?.id}
-              >
-                Buy 50 credits — $9.99
-              </PaddleCheckoutButton>
+              {user?.id ? (
+                <PaddleCheckoutButton
+                  priceId={process.env.NEXT_PUBLIC_PADDLE_PRICE_ID ?? ""}
+                  userEmail={user.email ?? undefined}
+                  userId={user.id}
+                >
+                  Buy 50 credits — $9.99
+                </PaddleCheckoutButton>
+              ) : (
+                <Link
+                  href="/login"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#217346] px-6 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-[#1d603d] hover:shadow-lg"
+                >
+                  Log in to Buy 50 credits — $9.99
+                </Link>
+              )}
             </div>
           </div>
         </div>
