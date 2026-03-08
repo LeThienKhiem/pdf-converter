@@ -21,6 +21,7 @@ function toAmountUsd(value: unknown): number | null {
 
 export async function POST(req: Request) {
   try {
+    console.log("🔥 Webhook route hit");
     const rawBody = await req.text();
     const signature = req.headers.get("paddle-signature") ?? req.headers.get("Paddle-Signature");
 
@@ -46,9 +47,13 @@ export async function POST(req: Request) {
         eventType: string;
         data: Record<string, unknown>;
       };
-    } catch {
+    } catch (e: unknown) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      console.error("❌ Signature Verification Failed:", err.message || e);
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
+
+    console.log("✅ Event type:", eventData?.eventType);
 
     if (eventData.eventType !== "transaction.completed") {
       return NextResponse.json({ message: "Ignored" }, { status: 200 });
@@ -87,6 +92,7 @@ export async function POST(req: Request) {
       .eq("id", userId);
 
     if (updateError) {
+      console.error("❌ DB Update Error:", updateError.message);
       return NextResponse.json({ error: "Database update failed" }, { status: 500 });
     }
 
@@ -107,7 +113,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ message: "Success" }, { status: 200 });
-  } catch {
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error("❌ Global Webhook Error:", err.message || error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
