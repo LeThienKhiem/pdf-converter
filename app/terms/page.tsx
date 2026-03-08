@@ -60,6 +60,20 @@ export default function TermsPage() {
               We reserve the right to terminate or suspend access to our service immediately, without prior notice, for any breach of these Terms.
             </p>
           </div>
+
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">6. Payments and Merchant of Record</h2>
+            <p className="mt-2 text-slate-600">
+              Our order process is conducted by our online reseller Paddle.com. Paddle.com is the Merchant of Record for all our orders. Paddle provides all customer service inquiries and handles returns.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">7. Refund Policy</h2>
+            <p className="mt-2 text-slate-600">
+              Because our tool provides downloadable and consumable digital credits (including API and AI processing), all sales are final and non-refundable once credits have been consumed. Unused credits within 14 days of purchase may be eligible for a refund at our sole discretion. Please contact Paddle or our support team for refund requests.
+            </p>
+          </div>
         </section>
 
         <p className="mt-12 text-slate-500 text-sm">

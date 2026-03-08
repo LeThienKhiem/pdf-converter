@@ -2,7 +2,6 @@
 
 import { Users, Sparkles, Cloud, Receipt, Database, ClipboardCheck, Upload, Scan, FileCheck, ChevronRight } from "lucide-react";
 import PdfToGsheetTool from "@/components/PdfToGsheetTool";
-import SmartAdBanner from "@/components/SmartAdBanner";
 
 export default function PdfToGsheetPage() {
   return (
@@ -18,23 +17,6 @@ export default function PdfToGsheetPage() {
         </div>
 
         {/* Ad: above first content section */}
-        <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-              {/* Desktop Banner - Safe for large screens */}
-              <div className="hidden lg:flex justify-center w-full overflow-hidden">
-                <SmartAdBanner width={728} height={90} />
-              </div>
-
-              {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
-              <div className="flex lg:hidden justify-center w-full">
-                <SmartAdBanner width={300} height={250} />
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Full-width SEO section */}
         <section className="w-full bg-slate-50 py-24" aria-labelledby="why-extract-heading">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -186,22 +168,6 @@ export default function PdfToGsheetPage() {
             </div>
 
             {/* Ad: below FAQ */}
-            <div className="mx-auto max-w-4xl px-4 py-8">
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-                <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-                  {/* Desktop Banner - Safe for large screens */}
-                  <div className="hidden lg:flex justify-center w-full overflow-hidden">
-                    <SmartAdBanner width={728} height={90} />
-                  </div>
-
-                  {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
-                  <div className="flex lg:hidden justify-center w-full">
-                    <SmartAdBanner width={300} height={250} />
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </section>
       </main>

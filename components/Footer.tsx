@@ -17,6 +17,9 @@ export default function Footer() {
           <Link href="/terms" className="text-sm text-slate-500 hover:text-slate-700">
             Terms
           </Link>
+          <Link href="/refund-policy" className="text-sm text-slate-500 hover:text-slate-700">
+            Refund Policy
+          </Link>
         </div>
       </div>
     </footer>

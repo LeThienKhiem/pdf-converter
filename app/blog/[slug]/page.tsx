@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
-import SmartAdBanner from "@/components/SmartAdBanner";
 import { BlogPostContent } from "./BlogPostContent";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -77,41 +76,11 @@ export default async function BlogSlugPage({ params }: Props) {
             <p className="mt-4 text-xl text-slate-600">{post.meta_description}</p>
           )}
 
-          <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-              {/* Display the 728x90 banner ONLY on large screens (lg) where we are 100% sure it fits */}
-              <div className="hidden lg:flex justify-center w-full overflow-hidden">
-                <SmartAdBanner width={728} height={90} />
-              </div>
-
-              {/* Fallback to the 300x250 banner for mobile AND tablets (medium screens) */}
-              <div className="flex lg:hidden justify-center w-full">
-                <SmartAdBanner width={300} height={250} />
-              </div>
-            </div>
-          </div>
-
           {post.content ? (
             <BlogPostContent key={post.id} content={post.content} />
           ) : (
             <p className="text-slate-500">No content yet.</p>
           )}
-
-          <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-              {/* Display the 728x90 banner ONLY on large screens (lg) where we are 100% sure it fits */}
-              <div className="hidden lg:flex justify-center w-full overflow-hidden">
-                <SmartAdBanner width={728} height={90} />
-              </div>
-
-              {/* Fallback to the 300x250 banner for mobile AND tablets (medium screens) */}
-              <div className="flex lg:hidden justify-center w-full">
-                <SmartAdBanner width={300} height={250} />
-              </div>
-            </div>
-          </div>
 
           <p className="mt-12 text-slate-500">
             <Link href="/blog" className="text-blue-600 hover:underline">

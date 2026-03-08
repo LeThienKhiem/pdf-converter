@@ -2,11 +2,10 @@
 
 import { useCallback, useMemo, useState, useId } from "react";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
 import { FileUp, Loader2, FileSpreadsheet, ExternalLink } from "lucide-react";
-import { canConvert, incrementUsage } from "@/lib/pdfUsage";
-import QuotaLimitModal from "@/components/QuotaLimitModal";
-import SmartAdBanner from "@/components/SmartAdBanner";
+import { canGuestConvert, incrementGuestUsage } from "@/lib/pdfUsage";
+import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimitModal";
+import { createClient } from "@/lib/supabase/client";
 
 const GOOGLE_SHEETS_SCOPES =
   "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file";
@@ -32,13 +31,9 @@ export default function PdfToGsheetTool({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showQuotaModal, setShowQuotaModal] = useState(false);
+  const [quotaModalVariant, setQuotaModalVariant] = useState<QuotaLimitVariant>("guest");
 
-  const supabaseBrowser = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    return url && anon ? createClient(url, anon) : null;
-  }, []);
+  const supabaseBrowser = useMemo(() => createClient(), []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -56,10 +51,6 @@ export default function PdfToGsheetTool({
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    if (!canConvert()) {
-      setShowQuotaModal(true);
-      return;
-    }
     const f = e.dataTransfer.files?.[0];
     if (f?.type === "application/pdf") {
       setFile(f);
@@ -71,11 +62,6 @@ export default function PdfToGsheetTool({
   }, []);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!canConvert()) {
-      setShowQuotaModal(true);
-      e.target.value = "";
-      return;
-    }
     const f = e.target.files?.[0];
     if (f?.type === "application/pdf") {
       setFile(f);
@@ -102,9 +88,26 @@ export default function PdfToGsheetTool({
         setErrorMessage("Please select a PDF file.");
         return;
       }
-      if (!canConvert()) {
-        setShowQuotaModal(true);
-        return;
+      const { data: { session } } = await supabaseBrowser.auth.getSession();
+      if (!session) {
+        if (!canGuestConvert()) {
+          setQuotaModalVariant("guest");
+          setShowQuotaModal(true);
+          return;
+        }
+      } else {
+        const credRes = await fetch("/api/credits");
+        if (!credRes.ok) {
+          setQuotaModalVariant("out_of_credits");
+          setShowQuotaModal(true);
+          return;
+        }
+        const { credits } = await credRes.json();
+        if (credits <= 0) {
+          setQuotaModalVariant("out_of_credits");
+          setShowQuotaModal(true);
+          return;
+        }
       }
       setIsLoading(true);
       let isAuthRedirect = false;
@@ -145,7 +148,11 @@ export default function PdfToGsheetTool({
           return;
         }
 
-        incrementUsage();
+        if (session) {
+          await fetch("/api/credits", { method: "POST" });
+        } else {
+          incrementGuestUsage();
+        }
         setSuccessMessage(json?.message ?? "Your sheet is ready.");
         setCopyUrl(json?.copyUrl ?? null);
         setFile(null);
@@ -180,22 +187,6 @@ export default function PdfToGsheetTool({
       {subtitle && <p className="mt-2 text-slate-600">{subtitle}</p>}
 
       <form onSubmit={handleSubmit} className={title || subtitle ? "mt-10 space-y-8" : "space-y-8"}>
-        {/* Ad: just above PDF upload dropzone */}
-        <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
-          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-          <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-            {/* Desktop Banner - Safe for large screens */}
-            <div className="hidden lg:flex justify-center w-full overflow-hidden">
-              <SmartAdBanner width={728} height={90} />
-            </div>
-
-            {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
-            <div className="flex lg:hidden justify-center w-full">
-              <SmartAdBanner width={300} height={250} />
-            </div>
-          </div>
-        </div>
-
         <div>
           <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">
             PDF file
@@ -250,21 +241,6 @@ export default function PdfToGsheetTool({
                 <ExternalLink className="h-5 w-5 shrink-0" aria-hidden />
               </a>
             </div>
-            {/* Ad: right below Google Sheet results */}
-            <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/50 p-3">
-              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-              <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-                {/* Desktop Banner - Safe for large screens */}
-                <div className="hidden lg:flex justify-center w-full overflow-hidden">
-                  <SmartAdBanner width={728} height={90} />
-                </div>
-
-                {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
-                <div className="flex lg:hidden justify-center w-full">
-                  <SmartAdBanner width={300} height={250} />
-                </div>
-              </div>
-            </div>
           </>
         )}
 
@@ -273,20 +249,6 @@ export default function PdfToGsheetTool({
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
             <p className="text-center text-sm font-medium text-slate-700">Converting to Google Sheet…</p>
             <p className="text-center text-xs text-slate-500">Please wait while our AI processes your document.</p>
-            <div className="mt-4 w-full rounded-lg border border-slate-200 bg-white p-3">
-              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-              <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-                {/* Desktop Banner - Safe for large screens */}
-                <div className="hidden lg:flex justify-center w-full overflow-hidden">
-                  <SmartAdBanner width={728} height={90} />
-                </div>
-
-                {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
-                <div className="flex lg:hidden justify-center w-full">
-                  <SmartAdBanner width={300} height={250} />
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
@@ -317,7 +279,7 @@ export default function PdfToGsheetTool({
         </p>
       )}
 
-      <QuotaLimitModal open={showQuotaModal} onClose={() => setShowQuotaModal(false)} />
+      <QuotaLimitModal open={showQuotaModal} onClose={() => setShowQuotaModal(false)} variant={quotaModalVariant} />
     </div>
   );
 }

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { ArrowRight } from "lucide-react";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
-import SmartAdBanner from "@/components/SmartAdBanner";
 
 export const revalidate = 0;
 
@@ -64,18 +63,6 @@ export default async function BlogPage() {
           Guides and tips on converting PDFs to Excel and Google Sheets without losing format—powered by AI.
         </p>
 
-        <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-          <div className="w-full flex justify-center my-8">
-            <div className="hidden md:block">
-              <SmartAdBanner width={728} height={90} />
-            </div>
-            <div className="block md:hidden">
-              <SmartAdBanner width={300} height={250} />
-            </div>
-          </div>
-        </div>
-
         {error && (
           <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800" role="alert">
             <p className="font-medium">Unable to load posts</p>
@@ -118,37 +105,10 @@ export default async function BlogPage() {
                     </Link>
                   </article>
                 </li>
-                {(index + 1) % 6 === 0 && index !== posts.length - 1 && (
-                  <li className="col-span-full my-8 w-full rounded-xl border border-dashed border-gray-300 bg-gray-100 p-8 text-center">
-                    <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">
-                      Advertisement
-                    </p>
-                    <div className="w-full flex justify-center my-8">
-                      <div className="hidden md:block">
-                        <SmartAdBanner width={728} height={90} />
-                      </div>
-                      <div className="block md:hidden">
-                        <SmartAdBanner width={300} height={250} />
-                      </div>
-                    </div>
-                  </li>
-                )}
               </Fragment>
             ))}
           </ul>
         )}
-
-        <div className="my-8 w-full rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-          <div className="w-full flex justify-center my-8">
-            <div className="hidden md:block">
-              <SmartAdBanner width={728} height={90} />
-            </div>
-            <div className="block md:hidden">
-              <SmartAdBanner width={300} height={250} />
-            </div>
-          </div>
-        </div>
 
         <p className="mt-12 text-slate-500">
           <Link href="/" className="text-blue-600 hover:underline">

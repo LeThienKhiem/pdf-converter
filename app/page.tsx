@@ -15,7 +15,6 @@ import {
   Database,
   ShieldCheck,
 } from "lucide-react";
-import SmartAdBanner from "@/components/SmartAdBanner";
 
 export default function Home() {
   return (
@@ -52,22 +51,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Ad Placement 1: below Hero */}
-        <div className="border-b border-slate-200/80 bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl">
-            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="w-full flex justify-center my-8">
-              <div className="hidden md:block">
-                <SmartAdBanner width={728} height={90} />
-              </div>
-              <div className="block md:hidden">
-                <SmartAdBanner width={300} height={250} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Text-rich content block — 1440px wrapper for AdSense */}
+        {/* Text-rich content block — 1440px wrapper */}
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-24">
           {/* The Hidden Cost of Manual Data Entry */}
           <section className="space-y-6" aria-labelledby="problem-heading">
@@ -361,21 +345,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        {/* Ad Placement 2: before FAQ */}
-        <div className="border-b border-slate-200/80 bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl">
-            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="w-full flex justify-center my-8">
-              <div className="hidden md:block">
-                <SmartAdBanner width={728} height={90} />
-              </div>
-              <div className="block md:hidden">
-                <SmartAdBanner width={300} height={250} />
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* FAQ */}
         <section className="border-b border-slate-200/80 bg-white px-4 py-16 sm:px-6 lg:px-8" aria-labelledby="faq-heading">

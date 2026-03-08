@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import PdfToGsheetTool from "@/components/PdfToGsheetTool";
-import SmartAdBanner from "@/components/SmartAdBanner";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -85,17 +84,6 @@ export default async function ToolLandingPage({ params }: Props) {
           <PdfToGsheetTool showExcelLink={true} />
         </div>
 
-        {/* Ad: above first content section */}
-        <div className="mt-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-          <div className="hidden md:flex justify-center w-full my-4">
-            <SmartAdBanner width={728} height={90} />
-          </div>
-          <div className="flex md:hidden justify-center w-full my-4">
-            <SmartAdBanner width={300} height={250} />
-          </div>
-        </div>
-
         {/* Industry-specific challenges */}
         <section className="prose prose-slate mt-16 max-w-4xl rounded-2xl border border-slate-200 bg-white px-6 py-10 sm:px-8 sm:py-12" aria-labelledby="industry-challenges-heading">
           <h2 id="industry-challenges-heading" className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
@@ -160,17 +148,6 @@ export default async function ToolLandingPage({ params }: Props) {
           </dl>
         </section>
 
-        {/* Ad: below FAQ */}
-        <div className="mt-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-          <div className="hidden md:flex justify-center w-full my-4">
-            <SmartAdBanner width={728} height={90} />
-          </div>
-          <div className="flex md:hidden justify-center w-full my-4">
-            <SmartAdBanner width={300} height={250} />
-          </div>
-        </div>
-
         {/* SEO content */}
         <section className="mt-16 rounded-2xl border border-slate-200 bg-slate-50/60 px-6 py-10 sm:px-8 sm:py-12" aria-labelledby="benefits-heading">
           <h2 id="benefits-heading" className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
@@ -180,16 +157,6 @@ export default async function ToolLandingPage({ params }: Props) {
             Automating PDF-to-spreadsheet extraction saves time and reduces errors for {industryLower}. Instead of manual data entry, paste, or re-typing from invoices and reports, you get structured data in Google Sheets in seconds. Teams can collaborate on the same sheet, and the AI preserves table layout and formatting so your numbers stay accurate. Try the tool above to turn your next PDF into a Google Sheet with one click.
           </p>
         </section>
-
-        <div className="my-12 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-          <div className="hidden md:flex justify-center w-full my-4">
-            <SmartAdBanner width={728} height={90} />
-          </div>
-          <div className="flex md:hidden justify-center w-full my-4">
-            <SmartAdBanner width={300} height={250} />
-          </div>
-        </div>
       </main>
     </div>
   );

@@ -1,17 +1,36 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { FileSpreadsheet, ChevronDown, Menu, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { FileSpreadsheet, ChevronDown, Menu, X, User } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
   const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number } | null>(null);
+  const [profileRect, setProfileRect] = useState<{ top: number; left: number } | null>(null);
+
+  const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, [supabase]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -20,6 +39,11 @@ export default function Header() {
         const portal = document.getElementById("tools-dropdown-portal");
         if (portal?.contains(target)) return;
         setToolsOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(target)) {
+        const portal = document.getElementById("profile-dropdown-portal");
+        if (portal?.contains(target)) return;
+        setProfileOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -34,6 +58,15 @@ export default function Header() {
       setDropdownRect(null);
     }
   }, [toolsOpen]);
+
+  useEffect(() => {
+    if (profileOpen && profileRef.current && typeof document !== "undefined") {
+      const rect = profileRef.current.getBoundingClientRect();
+      setProfileRect({ top: rect.bottom + 4, left: Math.max(8, rect.right - 160) });
+    } else {
+      setProfileRect(null);
+    }
+  }, [profileOpen]);
 
   // Freeze background scroll when mobile menu is open (reliable on iOS with position: fixed)
   useEffect(() => {
@@ -83,6 +116,13 @@ export default function Header() {
       >
         Blog
       </Link>
+      <Link
+        href="/pricing"
+        onClick={closeMobileMenu}
+        className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+      >
+        Pricing
+      </Link>
       <div
         className="relative"
         ref={dropdownRef}
@@ -112,8 +152,36 @@ export default function Header() {
       >
         Get Started
       </Link>
+      {user ? (
+        <div className="relative" ref={profileRef} aria-expanded={profileOpen} aria-haspopup="true">
+          <button
+            type="button"
+            onClick={() => setProfileOpen((o) => !o)}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            aria-label="Account menu"
+          >
+            <User className="h-5 w-5" />
+          </button>
+        </div>
+      ) : (
+        <Link
+          href="/login"
+          onClick={closeMobileMenu}
+          className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        >
+          Sign In
+        </Link>
+      )}
     </>
   );
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setProfileOpen(false);
+    closeMobileMenu();
+    router.push("/");
+    router.refresh();
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full overflow-hidden border-b border-slate-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
@@ -182,6 +250,37 @@ export default function Header() {
           document.body
         )}
 
+      {/* Profile dropdown */}
+      {profileOpen &&
+        profileRect &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            id="profile-dropdown-portal"
+            role="menu"
+            className="fixed z-[100] min-w-[160px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+            style={{ top: profileRect.top, left: profileRect.left }}
+          >
+            <Link
+              href="/dashboard"
+              onClick={() => { setProfileOpen(false); closeMobileMenu(); }}
+              role="menuitem"
+              className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Dashboard
+            </Link>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              role="menuitem"
+              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Sign Out
+            </button>
+          </div>,
+          document.body
+        )}
+
       {/* Mobile menu overlay: rendered via portal so it is not clipped by header overflow-hidden */}
       {mobileMenuOpen &&
         typeof document !== "undefined" &&
@@ -225,6 +324,13 @@ export default function Header() {
                 >
                   Blog
                 </Link>
+                <Link
+                  href="/pricing"
+                  onClick={closeMobileMenu}
+                  className="rounded-lg px-4 py-3 text-base font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  Pricing
+                </Link>
                 <div className="border-t border-slate-200 pt-2">
                   <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Tools</p>
                   <Link
@@ -265,6 +371,34 @@ export default function Header() {
                   >
                     Get Started
                   </Link>
+                </div>
+                <div className="border-t border-slate-200 pt-2">
+                  {user ? (
+                    <>
+                      <Link
+                        href="/dashboard"
+                        onClick={closeMobileMenu}
+                        className="block rounded-lg px-4 py-3 text-base font-medium text-slate-700 hover:bg-slate-100"
+                      >
+                        Dashboard
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={handleSignOut}
+                        className="block w-full rounded-lg px-4 py-3 text-left text-base font-medium text-slate-700 hover:bg-slate-100"
+                      >
+                        Sign Out
+                      </button>
+                    </>
+                  ) : (
+                    <Link
+                      href="/login"
+                      onClick={closeMobileMenu}
+                      className="block rounded-lg px-4 py-3 text-base font-medium text-slate-700 hover:bg-slate-100"
+                    >
+                      Sign In
+                    </Link>
+                  )}
                 </div>
               </nav>
             </div>

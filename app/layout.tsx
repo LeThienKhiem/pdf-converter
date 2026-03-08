@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Geist, Geist_Mono } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FirebaseProvider from "@/app/components/FirebaseProvider";
 import "./globals.css";
-
-const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-8938853828038526";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -64,11 +61,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
       >
         <GoogleAnalytics gaId="G-3QTWRVS4TF" />
-        <Script
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
-          strategy="afterInteractive"
-          crossOrigin="anonymous"
-        />
         <FirebaseProvider />
         <Header />
         {children}

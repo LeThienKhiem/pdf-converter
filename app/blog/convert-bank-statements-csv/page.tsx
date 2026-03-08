@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import SmartAdBanner from "@/components/SmartAdBanner";
 
 export const metadata: Metadata = {
   title: "The Fastest Way to Convert PDF Bank Statements to CSV or Excel | Extract Transaction Data",
@@ -27,16 +26,6 @@ export default function ConvertBankStatementsCsvPage() {
           <p className="mt-6 text-xl text-slate-600">
             For bookkeepers and accountants, manual data entry from PDF bank statements is a nightmare: copy-paste, misaligned columns, and hours spent fixing dates and amounts. Here’s how to convert PDF bank statements to CSV or Excel quickly and use the data in your workflows without the hassle.
           </p>
-
-          <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="hidden md:flex justify-center w-full my-4">
-              <SmartAdBanner width={728} height={90} />
-            </div>
-            <div className="flex md:hidden justify-center w-full my-4">
-              <SmartAdBanner width={300} height={250} />
-            </div>
-          </div>
 
           <h2 className="mt-12 text-2xl font-bold text-slate-900">
             Traditional OCR vs. AI Extraction for Financial Data
@@ -80,16 +69,6 @@ export default function ConvertBankStatementsCsvPage() {
             >
               Convert to Google Sheet
             </Link>
-          </div>
-
-          <div className="my-10 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="hidden md:flex justify-center w-full my-4">
-              <SmartAdBanner width={728} height={90} />
-            </div>
-            <div className="flex md:hidden justify-center w-full my-4">
-              <SmartAdBanner width={300} height={250} />
-            </div>
           </div>
 
           <p className="mt-12 text-slate-500">

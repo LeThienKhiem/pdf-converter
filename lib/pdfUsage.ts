@@ -1,20 +1,11 @@
-const DAILY_LIMIT = 3;
-const KEY_PREFIX = "pdf_usage_";
+const GUEST_LIMIT = 1;
+const GUEST_USAGE_KEY = "guest_usage_count";
 
-function getTodayKey(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${KEY_PREFIX}${y}-${m}-${d}`;
-}
-
-/** Current usage count for today (0 if none). Safe to call in SSR; returns 0. */
-export function getUsage(): number {
+/** Current guest conversion count (0 if none). Safe to call in SSR; returns 0. */
+export function getGuestUsage(): number {
   if (typeof window === "undefined") return 0;
   try {
-    const key = getTodayKey();
-    const raw = localStorage.getItem(key);
+    const raw = localStorage.getItem(GUEST_USAGE_KEY);
     if (raw == null) return 0;
     const n = parseInt(raw, 10);
     return Number.isNaN(n) ? 0 : Math.max(0, n);
@@ -23,21 +14,20 @@ export function getUsage(): number {
   }
 }
 
-/** Increment today's usage by 1. Call after a successful conversion. */
-export function incrementUsage(): void {
+/** Increment guest usage by 1. Call after a successful conversion (guest only). */
+export function incrementGuestUsage(): void {
   if (typeof window === "undefined") return;
   try {
-    const key = getTodayKey();
-    const current = getUsage();
-    localStorage.setItem(key, String(current + 1));
+    const current = getGuestUsage();
+    localStorage.setItem(GUEST_USAGE_KEY, String(current + 1));
   } catch {
     // ignore
   }
 }
 
-/** True if user can still convert (usage < limit). */
-export function canConvert(): boolean {
-  return getUsage() < DAILY_LIMIT;
+/** True if guest can still convert (usage < limit). Use only when user is not logged in. */
+export function canGuestConvert(): boolean {
+  return getGuestUsage() < GUEST_LIMIT;
 }
 
-export const PDF_DAILY_LIMIT = DAILY_LIMIT;
+export const GUEST_CONVERSION_LIMIT = GUEST_LIMIT;

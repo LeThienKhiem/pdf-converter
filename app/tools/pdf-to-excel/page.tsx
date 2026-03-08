@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef, useMemo } from "react";
 import {
   FileDown,
   FileUp,
@@ -22,9 +22,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import SmartAdBanner from "@/components/SmartAdBanner";
-import { canConvert, incrementUsage } from "@/lib/pdfUsage";
-import QuotaLimitModal from "@/components/QuotaLimitModal";
+import { canGuestConvert, incrementGuestUsage } from "@/lib/pdfUsage";
+import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimitModal";
+import { createClient } from "@/lib/supabase/client";
 
 const ACCEPT = ".pdf,image/*";
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -110,7 +110,9 @@ export default function PdfToExcelPage() {
   const [tableExpanded, setTableExpanded] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
   const [showQuotaModal, setShowQuotaModal] = useState(false);
+  const [quotaModalVariant, setQuotaModalVariant] = useState<QuotaLimitVariant>("guest");
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -139,10 +141,6 @@ export default function PdfToExcelPage() {
   const setFileWithValidation = useCallback((file: File | null) => {
     if (!file) {
       setSelectedFile(null);
-      return;
-    }
-    if (!canConvert()) {
-      setShowQuotaModal(true);
       return;
     }
     if (!isValidFileType(file)) {
@@ -180,12 +178,30 @@ export default function PdfToExcelPage() {
     document.getElementById("pdf-to-excel-file-input")?.click();
   }, []);
 
-  const handleExtract = useCallback(() => {
+  const handleExtract = useCallback(async () => {
     if (!selectedFile) return;
-    if (!canConvert()) {
-      setShowQuotaModal(true);
-      return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      if (!canGuestConvert()) {
+        setQuotaModalVariant("guest");
+        setShowQuotaModal(true);
+        return;
+      }
+    } else {
+      const credRes = await fetch("/api/credits");
+      if (!credRes.ok) {
+        setQuotaModalVariant("out_of_credits");
+        setShowQuotaModal(true);
+        return;
+      }
+      const { credits } = await credRes.json();
+      if (credits <= 0) {
+        setQuotaModalVariant("out_of_credits");
+        setShowQuotaModal(true);
+        return;
+      }
     }
+
     if (typeof window !== "undefined" && window.gtag) {
       window.gtag("event", "click_convert", { target_format: "excel" });
     }
@@ -224,7 +240,11 @@ export default function PdfToExcelPage() {
         setProgress(100);
 
         if (res.ok && Array.isArray(json.data) && json.data.every((r: unknown) => Array.isArray(r))) {
-          incrementUsage();
+          if (session) {
+            await fetch("/api/credits", { method: "POST" });
+          } else {
+            incrementGuestUsage();
+          }
           setExtractionResult(json.data as GridData);
           setExtractedFileName(nameForResult);
         } else {
@@ -243,7 +263,7 @@ export default function PdfToExcelPage() {
       .finally(() => {
         setIsExtracting(false);
       });
-  }, [selectedFile]);
+  }, [selectedFile, supabase]);
 
   const handleExportExcel = useCallback(() => {
     if (extractionResult.length === 0) return;
@@ -323,20 +343,6 @@ export default function PdfToExcelPage() {
                     className="h-2 w-full overflow-hidden rounded-full bg-slate-200 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
                   />
                   <p className="mt-1 text-sm font-medium text-slate-600">{Math.round(progress)}%</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
-              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-              <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-                {/* Desktop Banner - Safe for large screens */}
-                <div className="hidden lg:flex justify-center w-full overflow-hidden">
-                  <SmartAdBanner width={728} height={90} />
-                </div>
-
-                {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
-                <div className="flex lg:hidden justify-center w-full">
-                  <SmartAdBanner width={300} height={250} />
                 </div>
               </div>
             </div>
@@ -420,20 +426,6 @@ export default function PdfToExcelPage() {
               </button>
             </div>
 
-            <div className="mt-8 rounded-lg border border-slate-200 bg-gray-50 p-4">
-              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-              <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-                {/* Desktop Banner - Safe for large screens */}
-                <div className="hidden lg:flex justify-center w-full overflow-hidden">
-                  <SmartAdBanner width={728} height={90} />
-                </div>
-
-                {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
-                <div className="flex lg:hidden justify-center w-full">
-                  <SmartAdBanner width={300} height={250} />
-                </div>
-              </div>
-            </div>
           </>
         )}
 
@@ -482,22 +474,6 @@ export default function PdfToExcelPage() {
               </div>
             </div>
           </section>
-
-          {/* Ad: above Why Choose Our AI */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-              {/* Desktop Banner - Safe for large screens */}
-              <div className="hidden lg:flex justify-center w-full overflow-hidden">
-                <SmartAdBanner width={728} height={90} />
-              </div>
-
-              {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
-              <div className="flex lg:hidden justify-center w-full">
-                <SmartAdBanner width={300} height={250} />
-              </div>
-            </div>
-          </div>
 
           <section className="prose prose-slate max-w-4xl mx-auto py-12 px-4" aria-labelledby="why-ai-heading">
             <h2 id="why-ai-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
@@ -612,24 +588,9 @@ export default function PdfToExcelPage() {
             </div>
           </section>
 
-          {/* Ad: below FAQ */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-            <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
-            <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-              {/* Desktop Banner - Safe for large screens */}
-              <div className="hidden lg:flex justify-center w-full overflow-hidden">
-                <SmartAdBanner width={728} height={90} />
-              </div>
-
-              {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
-              <div className="flex lg:hidden justify-center w-full">
-                <SmartAdBanner width={300} height={250} />
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Heavy content block for AdSense — 1440px wrapper, fully responsive */}
+        {/* Heavy content block — 1440px wrapper, fully responsive */}
         <div className="max-w-[1440px] mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-16">
           {/* Section 1: The Evolution of Document Extraction */}
           <section className="space-y-6" aria-labelledby="evolution-heading">
@@ -759,7 +720,7 @@ export default function PdfToExcelPage() {
           </section>
         </div>
       </main>
-      <QuotaLimitModal open={showQuotaModal} onClose={() => setShowQuotaModal(false)} />
+      <QuotaLimitModal open={showQuotaModal} onClose={() => setShowQuotaModal(false)} variant={quotaModalVariant} />
     </div>
   );
 }

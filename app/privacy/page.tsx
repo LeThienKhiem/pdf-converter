@@ -60,6 +60,9 @@ export default function PrivacyPage() {
             <p className="mt-2 text-slate-600">
               We do not sell, trade, or transfer your files to third parties. We may use trusted third-party services (like payment processors or analytics) that adhere to strict privacy standards.
             </p>
+            <p className="mt-4 text-slate-600">
+              We use Paddle.com as our payment processor. We do not store or collect your payment card details. That information is provided directly to Paddle, whose use of your personal information is governed by their Privacy Policy. We only share necessary billing details (such as email and country) with Paddle to facilitate the transaction and comply with tax regulations.
+            </p>
           </div>
 
           <div>
