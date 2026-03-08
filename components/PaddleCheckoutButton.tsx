@@ -43,6 +43,17 @@ export default function PaddleCheckoutButton({
 
   const openCheckout = () => {
     if (!paddle || !priceId) return;
+    const checkoutConfig = {
+      items: [{ priceId, quantity: 1 }],
+      ...(userEmail && { customer: { email: userEmail } }),
+      ...(userId && { customData: { userId } }),
+      _debug: {
+        priceId,
+        env: process.env.NEXT_PUBLIC_PADDLE_ENV,
+        hasToken: Boolean(process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN),
+      },
+    };
+    alert("[Paddle Debug] Config sent to Checkout.open:\n" + JSON.stringify(checkoutConfig, null, 2));
     paddle.Checkout.open({
       items: [{ priceId, quantity: 1 }],
       ...(userEmail && { customer: { email: userEmail } }),

@@ -92,6 +92,7 @@ export default async function PricingPage() {
                 <span>Secure in-memory processing</span>
               </li>
             </ul>
+            {/* priceId: env only — no sandbox fallback. Set NEXT_PUBLIC_PADDLE_PRICE_ID in Vercel for production. */}
             <div className="mt-8 w-full">
               {user?.id ? (
                 <PaddleCheckoutButton
