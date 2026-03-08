@@ -99,7 +99,7 @@ function applyStylesAndAutoFit(ws: XLSX.WorkSheet, tableRows: GridData): void {
   ws["!cols"] = colWidths.map((wch) => ({ wch }));
 }
 
-export default function PdfToExcelPage() {
+export default function BankStatementToExcelPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -177,7 +177,7 @@ export default function PdfToExcelPage() {
   );
 
   const handleZoneClick = useCallback(() => {
-    document.getElementById("pdf-to-excel-file-input")?.click();
+    document.getElementById("bank-statement-file-input")?.click();
   }, []);
 
   const handleExtract = useCallback(() => {
@@ -263,19 +263,19 @@ export default function PdfToExcelPage() {
     <div className="min-h-screen bg-white text-slate-900">
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Extract Data from PDF Invoice to Excel
+          AI Bank Statement to Excel Converter
         </h1>
         <p className="mt-2 text-slate-600">
-          Upload a PDF or image to extract data from PDF invoice to Excel or Google Sheets. We preserve the exact layout and give you a downloadable Excel file.
+          Instantly extract tables and transactions from scanned bank statements into clean, ready-to-import CSV/Excel files for seamless reconciliation.
         </p>
 
         <input
-          id="pdf-to-excel-file-input"
+          id="bank-statement-file-input"
           type="file"
           accept={ACCEPT}
           onChange={handleFileChange}
           className="sr-only"
-          aria-label="Upload PDF or image"
+          aria-label="Upload PDF or image (bank statement)"
         />
         <div
           onClick={handleZoneClick}
@@ -314,7 +314,7 @@ export default function PdfToExcelPage() {
             <div className="flex items-center gap-4">
               <Loader2 className="h-8 w-8 shrink-0 animate-spin text-blue-600" aria-hidden />
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-slate-900">Extracting your document</p>
+                <p className="font-medium text-slate-900">Extracting your bank statement</p>
                 <p className="text-sm text-slate-500">Using Gemini to preserve layout…</p>
                 <div className="mt-3" role="status" aria-live="polite" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
                   <progress
@@ -329,12 +329,9 @@ export default function PdfToExcelPage() {
             <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
               <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
               <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-                {/* Desktop Banner - Safe for large screens */}
                 <div className="hidden lg:flex justify-center w-full overflow-hidden">
                   <SmartAdBanner width={728} height={90} />
                 </div>
-
-                {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
                 <div className="flex lg:hidden justify-center w-full">
                   <SmartAdBanner width={300} height={250} />
                 </div>
@@ -423,12 +420,9 @@ export default function PdfToExcelPage() {
             <div className="mt-8 rounded-lg border border-slate-200 bg-gray-50 p-4">
               <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
               <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-                {/* Desktop Banner - Safe for large screens */}
                 <div className="hidden lg:flex justify-center w-full overflow-hidden">
                   <SmartAdBanner width={728} height={90} />
                 </div>
-
-                {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
                 <div className="flex lg:hidden justify-center w-full">
                   <SmartAdBanner width={300} height={250} />
                 </div>
@@ -447,7 +441,7 @@ export default function PdfToExcelPage() {
         <div className="mx-auto max-w-4xl mt-20 space-y-16 px-4 pb-20 sm:px-6 lg:px-8">
           <section aria-labelledby="how-to-heading">
             <h2 id="how-to-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              How to Convert PDF to Excel with AI
+              How to Convert Bank Statements to Excel with AI
             </h2>
             <div className="mt-8 grid gap-8 sm:grid-cols-3">
               <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
@@ -455,9 +449,9 @@ export default function PdfToExcelPage() {
                   <Upload className="h-6 w-6" />
                 </div>
                 <p className="mt-4 font-mono text-sm font-medium text-blue-600">Step 1</p>
-                <h3 className="mt-1 font-semibold text-slate-900">Upload Document</h3>
+                <h3 className="mt-1 font-semibold text-slate-900">Upload Your Statement</h3>
                 <p className="mt-2 text-sm text-slate-600">
-                  Drag and drop your PDF or image (under 5MB), or click to browse. We accept invoices, forms, and scanned documents.
+                  Drag and drop your PDF or scanned bank statement (under 5MB), or click to browse. We accept statements from any bank.
                 </p>
               </div>
               <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
@@ -465,9 +459,9 @@ export default function PdfToExcelPage() {
                   <Sparkles className="h-6 w-6" />
                 </div>
                 <p className="mt-4 font-mono text-sm font-medium text-blue-600">Step 2</p>
-                <h3 className="mt-1 font-semibold text-slate-900">AI Analyzes Layout</h3>
+                <h3 className="mt-1 font-semibold text-slate-900">AI Extracts Transactions</h3>
                 <p className="mt-2 text-sm text-slate-600">
-                  Our AI maps the visual structure of your document and converts it into rows and columns—preserving tables and sections.
+                  Our AI identifies dates, amounts, descriptions, and running balances—preserving the table layout for clean reconciliation.
                 </p>
               </div>
               <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
@@ -475,24 +469,20 @@ export default function PdfToExcelPage() {
                   <FileDown className="h-6 w-6" />
                 </div>
                 <p className="mt-4 font-mono text-sm font-medium text-blue-600">Step 3</p>
-                <h3 className="mt-1 font-semibold text-slate-900">Download Spreadsheet</h3>
+                <h3 className="mt-1 font-semibold text-slate-900">Download for Xero or QuickBooks</h3>
                 <p className="mt-2 text-sm text-slate-600">
-                  Get your Excel file with styled headers and auto-fit columns. No sign-up required.
+                  Get your Excel or CSV file with styled columns. Ready to import into your accounting software—no sign-up required.
                 </p>
               </div>
             </div>
           </section>
 
-          {/* Ad: above Why Choose Our AI */}
           <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
             <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-              {/* Desktop Banner - Safe for large screens */}
               <div className="hidden lg:flex justify-center w-full overflow-hidden">
                 <SmartAdBanner width={728} height={90} />
               </div>
-
-              {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
               <div className="flex lg:hidden justify-center w-full">
                 <SmartAdBanner width={300} height={250} />
               </div>
@@ -501,49 +491,129 @@ export default function PdfToExcelPage() {
 
           <section className="prose prose-slate max-w-4xl mx-auto py-12 px-4" aria-labelledby="why-ai-heading">
             <h2 id="why-ai-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Why Choose Our AI?
+              Why Use AI for Bank Statement Extraction?
             </h2>
             <p className="mt-6 text-slate-600">
-              Traditional OCR tools treat your PDF as a flat stream of text, which often breaks table layout, merges cells incorrectly, and loses the visual structure that makes your data meaningful. Our converter uses Google&apos;s Gemini model to understand the document as a visual grid: it recognizes rows, columns, headers, and sections the way a human would, so your Excel output matches the original layout. This approach preserves merged cells, indentation, and multi-level headings that generic OCR simply cannot handle.
+              Traditional OCR treats your statement as plain text, which often breaks transaction tables, misaligns dates and amounts, and loses running balances—making reconciliation tedious. Our converter uses Google&apos;s Gemini to understand the document as a visual grid: it recognizes transaction rows, column headers, and sections the way a bookkeeper would, so your Excel output matches the original statement layout and is ready for Xero, QuickBooks, or any accounting workflow.
             </p>
             <p className="mt-4 text-slate-600">
-              Speed is another key advantage. AI-based extraction processes pages in seconds instead of requiring manual correction of misaligned columns or misread numbers. Gemini is optimized for both native digital PDFs and scanned images, so whether your source is a generated report or a photographed form, you get fast, consistent results. There&apos;s no need to re-upload or tweak settings for different document types—the same pipeline delivers high-quality output across invoices, tax forms, and statement tables.
+              Speed and accuracy are critical when you&apos;re closing books or matching bank feeds. AI-based extraction processes statements in seconds and preserves numeric precision and date formats, so you spend less time fixing misread amounts or realigning columns. Whether your source is a downloaded PDF or a scanned statement, you get consistent, reconciliation-ready output. No re-upload or manual tweaks—the same pipeline works across different banks and statement formats.
             </p>
             <p className="mt-4 text-slate-600">
-              Accuracy matters especially when the data feeds into finance, auditing, or compliance workflows. Our AI is trained to preserve numeric precision, date formats, and text exactly as they appear in the source. Combined with layout retention and speed, this makes the tool suitable for professionals who need reliable PDF-to-Excel conversion without manual cleanup. You get a spreadsheet that mirrors your document, ready for analysis or import into your existing systems.
+              We keep your data private. Files are processed in memory and discarded after extraction, so your bank statements never linger on our servers. That bank-level privacy, combined with layout preservation and export to Excel or CSV, makes this tool a trusted choice for accountants and finance teams who need reliable statement-to-spreadsheet conversion without manual data entry.
             </p>
           </section>
 
-          <section aria-labelledby="why-choose-heading">
-            <h2 id="why-choose-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Why Choose Our PDF to Excel Converter?
-            </h2>
-            <div className="mt-8 grid gap-6 sm:grid-cols-1 lg:grid-cols-3">
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section aria-labelledby="why-choose-heading" className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <h2 id="why-choose-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                Why Choose Our Bank Statement to Excel Converter?
+              </h2>
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="flex flex-col p-6 bg-white rounded-xl shadow-sm border border-slate-200">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                   <LayoutGrid className="h-5 w-5" />
                 </div>
-                <h3 className="mt-4 font-semibold text-slate-900">Exact Layout Preservation</h3>
-                <p className="mt-2 text-slate-600">
-                  Unlike standard OCR, our AI understands visual structures, keeping your rows and columns exactly as they appear in the original PDF.
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 mt-4">Extract Running Balances</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Our AI captures transaction tables with dates, amounts, descriptions, and running balances—exactly as they appear on your statement—so reconciliation is straightforward.
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col p-6 bg-white rounded-xl shadow-sm border border-slate-200">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                   <Sparkles className="h-5 w-5" />
                 </div>
-                <h3 className="mt-4 font-semibold text-slate-900">Powered by Advanced AI</h3>
-                <p className="mt-2 text-slate-600">
-                  Gemini Robotics-ER drives complex spatial reasoning, so multi-section forms, tables, and invoices are converted with high fidelity.
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 mt-4">Identify Dates and Amounts</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Gemini identifies dates and amounts with high accuracy, even in scanned or multi-column statements, so you get clean data for matching and reporting.
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col p-6 bg-white rounded-xl shadow-sm border border-slate-200">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                  <FileDown className="h-5 w-5" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 mt-4">Export to Xero/QuickBooks Format</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Download Excel or CSV with columns ready for import into Xero, QuickBooks, or your preferred accounting software. No manual reformatting—just upload and reconcile.
+                </p>
+              </div>
+              <div className="flex flex-col p-6 bg-white rounded-xl shadow-sm border border-slate-200">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                   <Shield className="h-5 w-5" />
                 </div>
-                <h3 className="mt-4 font-semibold text-slate-900">Secure & Private</h3>
-                <p className="mt-2 text-slate-600">
-                  Your files are processed securely and never stored on our servers. Data is handled in memory and discarded after the request completes.
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 mt-4">Bank-Level Privacy</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Your statements are processed securely and never stored. Data is handled in memory and discarded after the request—so your financial data stays private.
+                </p>
+              </div>
+            </div>
+            </div>
+          </section>
+
+          {/* How to Convert Bank Statements to Excel - SEO-rich step-by-step */}
+          <section className="max-w-4xl mx-auto py-12 px-4 sm:px-6" aria-labelledby="how-it-works-heading">
+            <h2 id="how-it-works-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              How to Convert Bank Statements to Excel (Step-by-Step)
+            </h2>
+            <div className="mt-8 space-y-10">
+              <div className="flex gap-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white" aria-hidden>1</span>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Step 1: Upload Your Statement Securely.</h3>
+                  <p className="text-slate-600 leading-relaxed">
+                    Drag and drop your scanned PDF bank statements. Our system uses bank-level encryption, ensuring your financial documents remain completely private and are never stored on our servers.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white" aria-hidden>2</span>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Step 2: AI Data Extraction.</h3>
+                  <p className="text-slate-600 leading-relaxed">
+                    Unlike outdated OCR tools that mess up columns, our advanced AI reads the context of the document. It accurately identifies dates, transaction descriptions, withdrawals, deposits, and running balances, even on multi-page or heavily formatted statements.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white" aria-hidden>3</span>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Step 3: Download and Reconcile.</h3>
+                  <p className="text-slate-600 leading-relaxed">
+                    Instantly download a perfectly formatted Excel (.xlsx) or CSV file. The clean data structure is ready to be directly imported into Xero, QuickBooks, Wave, or your custom accounting spreadsheet.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* FAQ - SEO-rich, fully visible for crawlers */}
+          <section className="max-w-4xl mx-auto py-12 px-4 sm:px-6" aria-labelledby="faq-converter-heading">
+            <h2 id="faq-converter-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Frequently Asked Questions
+            </h2>
+            <div className="mt-8 space-y-8">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">Is my financial data secure?</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Absolutely. We understand that bank statements contain highly sensitive information. Your files are processed in-memory and instantly deleted from our servers the moment the conversion is complete. We do not store, train on, or look at your documents.
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">Can it handle multi-page PDFs?</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Yes! Our AI engine can process lengthy, multi-page statements from any major bank seamlessly.
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">Does it work with scanned or low-quality PDFs?</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Yes, our AI-driven extraction is highly resilient and can read scanned documents, photos of statements, and documents with complex watermarks much better than traditional OCR.
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">Which accounting software is this compatible with?</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  The output is a standard Excel or CSV file. You can easily map the columns to import the data into QuickBooks Online, Xero, Sage, Wave, and most major ERP systems.
                 </p>
               </div>
             </div>
@@ -551,16 +621,16 @@ export default function PdfToExcelPage() {
 
           <section aria-labelledby="use-cases-heading">
             <h2 id="use-cases-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              What can you extract?
+              What We Extract from Bank Statements
             </h2>
             <p className="mt-4 text-slate-600">
-              Our PDF to Excel tool works with a wide range of documents. Extract data from:
+              Our bank statement converter is built for bookkeepers and accountants. We extract:
             </p>
             <ul className="mt-6 list-inside list-disc space-y-2 text-slate-600 sm:list-outside sm:pl-6">
-              <li><strong className="text-slate-900">Invoices</strong> — line items, totals, vendor details, and due dates</li>
-              <li><strong className="text-slate-900">Receipts</strong> — purchase details and amounts</li>
-              <li><strong className="text-slate-900">Bank Statements</strong> — transactions and balances</li>
-              <li><strong className="text-slate-900">Tax Forms</strong> — including complex IRS forms and schedules</li>
+              <li><strong className="text-slate-900">Transaction dates and amounts</strong> — ready for matching and reconciliation</li>
+              <li><strong className="text-slate-900">Descriptions and references</strong> — payees, memos, and check numbers</li>
+              <li><strong className="text-slate-900">Running balances</strong> — so your Excel matches the statement layout</li>
+              <li><strong className="text-slate-900">Multi-account summaries</strong> — when your statement has several sections or accounts</li>
             </ul>
           </section>
 
@@ -571,26 +641,26 @@ export default function PdfToExcelPage() {
             <div className="mt-8 space-y-2">
               <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
                 <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
-                  Is my data safe?
+                  Is my bank statement data safe?
                 </summary>
                 <p className="pb-4 text-slate-600">
-                  Yes. We do not store your documents. Files are processed in memory and deleted immediately after extraction. Your PDFs and the extracted data are never retained on our servers, so your sensitive invoices and financial data stay private.
+                  Yes. We do not store your documents. Statements are processed in memory and deleted immediately after extraction. Your PDFs and the extracted data are never retained on our servers, so your bank details stay private—ideal for accountants and finance teams.
                 </p>
               </details>
               <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
                 <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
-                  How accurate is the conversion?
+                  Can I use this for Xero or QuickBooks reconciliation?
                 </summary>
                 <p className="pb-4 text-slate-600">
-                  Our AI delivers high accuracy for tables, invoices, and forms. Rows and columns are preserved from the original layout, and numeric values, dates, and text are extracted as they appear. For complex or scanned documents, results are typically ready to use with minimal or no manual correction.
+                  Yes. The tool outputs Excel and CSV with dates, amounts, and descriptions in columns that you can map to your accounting software. Many users import the file into Xero or QuickBooks for bank reconciliation without manual data entry.
                 </p>
               </details>
               <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
                 <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
-                  Will my tables look the same?
+                  Does it work with scanned bank statements?
                 </summary>
                 <p className="pb-4 text-slate-600">
-                  Yes. Our AI preserves the visual layout: rows and columns map directly to spreadsheet cells. Section headers (e.g. Part I, Invoice) are detected and styled with bold and light grey background in the Excel output. Merged cells and table structure are maintained so your spreadsheet mirrors the original document.
+                  Yes. Our AI handles both digital PDFs and scanned or photographed statements. It recognizes tables, dates, and amounts from the visual layout, so you get accurate extraction even from image-based statements.
                 </p>
               </details>
               <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
@@ -598,7 +668,7 @@ export default function PdfToExcelPage() {
                   What is the maximum file size?
                 </summary>
                 <p className="pb-4 text-slate-600">
-                  5MB per file for fast, reliable processing. We recommend keeping files under this limit for the best experience. For larger documents, consider splitting the PDF or compressing images before upload.
+                  5MB per file for fast, reliable processing. For longer statements, consider splitting the PDF or compressing scans before upload.
                 </p>
               </details>
               <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
@@ -606,157 +676,23 @@ export default function PdfToExcelPage() {
                   What AI model do you use?
                 </summary>
                 <p className="pb-4 text-slate-600">
-                  We use Google&apos;s Gemini model for layout-aware extraction. It analyzes your document as a visual structure rather than plain text, so tables, forms, and multi-section layouts are converted with high fidelity. The same pipeline handles both native PDFs and scanned images.
+                  We use Google&apos;s Gemini model for layout-aware extraction. It analyzes your statement as a visual structure, so transaction tables, dates, amounts, and running balances are captured with high fidelity—whether the source is a PDF or a scanned image.
                 </p>
               </details>
             </div>
           </section>
 
-          {/* Ad: below FAQ */}
           <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-slate-400">Advertisement</p>
             <div className="w-full flex justify-center my-8 max-w-full overflow-hidden">
-              {/* Desktop Banner - Safe for large screens */}
               <div className="hidden lg:flex justify-center w-full overflow-hidden">
                 <SmartAdBanner width={728} height={90} />
               </div>
-
-              {/* Mobile/Tablet Banner - Fallback for smaller screens to prevent overflow */}
               <div className="flex lg:hidden justify-center w-full">
                 <SmartAdBanner width={300} height={250} />
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Heavy content block for AdSense — 1440px wrapper, fully responsive */}
-        <div className="max-w-[1440px] mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-16">
-          {/* Section 1: The Evolution of Document Extraction */}
-          <section className="space-y-6" aria-labelledby="evolution-heading">
-            <h2 id="evolution-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              The Evolution of Document Extraction: AI vs. Traditional OCR
-            </h2>
-            <p className="text-slate-600 leading-relaxed">
-              Traditional Optical Character Recognition (OCR) has been the default for turning PDFs into editable text for decades. It works by detecting characters and words in a linear, left-to-right flow. That approach falls apart when your document contains complex tables, merged cells, multi-column layouts, or financial statements where the relationship between a date, a description, and an amount depends on their position in a grid. OCR will often dump everything into a single column, split a number across two rows, or merge header cells with data cells—leaving you with a spreadsheet that requires hours of manual cleanup before it can be used in any accounting or reporting workflow.
-            </p>
-            <p className="text-slate-600 leading-relaxed">
-              Our AI-powered extraction engine takes a fundamentally different approach. Instead of treating the PDF as a stream of characters, it understands the document as a visual layout: it identifies table boundaries, row and column structure, section headers, and the semantic relationship between labels and values. That context-aware processing preserves perfect row and column alignment, so a bank statement&apos;s date, description, debit, credit, and running balance stay in the correct cells. Merged cells, indented sub-items, and multi-level headings are retained in the Excel output, making the result suitable for direct import into ERPs, reconciliation tools, or custom analyses without reformatting.
-            </p>
-            <p className="text-slate-600 leading-relaxed">
-              For financial documents in particular—invoices, statements, tax forms, and reports—this difference is critical. A single misaligned column can break formulas, cause incorrect totals, or trigger audit issues. Our AI is optimized to recognize numeric precision, date formats, and table geometry so that the exported spreadsheet is not only readable but trustworthy for downstream use. Whether your source is a native PDF or a scanned image, you get consistent, layout-faithful extraction that traditional OCR simply cannot deliver.
-            </p>
-          </section>
-
-          {/* Section 2: Supported Document Types */}
-          <section className="space-y-8" aria-labelledby="supported-docs-heading">
-            <h2 id="supported-docs-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Supported Document Types
-            </h2>
-            <p className="text-slate-600 leading-relaxed max-w-3xl">
-              Our converter handles a wide variety of business and financial documents. Below is a clear breakdown of what you can convert and what kind of data you can expect to extract.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col">
-                <h3 className="text-lg font-semibold text-slate-900 mb-3">Invoices &amp; Bills</h3>
-                <p className="text-slate-600 text-sm leading-relaxed flex-1">
-                  Extract vendor details, line items, quantities, unit prices, tax totals, and due dates securely. Perfect for accounts payable, expense tracking, and audit trails. Data is processed in-memory and never stored.
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col">
-                <h3 className="text-lg font-semibold text-slate-900 mb-3">Scanned Receipts</h3>
-                <p className="text-slate-600 text-sm leading-relaxed flex-1">
-                  Digitize faded or crumpled paper receipts from business trips, petty cash, or one-off purchases. Our AI handles low contrast and uneven layouts better than standard OCR, so you get clean rows and amounts for expense reports.
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col">
-                <h3 className="text-lg font-semibold text-slate-900 mb-3">Financial Reports</h3>
-                <p className="text-slate-600 text-sm leading-relaxed flex-1">
-                  Convert balance sheets, income statements, and trial balances into editable Excel formats. Preserve section headers, subtotals, and nested rows so your analysis and consolidation workflows stay accurate.
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col">
-                <h3 className="text-lg font-semibold text-slate-900 mb-3">Purchase Orders</h3>
-                <p className="text-slate-600 text-sm leading-relaxed flex-1">
-                  Streamline your supply chain by turning POs into structured CSVs or Excel files. Extract item codes, quantities, prices, and delivery terms for integration with inventory and procurement systems.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 3: A Comprehensive Guide (How it Works in Detail) */}
-          <section className="space-y-10" aria-labelledby="comprehensive-guide-heading">
-            <h2 id="comprehensive-guide-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              A Comprehensive Guide: How It Works in Detail
-            </h2>
-            <div className="space-y-8">
-              <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-6 sm:p-8">
-                <h3 className="text-xl font-semibold text-slate-900 mb-4">1. Secure Upload</h3>
-                <p className="text-slate-600 leading-relaxed mb-4">
-                  The entire conversion process starts in your browser. Our drag-and-drop upload zone accepts PDFs and common image formats (e.g. PNG, JPEG) so you can upload native digital documents or photos of printed pages. There is no need to email files or send them to a third-party server before processing: the file is transmitted over an encrypted connection to our infrastructure only at the moment you click &quot;Extract.&quot; We do not retain copies of your documents after the request completes. Our system is designed so that each file is processed in isolation and then immediately discarded from memory, giving you full control over your sensitive financial and business data.
-                </p>
-                <p className="text-slate-600 leading-relaxed">
-                  We recommend keeping files under 5MB for fast, reliable processing. If you have a multi-page or larger document, consider splitting it into smaller PDFs or compressing images before upload. The upload interface works on both desktop and mobile, so you can convert documents from the office or on the go without installing any software.
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-6 sm:p-8">
-                <h3 className="text-xl font-semibold text-slate-900 mb-4">2. AI Processing &amp; Recognition</h3>
-                <p className="text-slate-600 leading-relaxed mb-4">
-                  Once your file is received, our AI engine analyzes the document as a visual layout rather than a flat stream of text. It scans for table structures, detects rows and columns, and distinguishes data regions from headers, footers, logos, and boilerplate text. This context-aware approach means that irrelevant elements—such as company logos or disclaimer blocks—are ignored, while every meaningful table and list is captured with correct alignment. The model recognizes merged cells, indentation, and multi-level section headings, so the resulting grid mirrors the original document&apos;s structure.
-                </p>
-                <p className="text-slate-600 leading-relaxed">
-                  The same pipeline handles both native PDFs (with selectable text) and scanned or image-based documents. For low-quality or faded scans, the AI uses visual reasoning to infer table boundaries and cell contents, often outperforming traditional OCR that fails on complex layouts. Processing typically completes within seconds, and you see a live progress indicator until your extracted data is ready for review and download.
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-6 sm:p-8">
-                <h3 className="text-xl font-semibold text-slate-900 mb-4">3. Download &amp; Integration</h3>
-                <p className="text-slate-600 leading-relaxed mb-4">
-                  The output is delivered as a standard Excel workbook (.xlsx) with one or more sheets, depending on the structure of your source document. Headers and section rows are styled (e.g. bold, light background) for clarity, and column widths are auto-fitted so the spreadsheet is immediately usable. You can open the file in Microsoft Excel, Google Sheets, LibreOffice Calc, or any compatible spreadsheet application. The clean, consistent column layout makes it easy to map fields for import into major ERPs (e.g. SAP, Oracle, Microsoft Dynamics), accounting platforms (e.g. Xero, QuickBooks, Sage), or your own custom databases and reporting tools.
-                </p>
-                <p className="text-slate-600 leading-relaxed">
-                  No sign-up or account is required to download your file. You keep full ownership of the extracted data, and we do not use it for training or any other purpose. If you need to re-run the conversion (for example, after correcting the source PDF), you can upload again and receive a fresh export at any time.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 4: Expanded FAQ */}
-          <section className="space-y-8" aria-labelledby="expanded-faq-heading">
-            <h2 id="expanded-faq-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Expanded Frequently Asked Questions
-            </h2>
-            <div className="space-y-6">
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-900 mb-3">What is your data retention policy? Do you store my documents?</h3>
-                <p className="text-slate-600 leading-relaxed">
-                  We do not retain your documents or the extracted data. Our data retention policy is simple: as soon as the conversion request is complete, your file and the resulting spreadsheet data are removed from our systems. Processing is done in-memory where possible, and we do not write uploaded PDFs or output Excel files to long-term storage. We do not use your documents for model training, analytics, or any other purpose. Your uploads and extractions are treated as ephemeral and are deleted immediately after the response is sent to your browser.
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-900 mb-3">What are the file size and page limits?</h3>
-                <p className="text-slate-600 leading-relaxed">
-                  The recommended maximum file size is 5MB per upload. This keeps processing fast and reliable for most single documents, including multi-page invoices and statements. We do not enforce a strict page count, but very long documents (e.g. dozens of pages) may take longer to process or may hit time limits. For best results, split very large PDFs into smaller chunks or compress scanned images before uploading. If you need to process many files, you can run multiple conversions in sequence; each file is handled independently.
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-900 mb-3">Do you support non-English documents?</h3>
-                <p className="text-slate-600 leading-relaxed">
-                  Yes. Our AI model is capable of recognizing text and table structure in multiple languages and scripts. Documents in English, Spanish, French, German, and other common languages are supported. Layout and numeric extraction (dates, amounts, quantities) work regardless of language, so you can convert invoices, receipts, and reports from international vendors or subsidiaries. If your document uses a mix of languages or special characters, the extraction will preserve them in the Excel output. For best accuracy on rare scripts or very dense text, we still recommend clear, well-formatted source documents.
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-900 mb-3">What is the difference between CSV and Excel export?</h3>
-                <p className="text-slate-600 leading-relaxed">
-                  Currently we provide download in Excel (.xlsx) format. Excel workbooks support multiple sheets, styling (bold headers, borders, column widths), and formulas, which makes them ideal for structured tables with sections and formatting. CSV (comma-separated values) is a plain-text format that many accounting and ERP systems accept for bulk import; it has no styling or multiple sheets but is widely compatible. If you need CSV, you can open the downloaded Excel file in any spreadsheet application and use &quot;Save As&quot; to export as CSV. The underlying data structure is the same—rows and columns—so mapping to your system is straightforward in either format.
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-900 mb-3">How accurate is the extraction on low-quality or scanned documents?</h3>
-                <p className="text-slate-600 leading-relaxed">
-                  Our AI-driven extraction is designed to be resilient to scan quality issues. For clearly scanned or digital PDFs, users typically see high accuracy with minimal or no manual correction. For low-quality scans—faded print, skew, or low resolution—the model uses visual context to infer table boundaries and cell contents, often outperforming traditional OCR that tends to misalign columns or split values across rows. Accuracy can vary with extremely poor images or unusual layouts; we recommend reviewing the first few rows of the output for critical documents and re-uploading with a clearer scan if needed. In general, the more structured and readable the source (even if scanned), the better the result.
-                </p>
-              </div>
-            </div>
-          </section>
         </div>
       </main>
       <QuotaLimitModal open={showQuotaModal} onClose={() => setShowQuotaModal(false)} />

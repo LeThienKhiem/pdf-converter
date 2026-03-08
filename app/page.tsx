@@ -24,14 +24,15 @@ export default function Home() {
         {/* Hero */}
         <section className="relative overflow-hidden border-b border-slate-200/80 bg-gradient-to-b from-slate-50 to-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="hero-heading">
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.08),transparent)]" />
-          <div className="mx-auto max-w-4xl text-center">
-            <h1 id="hero-heading" className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
-              Automate Your Invoice Data Extraction
-            </h1>
-            <p className="mt-5 text-lg text-slate-600 sm:text-xl">
-              Instantly convert your PDF invoices and reports into structured Google Sheets or Excel files.
-            </p>
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
+          <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-4xl text-center">
+              <h1 id="hero-heading" className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
+                Automate Financial Data Entry with AI
+              </h1>
+              <p className="mt-6 text-lg text-slate-600 leading-relaxed sm:text-xl max-w-3xl mx-auto">
+                InvoiceToData eliminates manual typing by converting complex PDFs, receipts, and bank statements into Excel, CSV, or Google Sheets in seconds. Our context-aware AI understands tables, line items, and financial layouts—so you get structured data that matches your source document without reformatting. No more copy-pasting from invoices or re-keying statement lines; just upload, extract, and integrate into your existing workflows.
+              </p>
+              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
               <Link
                 href="/tools/pdf-to-excel"
                 className="inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-[#217346] px-6 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-[#1d603d] hover:shadow-lg sm:w-auto"
@@ -46,6 +47,7 @@ export default function Home() {
                 <FileSpreadsheet className="h-5 w-5 shrink-0" aria-hidden />
                 Convert PDF to Google Sheet
               </Link>
+            </div>
             </div>
           </div>
         </section>
@@ -63,6 +65,119 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Text-rich content block — 1440px wrapper for AdSense */}
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-24">
+          {/* The Hidden Cost of Manual Data Entry */}
+          <section className="space-y-6" aria-labelledby="problem-heading">
+            <h2 id="problem-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              The Hidden Cost of Manual Data Entry
+            </h2>
+            <p className="text-gray-600 text-lg leading-relaxed">
+              Businesses and accounting firms lose hundreds of billable hours every year copying line items from invoices, re-keying bank statement transactions, and transcribing receipts into spreadsheets. What looks like a simple task—entering a vendor name, an amount, or a date—compounds into a major drain on productivity when multiplied across dozens of clients or hundreds of documents per month. Staff who could be focused on analysis, reconciliation, or advisory work instead spend their time on repetitive data entry that adds little strategic value and increases the risk of costly errors.
+            </p>
+            <p className="text-gray-600 text-lg leading-relaxed">
+              Human error in manual data entry is one of the leading causes of month-end reconciliation mistakes, delayed closes, and audit findings. A single misplaced decimal, transposed digit, or duplicated line can throw off totals, break formulas, and force teams to hunt for discrepancies long after the fact. InvoiceToData removes that risk by using AI to extract data directly from your source documents with layout-aware precision, so the numbers that land in your Excel or Google Sheets match the PDF—every time. Free your team from typing and let them focus on what matters: interpreting the data, not re-entering it.
+            </p>
+          </section>
+
+          {/* Our Suite of AI Data Extraction Tools */}
+          <section className="space-y-8" aria-labelledby="tools-heading">
+            <h2 id="tools-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Our Suite of AI Data Extraction Tools
+            </h2>
+            <p className="text-gray-600 text-lg leading-relaxed max-w-3xl">
+              Each tool is built for a specific use case but shares the same secure, AI-powered engine. Choose the one that fits your workflow and start converting in seconds.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-blue-600 mb-4">
+                  <FileBarChart className="h-6 w-6" aria-hidden />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">AI PDF to Excel Converter</h3>
+                <p className="text-gray-600 leading-relaxed flex-1">
+                  Extract line items, totals, vendor details, and due dates from invoices and receipts. Our AI preserves table structure and section headers so your Excel output is ready for approval workflows, expense coding, or import into your accounting system. Handles both native PDFs and scanned images.
+                </p>
+                <Link
+                  href="/tools/pdf-to-excel"
+                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[#217346] px-5 py-3 text-base font-semibold text-white shadow-sm transition-all hover:bg-[#1d603d] hover:shadow-md w-full sm:w-auto"
+                >
+                  Try it now
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-blue-600 mb-4">
+                  <Calculator className="h-6 w-6" aria-hidden />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">Bank Statement Extractor</h3>
+                <p className="text-gray-600 leading-relaxed flex-1">
+                  Turn PDF bank statements into clean Excel or CSV in one click. The tool isolates transaction dates, descriptions, withdrawals, deposits, and running balances so you can reconcile faster and import directly into Xero, QuickBooks, or your own spreadsheets. Built for bookkeepers and finance teams who need accuracy without manual re-keying.
+                </p>
+                <Link
+                  href="/tools/bank-statement-to-excel"
+                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[#217346] px-5 py-3 text-base font-semibold text-white shadow-sm transition-all hover:bg-[#1d603d] hover:shadow-md w-full sm:w-auto"
+                >
+                  Try it now
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-blue-600 mb-4">
+                  <FileSpreadsheet className="h-6 w-6" aria-hidden />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">PDF to Google Sheets</h3>
+                <p className="text-gray-600 leading-relaxed flex-1">
+                  Convert PDFs directly into Google Sheets for cloud collaboration. Share extracted tables with your team, link to other sheets, or use Sheets formulas and add-ons without leaving the browser. Ideal for remote teams and anyone who prefers Google Workspace over desktop Excel.
+                </p>
+                <Link
+                  href="/tools/pdf-to-gsheet"
+                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0F9D58] to-[#1a73e8] px-5 py-3 text-base font-semibold text-white shadow-sm transition-all hover:opacity-95 hover:shadow-md w-full sm:w-auto"
+                >
+                  Try it now
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          {/* Who Is This Platform For? */}
+          <section className="space-y-8" aria-labelledby="audience-heading">
+            <h2 id="audience-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Who Is This Platform For?
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">Accountants &amp; Bookkeepers</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Speed up month-end close and client reporting by converting client invoices, bank statements, and receipts into structured data in minutes. Reduce re-keying errors and free up time for review and advisory work. Export to Excel or CSV for direct import into your practice management or accounting software.
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">Small Business Owners</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Digitize vendor bills and expenses without hiring data entry clerks. Upload invoices and receipts as they arrive, get clean spreadsheets for your bookkeeper or tax preparer, and keep your records organized. No accounting degree required—just drag, drop, and download.
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">Financial Analysts</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Pull structured tables out of dense annual reports, earnings releases, and regulatory filings. Our AI identifies financial statement sections, schedules, and multi-column layouts so you can analyze data in Excel or Google Sheets instead of scrolling through hundreds of PDF pages.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Enterprise-Grade Security & Privacy */}
+          <section className="space-y-6" aria-labelledby="security-heading">
+            <h2 id="security-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Enterprise-Grade Security &amp; Privacy
+            </h2>
+            <p className="text-gray-600 text-lg leading-relaxed">
+              We take data protection seriously. InvoiceToData operates on a <strong className="text-slate-900">Zero Data Retention</strong> policy: your files are never written to long-term storage. All processing is performed <strong className="text-slate-900">in-memory</strong>—your PDF or image is held only for the duration of the conversion request. The moment the extraction is complete and the response is sent to your browser, we perform <strong className="text-slate-900">instant deletion</strong> of both the uploaded document and the extracted output from our systems. We do not train AI models on your content, share it with third parties, or use it for any purpose other than fulfilling your single conversion request. For financial documents, invoices, and bank statements, that means your sensitive data is processed securely and leaves no trace. This approach supports compliance with common privacy and data-minimization expectations in business and regulated environments, so you can use our tools with confidence.
+            </p>
+          </section>
         </div>
 
         {/* Features */}
@@ -264,7 +379,7 @@ export default function Home() {
 
         {/* FAQ */}
         <section className="border-b border-slate-200/80 bg-white px-4 py-16 sm:px-6 lg:px-8" aria-labelledby="faq-heading">
-          <div className="mx-auto max-w-3xl">
+          <div className="mx-auto max-w-[1440px]">
             <h2 id="faq-heading" className="text-center text-2xl font-bold text-slate-900 sm:text-3xl">
               Frequently Asked Questions
             </h2>
@@ -299,6 +414,54 @@ export default function Home() {
                 </summary>
                 <p className="pb-3 text-slate-600">
                   We process files in memory and do not store your PDFs or extracted data after the request completes. Your documents stay private.
+                </p>
+              </details>
+              <details className="group rounded-lg border border-slate-200 bg-white px-4">
+                <summary className="cursor-pointer list-none py-3 font-medium text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
+                  Can the AI extract data from password-protected bank statements?
+                </summary>
+                <p className="pb-3 text-slate-600">
+                  For security and privacy reasons, our system cannot process encrypted or password-protected PDF files directly. Most banks secure downloaded statements with a default password (often your tax ID or date of birth). You will need to unlock and save the PDF without a password using your system&apos;s built-in PDF viewer before uploading it to our converter.
+                </p>
+              </details>
+              <details className="group rounded-lg border border-slate-200 bg-white px-4">
+                <summary className="cursor-pointer list-none py-3 font-medium text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
+                  Does the converter support multiple languages and international currencies?
+                </summary>
+                <p className="pb-3 text-slate-600">
+                  Yes. Our AI engine is trained on a vast array of global financial documents. It effortlessly recognizes international currency symbols (such as EUR, GBP, JPY, and AUD) and can intelligently distinguish between different regional date formats (like DD/MM/YYYY in Europe versus MM/DD/YYYY in the US), ensuring your Excel output is perfectly localized.
+                </p>
+              </details>
+              <details className="group rounded-lg border border-slate-200 bg-white px-4">
+                <summary className="cursor-pointer list-none py-3 font-medium text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
+                  How accurate is the extraction for low-quality scanned receipts or crumpled invoices?
+                </summary>
+                <p className="pb-3 text-slate-600">
+                  While traditional OCR fails when dealing with skewed scans, watermarks, or background noise, our context-aware AI looks at the structure of the document. For best results, we recommend scans of at least 300 DPI. However, the AI can still reconstruct tables and identify line items from smartphone photos and lower-quality scans with industry-leading accuracy.
+                </p>
+              </details>
+              <details className="group rounded-lg border border-slate-200 bg-white px-4">
+                <summary className="cursor-pointer list-none py-3 font-medium text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
+                  What is the maximum file size and page limit for uploads?
+                </summary>
+                <p className="pb-3 text-slate-600">
+                  To ensure lightning-fast processing times and maintain server stability, the current limit is set to 15MB per file, with a maximum of 50 pages per document. This comfortably covers 99% of standard monthly bank statements, vendor invoices, and annual expense reports.
+                </p>
+              </details>
+              <details className="group rounded-lg border border-slate-200 bg-white px-4">
+                <summary className="cursor-pointer list-none py-3 font-medium text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
+                  Will the downloaded Excel file be ready to import into Xero or QuickBooks?
+                </summary>
+                <p className="pb-3 text-slate-600">
+                  Absolutely. The data is exported into a clean, strictly formatted tabular structure (.xlsx or .csv) without merged cells or hidden formatting. You will get standard columns (Date, Description, Amount, Balance), making it incredibly easy to map the fields directly into your preferred accounting software like Xero, QuickBooks Online, or Sage.
+                </p>
+              </details>
+              <details className="group rounded-lg border border-slate-200 bg-white px-4">
+                <summary className="cursor-pointer list-none py-3 font-medium text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">
+                  Can I process multiple PDF files at the same time (Batch Processing)?
+                </summary>
+                <p className="pb-3 text-slate-600">
+                  Currently, our free tool optimizes for high-fidelity extraction of single documents to guarantee 100% accuracy on complex tables. We are actively developing a bulk-processing feature and an API for enterprise users who need to convert hundreds of invoices simultaneously. Stay tuned for updates!
                 </p>
               </details>
             </div>
