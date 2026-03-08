@@ -3,9 +3,10 @@ import { Environment, Paddle } from "@paddle/paddle-node-sdk";
 import { getSupabase } from "@/lib/supabase";
 
 /**
- * Paddle Billing webhook: transaction.completed → update user credits + insert transaction.
- * Required env: PADDLE_API_KEY, PADDLE_WEBHOOK_SECRET.
- * Use NEXT_PUBLIC_PADDLE_ENV=production for live Paddle (same as frontend).
+ * Paddle Billing webhook (production-ready).
+ * - Handles transaction.completed: updates users.credits and inserts into transactions (Billing history).
+ * - Signature verification is mandatory; returns 401 on failure (no bypass).
+ * - Env: PADDLE_API_KEY, PADDLE_WEBHOOK_SECRET; NEXT_PUBLIC_PADDLE_ENV=production for live.
  */
 const CREDITS_TO_ADD = 50;
 
