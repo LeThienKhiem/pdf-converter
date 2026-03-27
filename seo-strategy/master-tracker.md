@@ -47,15 +47,32 @@
 |---|---|---|---|---|
 | — | Pending first outreach | — | — | — |
 
+### Link Building Pipeline (Identified 2026-03-27)
+
+**Directory Submissions (Target: 20+ listings)**
+- G2 (DR 91), Capterra (DR 90), Product Hunt (DR 91), GetApp (DR 89), Crunchbase (DR 91) — Priority: Immediate
+- AlternativeTo (DR 80+), SaaSHub (DR 70+), Software Advice (DR 88), Trustpilot (DR 93) — Priority: Week 2
+- BetaList, Indie Hackers, There's An AI For That, AI Tool Directory — Priority: Weeks 3-4
+
+**Listicle Inclusion Targets (10 identified)**
+- Koncile, Tofu Blog, Red Brick Labs, Tailride, Lido, OCRSoftware.co, InvoiceOCR.co, Gennai, Parseur, Unstract
+
+**Guest Post Targets (6 identified)**
+- CleverDev, BusinessFirms, Zetran, Hemsworth Global, FinanceBuzz, CFO Dive
+
+See full details: `seo-linkbuilding/outreach-2026-03-27.md`
+
 ---
 
 ## Monthly Progress Summary
 
 ### Month 1 (March-April 2026)
 - Campaign started March 26, 2026
-- First comparison article drafted
+- First comparison article drafted (March 26)
+- Link building strategy created with 20+ directory targets, 10 listicle inclusion targets, 6 guest post targets (March 27)
+- 4 outreach email templates created (March 27)
 - Baseline rankings: Not yet indexed for target keywords
-- **Focus:** Content creation + Technical SEO foundation
+- **Focus:** Content creation + Technical SEO foundation + Directory submissions
 
 ### Month 2-6
 - Pending...

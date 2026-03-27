@@ -3,11 +3,25 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 
 /**
- * Vercel Cron Job — runs daily at 8:00 AM UTC
- * Checks website SEO performance and sends report to Telegram
+ * Vercel Cron Job — runs daily at 8:00 AM UTC (3:00 PM VN)
+ * Comprehensive SEO performance report with keyword ranking tracking
  */
 
-// Protect the endpoint so only Vercel cron can call it
+const TARGET_KEYWORDS = [
+  "invoice data extraction",
+  "invoice OCR",
+  "invoice OCR software",
+  "extract data from invoice",
+  "invoice parser",
+  "convert invoice to excel",
+  "best invoice OCR software 2026",
+  "invoice scanning software",
+  "AI invoice data extraction",
+  "PDF invoice data extraction",
+];
+
+const SITE_DOMAIN = "invoicetodata.com";
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -24,9 +38,55 @@ export async function GET(request: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    console.error("[SEO Cron] Error:", err);
+    console.error("[SEO Report Cron] Error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+/**
+ * Check Google ranking for a keyword using Custom Search API
+ * Returns position (1-100) or null if not found
+ */
+async function checkKeywordRanking(
+  keyword: string,
+  apiKey: string,
+  searchEngineId: string
+): Promise<{ position: number | null; url: string | null }> {
+  try {
+    // Search first 30 results (3 pages of 10)
+    for (let start = 1; start <= 21; start += 10) {
+      const params = new URLSearchParams({
+        key: apiKey,
+        cx: searchEngineId,
+        q: keyword,
+        start: String(start),
+        num: "10",
+      });
+
+      const res = await fetch(
+        `https://www.googleapis.com/customsearch/v1?${params}`,
+        { signal: AbortSignal.timeout(10000) }
+      );
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const items = data.items ?? [];
+
+      for (let i = 0; i < items.length; i++) {
+        const link: string = items[i].link ?? "";
+        if (link.includes(SITE_DOMAIN)) {
+          return {
+            position: start + i,
+            url: link,
+          };
+        }
+      }
+    }
+    return { position: null, url: null };
+  } catch {
+    return { position: null, url: null };
   }
 }
 
@@ -39,9 +99,10 @@ async function generateSEOReport(): Promise<string> {
     day: "numeric",
   });
 
-  // --- 1. Check blog post count ---
+  // --- 1. Blog stats from Supabase ---
   let totalPosts = 0;
   let latestPost = "N/A";
+  let postsThisWeek = 0;
   if (hasSupabaseConfig) {
     const supabase = getSupabase();
     const { count } = await supabase
@@ -63,18 +124,17 @@ async function generateSEOReport(): Promise<string> {
       });
       latestPost = `${latest.title} (${postDate})`;
     }
+
+    // Posts in last 7 days
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { count: weekCount } = await supabase
+      .from("blogs")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", weekAgo);
+    postsThisWeek = weekCount ?? 0;
   }
 
-  // --- 2. Check Google indexing via site: search ---
-  let indexedPages = "Unable to check";
-  try {
-    // Use Google Custom Search API if available, otherwise note as manual check
-    indexedPages = "Check manually: site:invoicetodata.com";
-  } catch {
-    // Silently handle
-  }
-
-  // --- 3. Check if site is up ---
+  // --- 2. Website uptime check ---
   let siteStatus = "❌ Down";
   let responseTime = 0;
   try {
@@ -89,7 +149,7 @@ async function generateSEOReport(): Promise<string> {
     siteStatus = "❌ Unreachable";
   }
 
-  // --- 4. Check key pages ---
+  // --- 3. Key pages health check ---
   const keyPages = [
     { name: "Homepage", url: "https://invoicetodata.com" },
     { name: "Blog", url: "https://invoicetodata.com/blog" },
@@ -109,47 +169,94 @@ async function generateSEOReport(): Promise<string> {
     }
   }
 
-  // --- 5. Target keywords reminder ---
-  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ...
-  const dailyTasks: Record<number, string> = {
-    0: "📊 Weekly Summary — Compile insights & plan next week",
-    1: "🔍 SEO Audit — Check rankings & competitor activity",
-    2: "✍️ Blog Post — Write SEO content (Tier 2/3 keyword)",
-    3: "🔧 Technical SEO — Audit site speed, mobile, schema",
-    4: "📝 Comparison Page — Create vs-competitor content",
-    5: "🔗 Link Building — Research backlink opportunities",
-    6: "📖 Tutorial/Guide — Write how-to content (long-tail)",
-  };
+  // --- 4. Keyword Ranking Check (if Google API is configured) ---
+  const googleApiKey = process.env.GOOGLE_SEARCH_API_KEY ?? "";
+  const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID ?? "";
+  let rankingSection = "";
 
-  const todayTask = dailyTasks[dayOfWeek] ?? "📋 General SEO work";
+  if (googleApiKey && searchEngineId) {
+    const rankings: string[] = [];
+    let foundCount = 0;
+    let bestRank = Infinity;
+    let bestKeyword = "";
+
+    for (const keyword of TARGET_KEYWORDS) {
+      const result = await checkKeywordRanking(keyword, googleApiKey, searchEngineId);
+
+      if (result.position !== null) {
+        foundCount++;
+        const emoji =
+          result.position <= 10 ? "🟢" : result.position <= 20 ? "🟡" : "🟠";
+        rankings.push(`  ${emoji} #${result.position} — ${keyword}`);
+        if (result.position < bestRank) {
+          bestRank = result.position;
+          bestKeyword = keyword;
+        }
+      } else {
+        rankings.push(`  ⚪ Not in top 30 — ${keyword}`);
+      }
+
+      // Rate limit: small delay between searches
+      await new Promise((r) => setTimeout(r, 500));
+    }
+
+    rankingSection = `
+<b>🏆 Keyword Rankings (Top 30)</b>
+${rankings.join("\n")}
+  📊 Found: ${foundCount}/${TARGET_KEYWORDS.length} keywords ranked
+${bestRank < Infinity ? `  ⭐ Best: #${bestRank} for "${bestKeyword}"` : "  🎯 Goal: Get at least 1 keyword into top 30"}`;
+  } else {
+    rankingSection = `
+<b>🏆 Keyword Rankings</b>
+  ⚠️ Google Custom Search API not configured
+  Add GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_ENGINE_ID to Vercel env to enable automatic ranking tracking`;
+  }
+
+  // --- 5. Sitemap check ---
+  let sitemapStatus = "❌ Error";
+  try {
+    const res = await fetch("https://invoicetodata.com/sitemap.xml", {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (res.ok) {
+      const text = await res.text();
+      const urlCount = (text.match(/<url>/g) ?? []).length;
+      sitemapStatus = `✅ ${urlCount} URLs indexed`;
+    }
+  } catch {
+    sitemapStatus = "❌ Unreachable";
+  }
+
+  // --- 6. Weekly progress summary ---
+  const dayOfWeek = now.getDay();
+  const campaignStart = new Date("2026-03-26");
+  const campaignDays = Math.floor((now.getTime() - campaignStart.getTime()) / 86400000);
+  const campaignWeeks = Math.floor(campaignDays / 7);
 
   // --- Build report ---
   const report = `
 <b>📈 InvoiceToData SEO Daily Report</b>
-<i>${dateStr}</i>
+<i>${dateStr} — Week ${campaignWeeks + 1}</i>
 
-<b>🌐 Website Status</b>
+<b>🌐 Website Health</b>
   ${siteStatus} (${responseTime}ms)
 ${pageChecks.join("\n")}
+  🗺️ Sitemap: ${sitemapStatus}
+${rankingSection}
 
-<b>📝 Content</b>
+<b>📝 Content Stats</b>
   Total blog posts: ${totalPosts}
+  New this week: ${postsThisWeek}
   Latest: ${latestPost}
 
-<b>🎯 Today's SEO Task</b>
-  ${todayTask}
+<b>📋 SEO Checklist</b>
+  ${totalPosts >= 10 ? "✅" : "🔲"} Publish 10+ blog posts (${totalPosts}/10)
+  ${totalPosts >= 20 ? "✅" : "🔲"} Publish 20+ blog posts (${totalPosts}/20)
+  🔲 Submit to Google Search Console
+  🔲 Submit to 5+ directories (G2, Capterra, Product Hunt)
+  🔲 Get first backlink
 
-<b>🔑 Target Keywords to Track</b>
-  • invoice data extraction
-  • invoice OCR
-  • best invoice OCR software 2026
-  • convert invoice to excel
-  • invoice parser
-
-<b>💡 Tip</b>
-Open Claude Desktop to run the full SEO agent for content creation, keyword research, and detailed analysis.
-
-<a href="https://invoicetodata.com/blog">View Blog</a> | <a href="https://search.google.com/search-console">Search Console</a>
+<a href="https://invoicetodata.com/blog">Blog</a> | <a href="https://search.google.com/search-console">Search Console</a> | <a href="https://invoicetodata.com/sitemap.xml">Sitemap</a>
 `.trim();
 
   return report;

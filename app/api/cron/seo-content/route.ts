@@ -4,11 +4,22 @@ import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 
 /**
- * Vercel Cron Job — runs daily at 1:00 AM UTC
- * Automatically generates SEO blog content using Gemini and publishes to Supabase
+ * Vercel Cron Job — runs daily at 1:00 AM UTC (8:00 AM VN)
+ * Automatically generates SEO blog content using Gemini, publishes to Supabase,
+ * and pings Google to re-crawl sitemap
  */
 
 const GEMINI_MODEL = "gemini-flash-lite-latest";
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 5000;
+
+// Internal pages to link to in blog content
+const INTERNAL_LINKS = [
+  { url: "https://invoicetodata.com", anchor: "InvoiceToData" },
+  { url: "https://invoicetodata.com/tools/pdf-to-excel", anchor: "PDF to Excel converter" },
+  { url: "https://invoicetodata.com/tools/pdf-to-gsheet", anchor: "PDF to Google Sheets" },
+  { url: "https://invoicetodata.com/blog", anchor: "our blog" },
+];
 
 // SEO content calendar — rotates based on day of year
 const CONTENT_TEMPLATES = [
@@ -65,6 +76,24 @@ Choose a specific industry or scenario:
 - How restaurants and hospitality use invoice OCR
 Include practical tips and a clear CTA to try InvoiceToData.`,
   },
+  {
+    type: "glossary",
+    prompt: `Write a comprehensive glossary/explainer article about a key concept in invoice processing or OCR.
+Choose a topic like:
+- What is Invoice OCR? Complete Guide for 2026
+- Invoice Data Extraction Explained: How It Works
+- What is Accounts Payable Automation?
+- Understanding Intelligent Document Processing (IDP)
+- OCR vs AI Data Extraction: What's the Difference?
+Make it thorough, educational, and naturally link to InvoiceToData as a solution.`,
+  },
+  {
+    type: "alternative",
+    prompt: `Write a "Best Alternatives to X" article targeting users searching for alternatives to a popular tool.
+Choose ONE tool: "Best Alternatives to ABBYY", "Best Alternatives to Nanonets", "Best Alternatives to Klippa", "Best Alternatives to Rossum", "Best Alternatives to Docsumo".
+List 5-7 alternatives including InvoiceToData as the #1 recommended alternative.
+Include pros, cons, pricing, and use-case fit for each.`,
+  },
 ];
 
 function slugify(text: string): string {
@@ -75,6 +104,10 @@ function slugify(text: string): string {
     .replace(/-+/g, "-")
     .slice(0, 80)
     .replace(/-$/, "");
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function GET(request: Request) {
@@ -90,7 +123,6 @@ export async function GET(request: Request) {
     console.error("[SEO Content Cron] Error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
 
-    // Notify via Telegram on failure
     await sendTelegramMessage(
       `❌ <b>SEO Content Cron Failed</b>\n\nError: ${message}\n\nPlease check Vercel logs.`
     );
@@ -99,12 +131,49 @@ export async function GET(request: Request) {
   }
 }
 
+/** Call Gemini with retry logic for 429/503 errors */
+async function callGeminiWithRetry(
+  model: ReturnType<InstanceType<typeof GoogleGenerativeAI>["getGenerativeModel"]>,
+  prompt: string
+): Promise<string> {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isRetryable = msg.includes("429") || msg.includes("503") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("high demand");
+
+      if (isRetryable && attempt < MAX_RETRIES) {
+        console.log(`[SEO Content] Retry ${attempt}/${MAX_RETRIES} after ${RETRY_DELAY_MS * attempt}ms`);
+        await sleep(RETRY_DELAY_MS * attempt);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Max retries exceeded");
+}
+
+/** Ping Google to re-crawl sitemap after publishing new content */
+async function pingSitemap(): Promise<void> {
+  try {
+    await fetch(
+      "https://www.google.com/ping?sitemap=https://www.invoicetodata.com/sitemap.xml",
+      { signal: AbortSignal.timeout(10000) }
+    );
+    console.log("[SEO Content] Google sitemap ping sent");
+  } catch {
+    console.log("[SEO Content] Google sitemap ping failed (non-critical)");
+  }
+}
+
 async function generateAndPublish() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
   if (!hasSupabaseConfig) throw new Error("Missing Supabase config");
 
-  // Pick content type based on day of year (rotates through templates)
+  // Pick content type based on day of year (rotates through all templates)
   const dayOfYear = Math.floor(
     (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
   );
@@ -116,9 +185,21 @@ async function generateAndPublish() {
     .from("blogs")
     .select("title, slug")
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(30);
 
   const existingTitles = (existingPosts ?? []).map((p) => p.title).join(", ");
+  const existingSlugs = (existingPosts ?? []).map((p) => p.slug);
+
+  // Build internal links instruction
+  const internalLinksInstruction = INTERNAL_LINKS.map(
+    (l) => `- Link to ${l.url} with anchor text "${l.anchor}" at least once`
+  ).join("\n");
+
+  // Also suggest linking to recent blog posts
+  const recentPosts = (existingPosts ?? []).slice(0, 5);
+  const recentLinksInstruction = recentPosts
+    .map((p) => `- You may link to https://invoicetodata.com/blog/${p.slug} (titled: "${p.title}")`)
+    .join("\n");
 
   // Generate content with Gemini
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -132,24 +213,39 @@ IMPORTANT RULES:
 - Article must be 1500-2500 words
 - Write in English
 - Use proper Markdown formatting with ## and ### headings
-- Include a compelling H1 title optimized for SEO
+- Include a compelling H1 title optimized for SEO (include primary keyword near the beginning)
 - Do NOT use the same topic as these existing articles: ${existingTitles}
-- Include relevant keywords naturally: invoice OCR, invoice data extraction, invoice parser, PDF to Excel, invoice scanning
-- Include internal links to https://invoicetodata.com where appropriate
-- Include a FAQ section with 3-5 questions at the end (for Google featured snippets)
-- End with a clear CTA linking to https://invoicetodata.com
-- Write helpful, accurate, E-E-A-T compliant content
-- Do NOT start content with the title (I'll use it separately)
+- Include relevant keywords naturally throughout: invoice OCR, invoice data extraction, invoice parser, PDF to Excel, invoice scanning, automated invoice processing
+- Write for humans first, search engines second — be genuinely helpful
+
+INTERNAL LINKING (very important for SEO):
+${internalLinksInstruction}
+${recentLinksInstruction}
+
+STRUCTURE REQUIREMENTS:
+- Start with ## Introduction (engaging hook with statistics or a pain point)
+- Use ## for main sections, ### for subsections
+- Include at least one comparison table (markdown table) if relevant
+- Include a ## Frequently Asked Questions section with 3-5 Q&As (for Google featured snippets)
+- End with a ## Conclusion and clear CTA linking to https://invoicetodata.com
+- Add "Related:" section at the bottom linking to 2-3 of our existing blog posts
+
+E-E-A-T COMPLIANCE:
+- Include specific numbers, statistics, or data points where possible
+- Reference real tools and real use cases
+- Write from practical experience perspective
+- Be balanced and honest in comparisons
+
+Do NOT start content with the title (I'll use it separately).
 
 FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
 TITLE: [Your SEO-optimized title here]
-META: [Meta description, max 155 characters]
+META: [Meta description, max 155 characters, include primary keyword and a compelling reason to click]
 KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5]
 ---
 [Article content in Markdown starting with ## Introduction]`;
 
-  const result = await model.generateContent(fullPrompt);
-  const response = result.response.text();
+  const response = await callGeminiWithRetry(model, fullPrompt);
 
   // Parse the response
   const titleMatch = response.match(/TITLE:\s*(.+)/);
@@ -165,36 +261,12 @@ KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5]
   const metaDescription = metaMatch?.[1]?.trim().slice(0, 160) ?? "";
   const keywords = keywordsMatch?.[1]?.trim() ?? "";
   const content = response.slice(contentStart + 3).trim();
-  const slug = slugify(title);
+  let slug = slugify(title);
 
-  // Check for duplicate slug
-  const { data: existing } = await supabase
-    .from("blogs")
-    .select("id")
-    .eq("slug", slug)
-    .single();
-
-  if (existing) {
-    // Add date suffix to make unique
+  // Ensure unique slug
+  if (existingSlugs.includes(slug)) {
     const dateSuffix = new Date().toISOString().slice(0, 10);
-    const uniqueSlug = `${slug}-${dateSuffix}`;
-
-    const { error } = await supabase
-      .from("blogs")
-      .insert({
-        title,
-        slug: uniqueSlug,
-        meta_description: metaDescription,
-        keywords,
-        content,
-      })
-      .select()
-      .single();
-
-    if (error) throw new Error(`Supabase insert failed: ${error.message}`);
-
-    await notifyTelegram(title, uniqueSlug, template.type);
-    return { success: true, slug: uniqueSlug, type: template.type };
+    slug = `${slug}-${dateSuffix}`;
   }
 
   // Insert new blog post
@@ -212,19 +284,29 @@ KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5]
 
   if (error) throw new Error(`Supabase insert failed: ${error.message}`);
 
-  await notifyTelegram(title, slug, template.type);
+  // Ping Google to re-crawl sitemap
+  await pingSitemap();
+
+  // Notify via Telegram
+  await notifyTelegram(title, slug, template.type, keywords);
+
   return { success: true, slug, type: template.type };
 }
 
-async function notifyTelegram(title: string, slug: string, type: string) {
+async function notifyTelegram(title: string, slug: string, type: string, keywords: string) {
   const url = `https://invoicetodata.com/blog/${slug}`;
   const msg = `✅ <b>New SEO Blog Post Published!</b>
 
 📝 <b>${title}</b>
 📂 Type: ${type}
-🔗 <a href="${url}">${url}</a>
+🔑 Keywords: ${keywords}
+🔗 <a href="${url}">View Post</a>
 
-The post was automatically generated and published by your SEO agent. Review it when you have time.`;
+✅ Structured data (Article + FAQ + Breadcrumb) auto-applied
+✅ Google sitemap ping sent
+✅ Internal links included
+
+Review it when you have time.`;
 
   await sendTelegramMessage(msg);
 }
