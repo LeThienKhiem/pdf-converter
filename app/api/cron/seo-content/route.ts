@@ -8,7 +8,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
  * Automatically generates SEO blog content using Gemini and publishes to Supabase
  */
 
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_MODEL = "gemini-flash-lite-latest";
 
 // SEO content calendar — rotates based on day of year
 const CONTENT_TEMPLATES = [
