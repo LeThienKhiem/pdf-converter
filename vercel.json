@@ -11,6 +11,18 @@
     {
       "path": "/api/cron/seo-pages",
       "schedule": "0 2 * * 0"
+    },
+    {
+      "path": "/api/cron/index-urls",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/content-refresh",
+      "schedule": "0 3 * * 3"
+    },
+    {
+      "path": "/api/cron/internal-links",
+      "schedule": "0 4 * * 6"
     }
   ]
 }
