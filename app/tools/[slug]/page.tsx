@@ -40,6 +40,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title: row.h1_title,
       description: row.meta_description ?? undefined,
+      alternates: {
+        canonical: `https://invoicetodata.com/tools/${slug}`,
+      },
     };
   } catch {
     return { title: "Tools" };
