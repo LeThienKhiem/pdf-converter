@@ -23,6 +23,14 @@
     {
       "path": "/api/cron/internal-links",
       "schedule": "0 4 * * 6"
+    },
+    {
+      "path": "/api/cron/syndicate",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/backlink-tasks",
+      "schedule": "0 2 * * 1"
     }
   ]
 }
