@@ -128,75 +128,88 @@ async function callGeminiWithRetry(
   throw new Error("Max retries exceeded");
 }
 
-// Content types that rotate daily
+// Content types — weighted so most posts are pure value, few have links
+// ~70% no link (pure engagement), ~30% with link (traffic)
 const CONTENT_TYPES = [
   {
     type: "tip",
-    prompt: `Write a single tweet (max 270 chars) sharing a practical tip about invoice processing, data extraction, or accounting automation.
-The tone should be helpful and professional. Include 1-2 relevant hashtags.
-End with a subtle CTA like "Try it free →" linking to ${SITE_URL}
+    hasLink: false,
+    prompt: `Write a single tweet (max 270 chars) sharing a practical, specific tip about invoice processing, accounting workflows, or financial data management.
+NO links. NO hashtags. Just pure value that makes people want to bookmark or retweet.
 Do NOT use quotes around the tweet. Output ONLY the tweet text.`,
   },
   {
-    type: "blog_promo",
-    prompt: `BLOG_POST_PLACEHOLDER
-Write a single tweet (max 270 chars) promoting this blog post. Extract the most interesting insight or stat.
-Make it engaging — start with a hook, not "Check out our latest post".
-Include the blog URL and 1-2 hashtags.
+    type: "hot_take",
+    hasLink: false,
+    prompt: `Write a single tweet (max 270 chars) with a spicy but defensible opinion about accounting, finance automation, or business operations.
+Something that will make people reply with "This!" or argue in the comments.
+NO links. NO hashtags. Be bold but not offensive.
 Do NOT use quotes around the tweet. Output ONLY the tweet text.`,
   },
   {
     type: "question",
-    prompt: `Write a single tweet (max 270 chars) asking an engaging question about invoice processing, PDF data extraction, or accounting workflows.
-The question should spark discussion and be relevant to finance/accounting professionals.
-Include 1-2 relevant hashtags. Do NOT include any links.
+    hasLink: false,
+    prompt: `Write a single tweet (max 270 chars) asking a genuinely interesting question about how people handle invoices, accounting, or financial data.
+The question should be easy to answer and make people want to share their experience.
+NO links. NO hashtags. Just the question.
+Do NOT use quotes around the tweet. Output ONLY the tweet text.`,
+  },
+  {
+    type: "story",
+    hasLink: false,
+    prompt: `Write a single tweet (max 270 chars) telling a very short relatable story or observation about office/accounting life.
+Something like "The moment you realize you've been manually copying the same 50 invoices every month for 3 years..."
+Make it funny or painfully relatable. NO links. NO hashtags.
 Do NOT use quotes around the tweet. Output ONLY the tweet text.`,
   },
   {
     type: "stat",
-    prompt: `Write a single tweet (max 270 chars) sharing a surprising or compelling statistic about:
-- Time wasted on manual data entry
-- Invoice processing costs
+    hasLink: false,
+    prompt: `Write a single tweet (max 270 chars) sharing a surprising real statistic about:
+- Time wasted on manual data entry in finance
+- Invoice processing costs for businesses
 - Error rates in manual accounting
-- AI/OCR adoption in finance
+- How much time automation saves
 
-The stat should be realistic and citable. End with a brief comment and 1-2 hashtags.
-Include a link to ${SITE_URL} as the solution.
+Share the stat and add a brief personal take. NO links. NO hashtags.
+Do NOT use quotes around the tweet. Output ONLY the tweet text.`,
+  },
+  {
+    type: "listicle",
+    hasLink: false,
+    prompt: `Write a single tweet (max 270 chars) with a mini list of 3 things.
+Topics: productivity tips for accountants, signs your invoicing process is broken, things people get wrong about data entry, or unpopular opinions about finance tools.
+Format like "3 signs your invoice process needs fixing:" then brief points.
+NO links. NO hashtags.
+Do NOT use quotes around the tweet. Output ONLY the tweet text.`,
+  },
+  {
+    type: "blog_promo",
+    hasLink: true,
+    prompt: `BLOG_POST_PLACEHOLDER
+Write a single tweet (max 270 chars) sharing the most interesting insight from this blog post.
+Lead with the insight, NOT "we wrote a blog post". The link should feel like a natural addition, not the point of the tweet.
+Include the blog URL. NO hashtags.
 Do NOT use quotes around the tweet. Output ONLY the tweet text.`,
   },
   {
     type: "before_after",
-    prompt: `Write a single tweet (max 270 chars) showing a before/after comparison:
-Before: manual invoice processing pain point
-After: using AI OCR automation
+    hasLink: true,
+    prompt: `Write a single tweet (max 270 chars) showing a quick before/after of manual vs automated invoice processing.
+Keep it concrete and specific, not vague.
+Use format:
+Before: [specific pain]
+After: [specific result]
 
-Use a simple format like:
-❌ Before: [pain]
-✅ After: [benefit]
-
-Include link to ${SITE_URL} and 1-2 hashtags.
+Include ${SITE_URL} naturally at the end. NO hashtags.
 Do NOT use quotes around the tweet. Output ONLY the tweet text.`,
   },
   {
-    type: "thread_hook",
-    prompt: `Write a single tweet (max 270 chars) that's a compelling hook for a thread about invoice automation or PDF data extraction.
-Start with "🧵" to indicate it's a thread opener.
-Make it attention-grabbing — use numbers, a bold claim, or a relatable pain point.
-End with "↓" to indicate more below.
-Include 1-2 hashtags.
-Do NOT use quotes around the tweet. Output ONLY the tweet text.`,
-  },
-  {
-    type: "product_feature",
-    prompt: `Write a single tweet (max 270 chars) highlighting ONE specific feature of InvoiceToData:
-- AI OCR that reads scanned invoices
-- Instant PDF to Excel conversion
-- PDF to Google Sheets export
-- No data stored (privacy-first)
-- Free to use
-- Handles any invoice format
-
-Make it benefit-focused, not feature-focused. Include link to ${SITE_URL} and 1-2 hashtags.
+    type: "product_subtle",
+    hasLink: true,
+    prompt: `Write a single tweet (max 270 chars) that shares a genuine insight about invoice processing or data extraction, and naturally mentions that you built a tool for this.
+The tweet should be 80% insight, 20% product mention.
+Include ${SITE_URL} at the end. NO hashtags. Write in first person.
 Do NOT use quotes around the tweet. Output ONLY the tweet text.`,
   },
 ];
@@ -211,11 +224,19 @@ export async function GET(request: Request) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
 
-    // Pick content type based on day of year
+    // Random delay 0-90 minutes so post time varies each day (anti-bot detection)
+    const randomDelayMs = Math.floor(Math.random() * 90 * 60 * 1000);
+    if (randomDelayMs > 0) {
+      await sleep(Math.min(randomDelayMs, 30000)); // Cap at 30s in serverless (Vercel timeout)
+    }
+
+    // Pick content type based on day of year — shuffled to feel random
     const dayOfYear = Math.floor(
       (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
     );
-    const contentType = CONTENT_TYPES[dayOfYear % CONTENT_TYPES.length];
+    // Use a prime multiplier to avoid predictable rotation pattern
+    const shuffledIndex = (dayOfYear * 7 + 3) % CONTENT_TYPES.length;
+    const contentType = CONTENT_TYPES[shuffledIndex];
 
     let prompt = contentType.prompt;
 
