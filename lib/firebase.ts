@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+import { getAnalytics, isSupported, logEvent, type Analytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -16,16 +16,36 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 
-// Analytics disabled until Firebase Installations API is enabled in Google Cloud Console.
-// See: https://console.developers.google.com/apis/api/firebaseinstallations.googleapis.com
-// Once enabled, uncomment the block below to restore Analytics.
-let analytics: ReturnType<typeof getAnalytics> | null = null;
-// if (typeof window !== "undefined") {
-//   isSupported().then((supported) => {
-//     if (supported) {
-//       analytics = getAnalytics(app);
-//     }
-//   });
-// }
+/** Lazily resolves Analytics on the client (requires Firebase Installations API enabled in GCP). */
+let analyticsReady: Promise<Analytics | null> | null = null;
 
-export { app, db, analytics };
+function getAnalyticsWhenReady(): Promise<Analytics | null> {
+  if (typeof window === "undefined") return Promise.resolve(null);
+  if (!firebaseConfig.apiKey) return Promise.resolve(null);
+  if (!analyticsReady) {
+    analyticsReady = isSupported()
+      .then((supported) => {
+        if (!supported) return null;
+        try {
+          return getAnalytics(app);
+        } catch {
+          return null;
+        }
+      })
+      .catch(() => null);
+  }
+  return analyticsReady;
+}
+
+/** Logs a custom event to Firebase Analytics when supported; no-ops on server or if init fails. */
+export function logAnalyticsEvent(
+  name: string,
+  params?: Record<string, string | number | boolean>
+): void {
+  if (typeof window === "undefined") return;
+  void getAnalyticsWhenReady().then((analytics) => {
+    if (analytics) logEvent(analytics, name, params);
+  });
+}
+
+export { app, db };

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { logAnalyticsEvent } from "@/lib/firebase";
 
 export type QuotaLimitVariant = "guest" | "out_of_credits";
 
@@ -12,6 +13,11 @@ type QuotaLimitModalProps = {
 };
 
 export default function QuotaLimitModal({ open, onClose, variant }: QuotaLimitModalProps) {
+  useEffect(() => {
+    if (!open) return;
+    logAnalyticsEvent("quota_limit_popup", { variant });
+  }, [open, variant]);
+
   useEffect(() => {
     if (!open) return;
     const handleEscape = (e: KeyboardEvent) => {
