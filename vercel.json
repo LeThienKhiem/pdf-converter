@@ -1,14 +1,14 @@
 {
   "redirects": [
     {
-      "source": "/:path*",
+      "source": "/((?!api/).*)",
       "has": [
         {
           "type": "host",
           "value": "invoicetodata.com"
         }
       ],
-      "destination": "https://www.invoicetodata.com/:path*",
+      "destination": "https://www.invoicetodata.com/$1",
       "permanent": true
     }
   ],
