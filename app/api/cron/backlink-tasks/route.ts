@@ -308,7 +308,6 @@ ${task.instructions}
       success: true,
       week: weekNumber + 1,
       tasks: tasks.map((t) => t.title),
-      platform: task.platform,
     });
   } catch (err) {
     console.error("[Backlink Tasks Cron] Error:", err);
