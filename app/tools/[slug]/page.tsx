@@ -5,6 +5,8 @@ import PdfToGsheetTool from "@/components/PdfToGsheetTool";
 
 type Props = { params: Promise<{ slug: string }> };
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.invoicetodata.com";
+
 type LandingPage = {
   slug: string;
   h1_title: string;
@@ -37,11 +39,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       .single();
     if (!data) return { title: "Tools" };
     const row = data as { h1_title: string; meta_description: string | null };
+    const pageUrl = `${siteUrl}/tools/${slug}`;
     return {
       title: row.h1_title,
       description: row.meta_description ?? undefined,
       alternates: {
-        canonical: `https://invoicetodata.com/tools/${slug}`,
+        canonical: pageUrl,
+      },
+      openGraph: {
+        title: row.h1_title,
+        description: row.meta_description ?? "Free AI-powered PDF to Excel converter. Upload your PDF and get structured data in seconds.",
+        url: pageUrl,
+        type: "website",
+        siteName: "InvoiceToData",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: row.h1_title,
+        description: row.meta_description ?? "Free AI-powered PDF to Excel converter.",
       },
     };
   } catch {
@@ -66,9 +81,81 @@ export default async function ToolLandingPage({ params }: Props) {
   const page = data as LandingPage;
   const industry = page.industry?.trim() || "your industry";
   const industryLower = industry.toLowerCase();
+  const pageUrl = `${siteUrl}/tools/${slug}`;
+
+  // JSON-LD structured data
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+      { "@type": "ListItem", position: 2, name: "Tools", item: `${siteUrl}/tools` },
+      { "@type": "ListItem", position: 3, name: page.h1_title, item: pageUrl },
+    ],
+  };
+
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: `Is this compliant for ${industry} data?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "We do not store your documents or extracted data. Files are processed in memory and deleted immediately after extraction, supporting compliance with data minimization and privacy expectations.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: `Can the AI handle complex or scanned ${industryLower} PDFs?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Our advanced OCR and AI models read both native digital PDFs and scanned images with high accuracy, supporting invoices, reports, and forms.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Will the Excel/Sheets export keep my original formatting?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. The system maintains table structures, rows, and columns exactly as they appear in your original document.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: `Is my financial and ${industry} data secure?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. We do not store your documents. Files are processed securely and deleted immediately after extraction. Your data is not retained on our servers.",
+        },
+      },
+    ],
+  };
+
+  const toolSchema = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: page.h1_title,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    url: pageUrl,
+    description: page.meta_description ?? `AI-powered PDF to Excel converter for ${industryLower}`,
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+      description: "Free tier with 3 credits. Credit packs from $9.99.",
+    },
+  };
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
+      {/* JSON-LD Structured Data */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolSchema) }} />
+
       <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
         {/* Hero */}
         <header className="rounded-3xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-white px-6 py-12 text-center shadow-sm sm:px-10 sm:py-16">

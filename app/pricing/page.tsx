@@ -4,7 +4,7 @@ import { Check, Zap, Shield, FileSpreadsheet, Star, Clock, Lock } from "lucide-r
 import PaddleCheckoutButton from "@/components/PaddleCheckoutButton";
 import { createClient } from "@/lib/supabase/server";
 
-const siteUrl = "https://invoicetodata.com";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.invoicetodata.com";
 
 export const metadata: Metadata = {
   title: "Pricing — Invoice OCR & PDF to Excel | InvoiceToData",

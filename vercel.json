@@ -1,4 +1,17 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "invoicetodata.com"
+        }
+      ],
+      "destination": "https://www.invoicetodata.com/:path*",
+      "permanent": true
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/seo-content",
@@ -39,6 +52,10 @@
     {
       "path": "/api/cron/seo-content-2",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/optimize-meta",
+      "schedule": "0 3 * * 2"
     }
   ]
 }
