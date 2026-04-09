@@ -22,7 +22,7 @@
 | AI invoice data extraction | Not ranked | Not ranked | Top 20 | 🔴 Not started |
 | **invoice to data converter** | **#4** | Not ranked | Top 5 | 🟢 **First ranking!** |
 
-*Updated: April 5, 2026 — Site is now partially indexed. First ranking detected for "invoice to data converter" at position #4.*
+*Updated: April 8, 2026 — Week 3 tech audit complete. Still 0/6 Tier 1 keywords on Page 1. "invoice to data converter" holding at ~#4. site: search still returns no results — indexation remains limited. Homepage title tag still not optimized. 4 content pieces drafted but 0 published — this is the #1 blocker.*
 
 ---
 
@@ -33,8 +33,10 @@
 | 2026-03-26 | Comparison | Best Invoice OCR Software 2026: InvoiceToData vs Top 7 Competitors | best invoice OCR software | Pending publish | ✏️ Draft |
 | 2026-04-02 | Comparison | InvoiceToData vs Nanonets: Which Invoice OCR Tool Is Right for You in 2026? | InvoiceToData vs Nanonets, invoice OCR comparison | Pending publish | ✏️ Draft |
 | 2026-04-04 | How-to Guide | How to Extract Data from Invoices Automatically: The Complete 2026 Guide | how to extract data from invoices automatically, automate invoice data entry, invoice OCR API | Pending publish | ✏️ Draft |
+| 2026-04-07 | Blog Post | How to Automate Invoice Data Entry in 2026: The Complete Guide for SMBs | automate invoice data entry, invoice data entry automation, invoice digitization, invoice to spreadsheet | Pending publish | ✏️ Draft |
+| 2026-04-09 | Comparison | InvoiceToData vs Klippa: Invoice OCR Compared for Small & Mid-Sized Businesses in 2026 | InvoiceToData vs Klippa, Klippa alternative, invoice data extraction, invoice OCR, invoice parser | Pending publish | ✏️ Draft |
 
-**⚠️ 3 content pieces ready to publish — this is now the #1 priority since the site is indexed.**
+**⚠️ 5 content pieces ready to publish — this is now the #1 priority since the site is indexed.**
 
 ---
 
@@ -47,14 +49,18 @@
 | 2026-04-01 | Check & fix robots.txt | 🔴 Critical | ✅ **Likely done** — Google is crawling |
 | 2026-04-01 | Create & submit sitemap.xml | 🔴 Critical | ⏳ Unconfirmed — Khiem to verify |
 | 2026-04-01 | Remove any noindex meta tags | 🔴 Critical | ✅ **Likely done** — pages are indexed |
-| 2026-04-01 | Optimize homepage title & meta description | 🟡 High | ⚠️ Partial — title is "Free AI PDF to Excel Converter" (not targeting Tier 1 keywords) |
+| 2026-04-01 | Optimize homepage title & meta description | 🟡 High | ⚠️ **STILL PENDING** — title is "Free AI PDF to Excel Converter" (not targeting Tier 1 keywords) |
 | 2026-04-01 | Implement canonical tags | 🟡 High | ⏳ Pending |
 | 2026-04-01 | Add SoftwareApplication schema | 🟡 High | ⏳ Pending |
 | 2026-04-01 | Add FAQ schema to key pages | 🟢 Medium | ⏳ Pending |
 | 2026-04-01 | Add Open Graph / Twitter Card meta tags | 🟢 Medium | ⏳ Pending |
 | 2026-04-01 | Set up Google Analytics 4 | 🟡 High | ⏳ Pending |
+| 2026-04-08 | Rewrite homepage H1 to target invoice keywords | 🔴 Critical | ⏳ Pending |
+| 2026-04-08 | Verify SSR/SSG for search engine content visibility | 🟡 High | ⏳ Pending |
+| 2026-04-08 | Create /blog/ section and publish 4 drafted posts | 🔴 Critical | ⏳ Pending |
+| 2026-04-08 | Create dedicated feature pages (/invoice-ocr, etc.) | 🟡 High | ⏳ Pending |
 
-See full details: `seo-technical/tech-audit-2026-04-01.md`
+See full details: `seo-technical/tech-audit-2026-04-01.md` and `seo-technical/tech-audit-2026-04-08.md`
 
 ---
 
@@ -104,6 +110,18 @@ See full details: `seo-technical/tech-audit-2026-04-01.md`
 
 **Key Bottleneck:** 3 content pieces drafted but not yet published. Publishing is now the #1 priority.
 
+**Week 3 (Apr 6 – Apr 12):**
+- Full Tier 1 keyword audit: 0/6 keywords ranking on Page 1
+- site:invoicetodata.com still returns no results — indexation very limited
+- Homepage title remains "Free AI PDF to Excel Converter" — does NOT contain Tier 1 keywords
+- Competitor analysis: Klippa dominating content (50+ posts), Nanonets released open-weight VLM, Rossum leveraging EU e-invoicing mandates
+- invoicedataextraction.com continues appearing for "invoice data extraction" and "extract data from invoice" queries
+- 5 drafted content pieces still unpublished — this remains the #1 blocker (Klippa comparison added Apr 9)
+- Key insight: Niche exact-match domains (invoiceocr.co, invoice-parse.com) ranking well despite low content
+- Tech audit (Apr 8): Confirmed homepage still live with generic title; provided 3 title tag options, full schema markup code (SoftwareApplication, Organization, FAQ), recommended site architecture with /blog/, /features/, /use-cases/ sections
+- New competitors gaining traction: Lido, Parseur, Parsio, docs2excel.ai, OnlineInvoiceConverter
+- InvoiceToData NOT featured in any of 10+ "Best Invoice OCR/Data Extraction 2026" listicles
+
 ### Month 2-6
 - Pending...
 
@@ -149,12 +167,22 @@ See full details: `seo-technical/tech-audit-2026-04-01.md`
 
 ## Next Week Focus (Apr 6–12)
 
-1. **PUBLISH the 3 drafted blog posts** (Critical — Khiem)
-2. **Submit to G2, Capterra, Product Hunt** (High — Khiem)
-3. **Optimize homepage title tag** to target Tier 1 keywords (High — Khiem)
-4. **SEO Agent:** Monday audit, Tuesday blog post, Wednesday tech follow-up, Thursday InvoiceToData vs Klippa comparison, Friday outreach update, Saturday API tutorial
+1. **PUBLISH the 3 drafted blog posts** (Critical — Khiem) — STILL PENDING FROM LAST WEEK
+2. **Submit to G2, Capterra, Product Hunt** (High — Khiem) — STILL PENDING
+3. **Optimize homepage title tag** to include "Invoice Data Extraction" and "Invoice OCR" (High — Khiem) — STILL PENDING
+4. **Add SoftwareApplication schema** to homepage (Medium — Khiem)
+5. **Verify Google Search Console** indexation and submit sitemap if not done (High — Khiem)
+6. **SEO Agent:** Monday audit (done), Tuesday blog post, Wednesday tech audit, Thursday InvoiceToData vs Klippa comparison (✅ done Apr 9), Friday outreach update, Saturday how-to guide
+
+## Urgent Alerts
+
+- 🔴 **3+ weeks into campaign with 0 content published** — 5 high-quality blog posts/guides are ready but none have been published. This is the #1 blocker to ranking progress.
+- 🔴 **Homepage title tag still generic** — every day this stays as "Free AI PDF to Excel Converter" is a missed ranking opportunity. Recommended: "Invoice Data Extraction & OCR — Convert Invoices to Excel | InvoiceToData" (15-min fix).
+- 🟡 **site: search returning 0 results** — Google indexation is extremely limited. Verify Search Console and submit sitemap urgently.
+- 🟡 **Not listed on any directories or review sites** — G2, Capterra, Product Hunt submissions are overdue.
+- 🟡 **Not featured in any listicle/roundup** — 10+ "Best Invoice OCR 2026" articles exist and InvoiceToData is absent from all of them.
 
 ---
 
-*Last updated: April 5, 2026*
-*Previous update: April 1, 2026*
+*Last updated: April 9, 2026*
+*Previous update: April 8, 2026*
