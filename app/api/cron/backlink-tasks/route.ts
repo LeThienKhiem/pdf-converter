@@ -277,17 +277,18 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Calculate which week we're on (starting from campaign start)
+    // TURBO MODE: Send 2 tasks per week instead of 1
     const campaignStart = new Date("2026-03-01").getTime();
     const now = Date.now();
     const weekNumber = Math.floor((now - campaignStart) / (7 * 24 * 60 * 60 * 1000));
-    const taskIndex = weekNumber % BACKLINK_TASKS.length;
-    const task = BACKLINK_TASKS[taskIndex];
 
-    // Calculate total progress
-    const completedWeeks = Math.min(weekNumber, BACKLINK_TASKS.length);
+    // Send 2 tasks per run (accelerated backlink building)
+    const taskIndex1 = (weekNumber * 2) % BACKLINK_TASKS.length;
+    const taskIndex2 = (weekNumber * 2 + 1) % BACKLINK_TASKS.length;
+    const tasks = [BACKLINK_TASKS[taskIndex1], BACKLINK_TASKS[taskIndex2]];
 
-    const msg = `🔗 <b>Weekly Backlink Task</b> (Week ${weekNumber + 1})
+    for (const task of tasks) {
+      const msg = `🔗 <b>Backlink Task — DO THIS NOW</b>
 
 ${task.title}
 ⏱️ Thời gian: ~${task.timeEstimate}
@@ -296,17 +297,17 @@ ${task.title}
 <b>Hướng dẫn chi tiết:</b>
 ${task.instructions}
 
-📊 <b>Progress:</b> ${completedWeeks}/${BACKLINK_TASKS.length} platforms
-${completedWeeks >= BACKLINK_TASKS.length ? "✅ Đã hoàn thành tất cả platforms! Vòng mới bắt đầu." : `⏭️ Tuần sau: ${BACKLINK_TASKS[(taskIndex + 1) % BACKLINK_TASKS.length].title}`}
+💰 <i>Payment gateway is LIVE — every backlink = more organic traffic = more revenue!</i>`;
 
-💡 <i>Chỉ cần ${task.timeEstimate} mỗi tuần. Copy-paste nội dung trên là xong!</i>`;
-
-    await sendTelegramMessage(msg);
+      await sendTelegramMessage(msg);
+      // Small delay between messages to avoid Telegram rate limit
+      await new Promise((r) => setTimeout(r, 1000));
+    }
 
     return NextResponse.json({
       success: true,
       week: weekNumber + 1,
-      task: task.title,
+      tasks: tasks.map((t) => t.title),
       platform: task.platform,
     });
   } catch (err) {

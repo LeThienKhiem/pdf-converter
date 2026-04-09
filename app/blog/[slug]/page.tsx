@@ -222,7 +222,31 @@ export default async function BlogSlugPage({ params }: Props) {
             <p className="text-slate-500">No content yet.</p>
           )}
 
-          <p className="mt-12 text-slate-500">
+          {/* Conversion CTA Banner */}
+          <div className="not-prose mt-12 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-8">
+            <h3 className="text-xl font-bold text-slate-900">
+              Stop manually entering invoice data
+            </h3>
+            <p className="mt-2 text-slate-600">
+              InvoiceToData uses AI to extract data from any PDF invoice and convert it to Excel or Google Sheets in seconds. Free to start.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                href="/tools/pdf-to-excel"
+                className="inline-flex items-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
+              >
+                Try Free → PDF to Excel
+              </Link>
+              <Link
+                href="/tools/pdf-to-gsheet"
+                className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+              >
+                PDF to Google Sheets
+              </Link>
+            </div>
+          </div>
+
+          <p className="mt-8 text-slate-500">
             <Link href="/blog" className="text-blue-600 hover:underline">
               ← Back to Blog
             </Link>

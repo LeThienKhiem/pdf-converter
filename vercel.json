@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/x-post",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/seo-content-2",
+      "schedule": "0 12 * * *"
     }
   ]
 }
