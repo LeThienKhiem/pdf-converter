@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 import { google } from "googleapis";
+import { PDF_MODEL, extractText, getAnthropic } from "@/lib/anthropic";
 
 const SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as a visual grid and reproduce its exact layout.
 
@@ -120,48 +121,44 @@ export async function POST(request: Request) {
 
     const base64 = buffer.toString("base64");
 
-    // --- (a) AI Extraction (Gemini) → string[][] ---
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    // --- (a) AI Extraction (Claude) → string[][] ---
+    if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
-        { error: "Server is missing GEMINI_API_KEY configuration." },
+        { error: "Server is missing ANTHROPIC_API_KEY configuration." },
         { status: 500 }
       );
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-flash-lite-latest",
-      systemInstruction: SYSTEM_PROMPT,
-    });
-
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: "application/pdf",
-          data: base64,
-        },
-      },
-    ]);
-
-    const response = result.response;
-    if (!response) {
-      return NextResponse.json(
-        { error: "Extraction failed. No response from AI." },
-        { status: 500 }
-      );
-    }
-
-    let responseText: string;
+    const client = getAnthropic();
+    let aiResponse: Anthropic.Message;
     try {
-      responseText = response.text();
-    } catch {
-      return NextResponse.json(
-        { error: "Extraction failed. Response was blocked or empty." },
-        { status: 500 }
-      );
+      aiResponse = await client.messages.create({
+        model: PDF_MODEL,
+        max_tokens: 16000,
+        system: SYSTEM_PROMPT,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "document",
+                source: { type: "base64", media_type: "application/pdf", data: base64 },
+              },
+            ],
+          },
+        ],
+      });
+    } catch (err) {
+      if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError) {
+        return NextResponse.json(
+          { error: "Our AI is currently processing a high volume of documents. Please try again in a few seconds." },
+          { status: 503 }
+        );
+      }
+      throw err;
     }
 
+    const responseText = extractText(aiResponse);
     const cleanJson = responseText.replace(/```json|```/g, "").trim();
     if (!cleanJson) {
       return NextResponse.json(

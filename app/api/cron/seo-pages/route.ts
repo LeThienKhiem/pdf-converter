@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { SEO_MODEL, extractText, getAnthropic } from "@/lib/anthropic";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 
@@ -10,8 +10,6 @@ import { sendTelegramMessage } from "@/lib/telegram";
  * - Use-case pages (Invoice OCR for [industry])
  * - Feature pages (Invoice [feature] software)
  */
-
-const GEMINI_MODEL = "gemini-flash-lite-latest";
 
 // Programmatic page templates
 const COMPETITOR_PAGES = [
@@ -36,10 +34,6 @@ const USE_CASE_PAGES = [
   { industry: "Real Estate", slug: "invoice-ocr-for-real-estate" },
 ];
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -62,8 +56,7 @@ export async function GET(request: Request) {
 }
 
 async function createNextPage() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
+  if (!process.env.ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
   if (!hasSupabaseConfig) throw new Error("Missing Supabase config");
 
   const supabase = getSupabase();
@@ -92,9 +85,6 @@ async function createNextPage() {
 
   // Create the next pending page
   const page = pendingPages[0];
-
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
   let prompt: string;
 
@@ -147,23 +137,14 @@ KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5]
 ---
 [Content in Markdown]`;
 
-  // Call Gemini with retry
-  let response: string | null = null;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const result = await model.generateContent(fullPrompt);
-      response = result.response.text();
-      break;
-    } catch (err) {
-      if (attempt < 3) {
-        await sleep(5000 * attempt);
-        continue;
-      }
-      throw err;
-    }
-  }
-
-  if (!response) throw new Error("Failed to generate content");
+  const client = getAnthropic();
+  const message = await client.messages.create({
+    model: SEO_MODEL,
+    max_tokens: 16000,
+    output_config: { effort: "medium" },
+    messages: [{ role: "user", content: fullPrompt }],
+  });
+  const response = extractText(message);
 
   // Parse response
   const titleMatch = response.match(/TITLE:\s*(.+)/);
@@ -172,7 +153,7 @@ KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5]
   const contentStart = response.indexOf("---");
 
   if (!titleMatch || contentStart === -1) {
-    throw new Error("Failed to parse Gemini response");
+    throw new Error("Failed to parse Claude response");
   }
 
   const title = titleMatch[1].trim();

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { SEO_MODEL, extractText, getAnthropic } from "@/lib/anthropic";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 
@@ -9,10 +9,6 @@ import { sendTelegramMessage } from "@/lib/telegram";
  * buyer-intent keywords, pricing comparisons, ROI calculators, case studies.
  * This complements the morning cron which focuses on informational content.
  */
-
-const GEMINI_MODEL = "gemini-flash-lite-latest";
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 5000;
 
 const SITE_URL = "https://invoicetodata.com";
 
@@ -90,31 +86,6 @@ function slugify(text: string): string {
     .replace(/-$/, "");
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function callGeminiWithRetry(
-  model: ReturnType<InstanceType<typeof GoogleGenerativeAI>["getGenerativeModel"]>,
-  prompt: string
-): Promise<string> {
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const result = await model.generateContent(prompt);
-      return result.response.text();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const isRetryable = msg.includes("429") || msg.includes("503") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("high demand");
-      if (isRetryable && attempt < MAX_RETRIES) {
-        await sleep(RETRY_DELAY_MS * attempt);
-        continue;
-      }
-      throw err;
-    }
-  }
-  throw new Error("Max retries exceeded");
-}
-
 async function pingSitemap(): Promise<void> {
   try {
     await fetch(
@@ -131,8 +102,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
+    if (!process.env.ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
     if (!hasSupabaseConfig) throw new Error("Missing Supabase config");
 
     const dayOfYear = Math.floor(
@@ -158,9 +128,6 @@ export async function GET(request: Request) {
     const recentLinksInstruction = recentPosts
       .map((p) => `- You may link to ${SITE_URL}/blog/${p.slug} (titled: "${p.title}")`)
       .join("\n");
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
     const fullPrompt = `You are an expert SEO content writer for InvoiceToData (${SITE_URL}), a SaaS tool that converts invoices into structured data using AI OCR.
 
@@ -199,7 +166,14 @@ KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5]
 ---
 [Article content in Markdown starting with ## Introduction]`;
 
-    const response = await callGeminiWithRetry(model, fullPrompt);
+    const client = getAnthropic();
+    const message = await client.messages.create({
+      model: SEO_MODEL,
+      max_tokens: 16000,
+      output_config: { effort: "medium" },
+      messages: [{ role: "user", content: fullPrompt }],
+    });
+    const response = extractText(message);
 
     const titleMatch = response.match(/TITLE:\s*(.+)/);
     const metaMatch = response.match(/META:\s*(.+)/);
@@ -207,7 +181,7 @@ KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5]
     const contentStart = response.indexOf("---");
 
     if (!titleMatch || contentStart === -1) {
-      throw new Error("Failed to parse Gemini response");
+      throw new Error("Failed to parse Claude response");
     }
 
     const title = titleMatch[1].trim();

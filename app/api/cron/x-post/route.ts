@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { SEO_MODEL, extractText, getAnthropic } from "@/lib/anthropic";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 import crypto from "crypto";
@@ -12,9 +12,6 @@ import crypto from "crypto";
  */
 
 const SITE_URL = "https://invoicetodata.com";
-const GEMINI_MODEL = "gemini-flash-lite-latest";
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 5000;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -106,27 +103,6 @@ async function postTweet(text: string): Promise<{ success: boolean; tweetId?: st
 }
 
 // ─── Content generation ───
-
-async function callGeminiWithRetry(
-  model: ReturnType<InstanceType<typeof GoogleGenerativeAI>["getGenerativeModel"]>,
-  prompt: string
-): Promise<string> {
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const result = await model.generateContent(prompt);
-      return result.response.text();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const isRetryable = msg.includes("429") || msg.includes("503") || msg.includes("RESOURCE_EXHAUSTED");
-      if (isRetryable && attempt < MAX_RETRIES) {
-        await sleep(RETRY_DELAY_MS * attempt);
-        continue;
-      }
-      throw err;
-    }
-  }
-  throw new Error("Max retries exceeded");
-}
 
 // Content types — weighted so most posts are pure value, few have links
 // ~70% no link (pure engagement), ~30% with link (traffic)
@@ -221,8 +197,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
+    if (!process.env.ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
 
     // Random delay 0-90 minutes so post time varies each day (anti-bot detection)
     const randomDelayMs = Math.floor(Math.random() * 90 * 60 * 1000);
@@ -264,10 +239,7 @@ Keywords: ${latestPost.keywords ?? ""}`;
       prompt = prompt.replace("BLOG_POST_PLACEHOLDER\n", "");
     }
 
-    // Generate tweet with Gemini
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-
+    // Generate tweet with Claude
     const fullPrompt = `You are the social media manager for InvoiceToData (${SITE_URL}), an AI-powered invoice OCR tool.
 Your X account has 70k followers — mostly finance/accounting professionals, developers, and SMB owners.
 
@@ -300,9 +272,16 @@ EXAMPLES OF BAD TONE (never do this):
 
 Output ONLY the tweet text. No quotes, no labels, no explanations.`;
 
-    let tweetText = await callGeminiWithRetry(model, fullPrompt);
+    const client = getAnthropic();
+    const aiMessage = await client.messages.create({
+      model: SEO_MODEL,
+      max_tokens: 512,
+      output_config: { effort: "low" },
+      messages: [{ role: "user", content: fullPrompt }],
+    });
+    let tweetText = extractText(aiMessage);
 
-    // Clean up: remove quotes if Gemini wrapped it
+    // Clean up: remove quotes if the model wrapped it
     tweetText = tweetText.trim().replace(/^["']|["']$/g, "").trim();
 
     // Ensure tweet is under 280 chars

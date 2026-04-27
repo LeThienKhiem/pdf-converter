@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { SEO_MODEL, extractText, getAnthropic } from "@/lib/anthropic";
 
 /**
  * Cron: Optimize meta titles & descriptions for blog posts with low CTR.
  * Runs weekly on Tuesday at 3AM UTC.
- * Uses Gemini AI to rewrite meta descriptions to be more click-worthy
+ * Uses Claude AI to rewrite meta descriptions to be more click-worthy
  * while keeping them under 160 chars with power words and CTAs.
  */
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 
 export async function GET(req: Request) {
   // Verify cron secret
@@ -22,6 +20,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "Missing ANTHROPIC_API_KEY" }, { status: 500 });
+  }
   if (!hasSupabaseConfig) {
     return NextResponse.json({ error: "No Supabase config" }, { status: 500 });
   }
@@ -64,7 +65,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: "All posts optimized" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+    const client = getAnthropic();
     const updated: string[] = [];
 
     for (const post of batch) {
@@ -87,8 +88,12 @@ RULES:
 Return ONLY the new meta description text, nothing else.`;
 
       try {
-        const result = await model.generateContent(prompt);
-        const newDesc = result.response.text().trim().replace(/^["']|["']$/g, "");
+        const message = await client.messages.create({
+          model: SEO_MODEL,
+          max_tokens: 256,
+          messages: [{ role: "user", content: prompt }],
+        });
+        const newDesc = extractText(message).trim().replace(/^["']|["']$/g, "");
 
         if (newDesc.length >= 80 && newDesc.length <= 165) {
           const { error: updateErr } = await supabase
@@ -128,8 +133,12 @@ RULES:
 Return ONLY the new title text, nothing else.`;
 
       try {
-        const result = await model.generateContent(prompt);
-        const newTitle = result.response.text().trim().replace(/^["']|["']$/g, "");
+        const message = await client.messages.create({
+          model: SEO_MODEL,
+          max_tokens: 128,
+          messages: [{ role: "user", content: prompt }],
+        });
+        const newTitle = extractText(message).trim().replace(/^["']|["']$/g, "");
 
         if (newTitle.length >= 30 && newTitle.length <= 65) {
           const { error: updateErr } = await supabase

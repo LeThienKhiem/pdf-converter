@@ -1,23 +1,6 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const GEMINI_MODEL = "gemini-flash-lite-latest";
-const MAX_RETRIES = 3;
-const BACKOFF_MS = [2000, 4000]; // after 1st and 2nd 429
-
-function is429(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false;
-  const status = (err as { status?: number; statusCode?: number; code?: number }).status
-    ?? (err as { status?: number; statusCode?: number; code?: number }).statusCode
-    ?? (err as { status?: number; statusCode?: number; code?: number }).code;
-  if (typeof status === "number" && status === 429) return true;
-  const msg = (err as Error).message ?? String(err);
-  return typeof msg === "string" && (msg.includes("429") || msg.includes("Too Many Requests") || msg.includes("RESOURCE_EXHAUSTED"));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import Anthropic from "@anthropic-ai/sdk";
+import { PDF_MODEL, extractText, getAnthropic } from "@/lib/anthropic";
 
 const SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as a visual grid and reproduce its exact layout.
 
@@ -64,14 +47,35 @@ function normalizeTo2DArray(parsed: unknown): (string | null)[][] {
   });
 }
 
+type ImageMediaType = "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+
+function buildContent(
+  mimeType: string,
+  base64: string
+): Anthropic.ContentBlockParam[] {
+  if (mimeType === "application/pdf") {
+    return [
+      {
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data: base64 },
+      },
+    ];
+  }
+  return [
+    {
+      type: "image",
+      source: { type: "base64", media_type: mimeType as ImageMediaType, data: base64 },
+    },
+  ];
+}
+
 export async function POST(request: Request) {
   console.log("[Extract API] POST /api/extract called");
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error("[Extract] GEMINI_API_KEY is not set");
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error("[Extract] ANTHROPIC_API_KEY is not set");
       return NextResponse.json(
-        { error: "Server is missing GEMINI_API_KEY configuration." },
+        { error: "Server is missing ANTHROPIC_API_KEY configuration." },
         { status: 500 }
       );
     }
@@ -137,69 +141,34 @@ export async function POST(request: Request) {
       );
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    console.log("[Extract API] Using model:", GEMINI_MODEL);
-    const model = genAI.getGenerativeModel({
-      model: GEMINI_MODEL,
-      systemInstruction: SYSTEM_PROMPT,
-    });
+    const client = getAnthropic();
+    console.log("[Extract API] Using model:", PDF_MODEL);
 
-    const payload = [
-      {
-        inlineData: {
-          mimeType,
-          data: base64,
-        },
-      },
-    ] as Parameters<typeof model.generateContent>[0];
-
-    let result: Awaited<ReturnType<typeof model.generateContent>> | null = null;
-    let lastError: unknown = null;
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        result = await model.generateContent(payload);
-        lastError = null;
-        break;
-      } catch (err) {
-        lastError = err;
-        if (!is429(err)) throw err;
-        if (attempt === MAX_RETRIES - 1) break;
-        console.warn("[Extract API] 429 Too Many Requests, retrying after backoff. Attempt:", attempt + 1, "of", MAX_RETRIES, err);
-        await sleep(BACKOFF_MS[attempt] ?? 4000);
-      }
-    }
-
-    if (result == null || lastError != null) {
-      return NextResponse.json(
-        { error: "Our AI is currently processing a high volume of documents. Please try again in a few seconds." },
-        { status: 503 }
-      );
-    }
-
-    const response = result.response;
-    if (!response) {
-      console.error("[Extract] No response from model");
-      return NextResponse.json(
-        { error: "Extraction failed. No response from model." },
-        { status: 500 }
-      );
-    }
-
-    let responseText: string;
+    let response: Anthropic.Message;
     try {
-      responseText = response.text();
-    } catch (blockErr) {
-      const message = blockErr instanceof Error ? blockErr.message : "Response blocked or empty";
-      console.error("[Extract] response.text() failed:", message);
-      return NextResponse.json(
-        { error: "Extraction failed. Response was blocked or empty." },
-        { status: 500 }
-      );
+      response = await client.messages.create({
+        model: PDF_MODEL,
+        max_tokens: 16000,
+        system: SYSTEM_PROMPT,
+        messages: [
+          { role: "user", content: buildContent(mimeType, base64) },
+        ],
+      });
+    } catch (err) {
+      if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError) {
+        console.warn("[Extract API] Anthropic transient error after retries:", err.status, err.message);
+        return NextResponse.json(
+          { error: "Our AI is currently processing a high volume of documents. Please try again in a few seconds." },
+          { status: 503 }
+        );
+      }
+      throw err;
     }
 
+    const responseText = extractText(response);
     const cleanJson = responseText.replace(/```json|```/g, "").trim();
     if (!cleanJson) {
-      console.error("[Extract] Empty content after cleaning. Raw length:", responseText?.length ?? 0);
+      console.error("[Extract] Empty content after cleaning. Stop reason:", response.stop_reason);
       return NextResponse.json(
         { error: "Extraction failed. No content returned." },
         { status: 500 }
