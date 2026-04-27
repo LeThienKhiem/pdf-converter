@@ -111,7 +111,7 @@ function PricingStructuredData() {
         name: "How accurate is the invoice OCR?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "InvoiceToData uses Gemini AI for OCR extraction, achieving high accuracy on both digital and scanned PDF invoices including line items, totals, dates, and vendor information.",
+          text: "InvoiceToData uses Anthropic Claude AI for OCR extraction, achieving high accuracy on both digital and scanned PDF invoices including line items, totals, dates, and vendor information.",
         },
       },
     ],
@@ -353,7 +353,7 @@ export default async function PricingPage() {
                 AI Extracts Data
               </h3>
               <p className="mt-1 text-sm text-slate-600">
-                Gemini AI reads and structures all line items, totals, and
+                Claude AI reads and structures all line items, totals, and
                 dates.
               </p>
             </div>

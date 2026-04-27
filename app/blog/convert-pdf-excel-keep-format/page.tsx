@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "How to Convert PDF to Excel Without Messing Up the Format | Fix Broken Rows & Keep Formatting",
   description:
-    "Accurately convert PDF to Excel without messing up format. Learn why default tools fail, how to fix broken rows and merged cells, and keep formatting with AI (Gemini Vision).",
+    "Accurately convert PDF to Excel without messing up format. Learn why default tools fail, how to fix broken rows and merged cells, and keep formatting with AI (Claude Vision).",
   keywords: [
     "convert pdf to excel without messing up format",
     "fix broken rows excel",
@@ -44,7 +44,7 @@ export default function ConvertPdfExcelKeepFormatPage() {
           </p>
 
           <h2 className="mt-12 text-2xl font-bold text-slate-900">
-            How AI (Gemini Vision) Solves This by Understanding Table Context
+            How AI (Claude Vision) Solves This by Understanding Table Context
           </h2>
           <p className="mt-4 text-slate-600">
             AI that “sees” the document like a human can tell the difference between a new row and a line break inside a cell. It understands table context: headers, sections, and how columns align. So when you convert PDF to Excel with a vision model, you get one cell per value, no random merging, and formatting that mirrors the original. That’s how you keep formatting and fix broken rows without manual cleanup.

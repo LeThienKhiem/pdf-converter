@@ -39,7 +39,7 @@ export default function PdfToGsheetPage() {
                 </span>
                 <h3 className="mt-5 text-lg font-semibold text-slate-900">AI Precision</h3>
                 <p className="mt-3 flex-1 text-slate-600">
-                  Powered by Gemini 2.5 Flash-Lite to maintain table structure, merged cells, and complex formatting.
+                  Powered by Anthropic Claude to maintain table structure, merged cells, and complex formatting.
                 </p>
               </div>
               <div className="flex h-full flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
@@ -128,10 +128,10 @@ export default function PdfToGsheetPage() {
                 Why Choose Our AI?
               </h2>
               <p className="mt-6 text-slate-600">
-                Traditional OCR treats your PDF as a flat stream of text, which often breaks table layout and loses the visual structure that makes your data useful. Our converter uses Google&apos;s Gemini model to understand the document as a visual grid: it recognizes rows, columns, headers, and sections the way a human would, so your Google Sheet output matches the original layout. Merged cells, indentation, and multi-level headings are preserved in a way that generic OCR cannot achieve.
+                Traditional OCR treats your PDF as a flat stream of text, which often breaks table layout and loses the visual structure that makes your data useful. Our converter uses Anthropic&apos;s Claude model to understand the document as a visual grid: it recognizes rows, columns, headers, and sections the way a human would, so your Google Sheet output matches the original layout. Merged cells, indentation, and multi-level headings are preserved in a way that generic OCR cannot achieve.
               </p>
               <p className="mt-4 text-slate-600">
-                Speed is a major advantage. AI-based extraction processes pages in seconds instead of requiring manual correction of misaligned columns or misread numbers. Gemini handles both native digital PDFs and scanned images, so whether your source is a generated report or a photographed form, you get fast, consistent results. The same pipeline delivers high-quality output for invoices, tax forms, and statement tables without re-uploading or changing settings.
+                Speed is a major advantage. AI-based extraction processes pages in seconds instead of requiring manual correction of misaligned columns or misread numbers. Claude handles both native digital PDFs and scanned images, so whether your source is a generated report or a photographed form, you get fast, consistent results. The same pipeline delivers high-quality output for invoices, tax forms, and statement tables without re-uploading or changing settings.
               </p>
               <p className="mt-4 text-slate-600">
                 Accuracy is critical when data feeds into finance, auditing, or compliance. Our AI preserves numeric precision, date formats, and text exactly as they appear in the source. Together with layout retention and speed, this makes the tool suitable for professionals who need reliable PDF-to-Sheets conversion without manual cleanup—ready for analysis or import into your workflows.
@@ -162,7 +162,7 @@ export default function PdfToGsheetPage() {
                 </details>
                 <details className="group rounded-xl border border-slate-200 bg-white px-5 shadow-sm">
                   <summary className="cursor-pointer list-none py-4 font-semibold text-slate-900 marker:contents [&::-webkit-details-marker]:hidden">What AI model do you use?</summary>
-                  <p className="pb-4 text-slate-600">We use Google&apos;s Gemini model (including Gemini 2.5 Flash-Lite) for layout-aware extraction. It analyzes your document as a visual structure so tables, forms, and multi-section layouts are converted with high fidelity to Google Sheets.</p>
+                  <p className="pb-4 text-slate-600">We use Anthropic&apos;s Claude model for layout-aware extraction. It analyzes your document as a visual structure so tables, forms, and multi-section layouts are converted with high fidelity to Google Sheets.</p>
                 </details>
               </div>
             </div>

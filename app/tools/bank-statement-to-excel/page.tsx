@@ -314,7 +314,7 @@ export default function BankStatementToExcelPage() {
         </div>
         <p className="mt-3 text-center text-xs font-medium text-slate-500">
           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-2.5 py-1 text-slate-600 shadow-sm">
-            ✨ Powered by Google Gemini AI Vision
+            ✨ Powered by Anthropic Claude AI Vision
           </span>
         </p>
 
@@ -335,7 +335,7 @@ export default function BankStatementToExcelPage() {
               <Loader2 className="h-8 w-8 shrink-0 animate-spin text-blue-600" aria-hidden />
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-slate-900">Extracting your bank statement</p>
-                <p className="text-sm text-slate-500">Using Gemini to preserve layout…</p>
+                <p className="text-sm text-slate-500">Using Claude to preserve layout…</p>
                 <div className="mt-3" role="status" aria-live="polite" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
                   <progress
                     max={100}
@@ -480,7 +480,7 @@ export default function BankStatementToExcelPage() {
               Why Use AI for Bank Statement Extraction?
             </h2>
             <p className="mt-6 text-slate-600">
-              Traditional OCR treats your statement as plain text, which often breaks transaction tables, misaligns dates and amounts, and loses running balances—making reconciliation tedious. Our converter uses Google&apos;s Gemini to understand the document as a visual grid: it recognizes transaction rows, column headers, and sections the way a bookkeeper would, so your Excel output matches the original statement layout and is ready for Xero, QuickBooks, or any accounting workflow.
+              Traditional OCR treats your statement as plain text, which often breaks transaction tables, misaligns dates and amounts, and loses running balances—making reconciliation tedious. Our converter uses Anthropic&apos;s Claude to understand the document as a visual grid: it recognizes transaction rows, column headers, and sections the way a bookkeeper would, so your Excel output matches the original statement layout and is ready for Xero, QuickBooks, or any accounting workflow.
             </p>
             <p className="mt-4 text-slate-600">
               Speed and accuracy are critical when you&apos;re closing books or matching bank feeds. AI-based extraction processes statements in seconds and preserves numeric precision and date formats, so you spend less time fixing misread amounts or realigning columns. Whether your source is a downloaded PDF or a scanned statement, you get consistent, reconciliation-ready output. No re-upload or manual tweaks—the same pipeline works across different banks and statement formats.
@@ -511,7 +511,7 @@ export default function BankStatementToExcelPage() {
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 mt-4">Identify Dates and Amounts</h3>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  Gemini identifies dates and amounts with high accuracy, even in scanned or multi-column statements, so you get clean data for matching and reporting.
+                  Claude identifies dates and amounts with high accuracy, even in scanned or multi-column statements, so you get clean data for matching and reporting.
                 </p>
               </div>
               <div className="flex flex-col p-6 bg-white rounded-xl shadow-sm border border-slate-200">
@@ -662,7 +662,7 @@ export default function BankStatementToExcelPage() {
                   What AI model do you use?
                 </summary>
                 <p className="pb-4 text-slate-600">
-                  We use Google&apos;s Gemini model for layout-aware extraction. It analyzes your statement as a visual structure, so transaction tables, dates, amounts, and running balances are captured with high fidelity—whether the source is a PDF or a scanned image.
+                  We use Anthropic&apos;s Claude model for layout-aware extraction. It analyzes your statement as a visual structure, so transaction tables, dates, amounts, and running balances are captured with high fidelity—whether the source is a PDF or a scanned image.
                 </p>
               </details>
             </div>

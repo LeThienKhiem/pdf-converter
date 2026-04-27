@@ -161,7 +161,7 @@ export default function RootLayout({
                   name: "How accurate is the invoice OCR extraction?",
                   acceptedAnswer: {
                     "@type": "Answer",
-                    text: "InvoiceToData uses Gemini AI for layout-aware extraction. Rows, columns, tables, line items, and financial data are preserved with high accuracy in the Excel output.",
+                    text: "InvoiceToData uses Anthropic Claude AI for layout-aware extraction. Rows, columns, tables, line items, and financial data are preserved with high accuracy in the Excel output.",
                   },
                 },
                 {

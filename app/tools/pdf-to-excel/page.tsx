@@ -314,7 +314,7 @@ export default function PdfToExcelPage() {
         </div>
         <p className="mt-3 text-center text-xs font-medium text-slate-500">
           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-2.5 py-1 text-slate-600 shadow-sm">
-            ✨ Powered by Google Gemini AI Vision
+            ✨ Powered by Anthropic Claude AI Vision
           </span>
         </p>
 
@@ -335,7 +335,7 @@ export default function PdfToExcelPage() {
               <Loader2 className="h-8 w-8 shrink-0 animate-spin text-blue-600" aria-hidden />
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-slate-900">Extracting your document</p>
-                <p className="text-sm text-slate-500">Using Gemini to preserve layout…</p>
+                <p className="text-sm text-slate-500">Using Claude to preserve layout…</p>
                 <div className="mt-3" role="status" aria-live="polite" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
                   <progress
                     max={100}
@@ -480,10 +480,10 @@ export default function PdfToExcelPage() {
               Why Choose Our AI?
             </h2>
             <p className="mt-6 text-slate-600">
-              Traditional OCR tools treat your PDF as a flat stream of text, which often breaks table layout, merges cells incorrectly, and loses the visual structure that makes your data meaningful. Our converter uses Google&apos;s Gemini model to understand the document as a visual grid: it recognizes rows, columns, headers, and sections the way a human would, so your Excel output matches the original layout. This approach preserves merged cells, indentation, and multi-level headings that generic OCR simply cannot handle.
+              Traditional OCR tools treat your PDF as a flat stream of text, which often breaks table layout, merges cells incorrectly, and loses the visual structure that makes your data meaningful. Our converter uses Anthropic&apos;s Claude model to understand the document as a visual grid: it recognizes rows, columns, headers, and sections the way a human would, so your Excel output matches the original layout. This approach preserves merged cells, indentation, and multi-level headings that generic OCR simply cannot handle.
             </p>
             <p className="mt-4 text-slate-600">
-              Speed is another key advantage. AI-based extraction processes pages in seconds instead of requiring manual correction of misaligned columns or misread numbers. Gemini is optimized for both native digital PDFs and scanned images, so whether your source is a generated report or a photographed form, you get fast, consistent results. There&apos;s no need to re-upload or tweak settings for different document types—the same pipeline delivers high-quality output across invoices, tax forms, and statement tables.
+              Speed is another key advantage. AI-based extraction processes pages in seconds instead of requiring manual correction of misaligned columns or misread numbers. Claude is optimized for both native digital PDFs and scanned images, so whether your source is a generated report or a photographed form, you get fast, consistent results. There&apos;s no need to re-upload or tweak settings for different document types—the same pipeline delivers high-quality output across invoices, tax forms, and statement tables.
             </p>
             <p className="mt-4 text-slate-600">
               Accuracy matters especially when the data feeds into finance, auditing, or compliance workflows. Our AI is trained to preserve numeric precision, date formats, and text exactly as they appear in the source. Combined with layout retention and speed, this makes the tool suitable for professionals who need reliable PDF-to-Excel conversion without manual cleanup. You get a spreadsheet that mirrors your document, ready for analysis or import into your existing systems.
@@ -510,7 +510,7 @@ export default function PdfToExcelPage() {
                 </div>
                 <h3 className="mt-4 font-semibold text-slate-900">Powered by Advanced AI</h3>
                 <p className="mt-2 text-slate-600">
-                  Gemini Robotics-ER drives complex spatial reasoning, so multi-section forms, tables, and invoices are converted with high fidelity.
+                  Claude&apos;s vision model drives complex spatial reasoning, so multi-section forms, tables, and invoices are converted with high fidelity.
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -582,7 +582,7 @@ export default function PdfToExcelPage() {
                   What AI model do you use?
                 </summary>
                 <p className="pb-4 text-slate-600">
-                  We use Google&apos;s Gemini model for layout-aware extraction. It analyzes your document as a visual structure rather than plain text, so tables, forms, and multi-section layouts are converted with high fidelity. The same pipeline handles both native PDFs and scanned images.
+                  We use Anthropic&apos;s Claude model for layout-aware extraction. It analyzes your document as a visual structure rather than plain text, so tables, forms, and multi-section layouts are converted with high fidelity. The same pipeline handles both native PDFs and scanned images.
                 </p>
               </details>
             </div>

@@ -29,7 +29,7 @@ Convert invoices to structured Excel/Sheets data in seconds using AI OCR
 InvoiceToData uses AI-powered OCR to extract data from PDF invoices and convert them into structured Excel or Google Sheets format. Upload any invoice — scanned, digital, or photographed — and get clean, organized data instantly.
 
 Key features:
-• AI OCR powered by Gemini
+• AI OCR powered by Anthropic Claude
 • Supports PDF, scanned documents, photos
 • Export to Excel or Google Sheets
 • No data stored — processed in memory only
@@ -76,7 +76,7 @@ Free AI-powered tool that converts PDF invoices into structured Excel and Google
 <b>URL:</b> ${SITE_URL}
 <b>One-liner:</b> AI-powered invoice OCR that converts PDFs to Excel/Google Sheets instantly
 <b>Description:</b>
-InvoiceToData uses Gemini AI to extract structured data from PDF invoices. Upload any invoice and get clean, organized data in Excel or Google Sheets format. No data is stored — everything is processed in memory for maximum privacy.
+InvoiceToData uses Claude AI to extract structured data from PDF invoices. Upload any invoice and get clean, organized data in Excel or Google Sheets format. No data is stored — everything is processed in memory for maximum privacy.
 
 <b>Category:</b> Productivity, Finance, Document Processing
 <b>Pricing:</b> Free
@@ -96,7 +96,7 @@ InvoiceToData uses Gemini AI to extract structured data from PDF invoices. Uploa
 <b>URL:</b> ${SITE_URL}
 <b>Tagline:</b> AI Invoice OCR — Convert PDF invoices to Excel & Google Sheets
 <b>Description:</b>
-Free AI-powered SaaS tool that uses OCR to extract data from PDF invoices and convert them into structured Excel or Google Sheets. Powered by Gemini AI. No data retention — files processed in memory only.
+Free AI-powered SaaS tool that uses OCR to extract data from PDF invoices and convert them into structured Excel or Google Sheets. Powered by Claude AI. No data retention — files processed in memory only.
 
 <b>Category:</b> Invoice Processing, OCR, Data Extraction
 <b>Alternatives to:</b> Nanonets, ABBYY, Klippa, Rossum
@@ -115,7 +115,7 @@ Free AI-powered SaaS tool that uses OCR to extract data from PDF invoices and co
 <b>Name:</b> InvoiceToData
 <b>URL:</b> ${SITE_URL}
 <b>Description:</b>
-Free AI-powered invoice processing tool. Upload PDF invoices and get structured data in Excel or Google Sheets. Uses Gemini AI OCR for accurate data extraction from any invoice format — digital, scanned, or photographed.
+Free AI-powered invoice processing tool. Upload PDF invoices and get structured data in Excel or Google Sheets. Uses Claude AI OCR for accurate data extraction from any invoice format — digital, scanned, or photographed.
 
 <b>Category:</b> Productivity, Finance
 <b>Pricing:</b> Free
@@ -175,7 +175,7 @@ PRs welcome! Add your favorite invoice processing tool.
 Manual invoice data entry is slow and error-prone. I needed a way to automatically extract data from PDF invoices into spreadsheets.
 
 ## The Solution
-I built [InvoiceToData](${SITE_URL}) — a free tool that uses Gemini AI to OCR invoices and output structured data to Excel or Google Sheets.
+I built [InvoiceToData](${SITE_URL}) — a free tool that uses Claude AI to OCR invoices and output structured data to Excel or Google Sheets.
 
 ## How It Works
 1. Upload a PDF invoice
@@ -185,7 +185,7 @@ I built [InvoiceToData](${SITE_URL}) — a free tool that uses Gemini AI to OCR 
 
 ## Tech Stack
 - Next.js frontend
-- Gemini AI for OCR
+- Claude AI for OCR
 - Vercel deployment
 - No data retention — processed in memory
 
@@ -212,7 +212,7 @@ Try it free: [invoicetodata.com](${SITE_URL})
 
 <code>Hi HN! I built this because I was tired of manually copying data from PDF invoices into spreadsheets.
 
-InvoiceToData uses Gemini AI to OCR any PDF invoice and extract structured data into Excel or Google Sheets. It handles scanned documents, digital PDFs, and even photographed invoices.
+InvoiceToData uses Claude AI to OCR any PDF invoice and extract structured data into Excel or Google Sheets. It handles scanned documents, digital PDFs, and even photographed invoices.
 
 Key decisions:
 - No data retention (processed in memory only)
@@ -237,7 +237,7 @@ Would love feedback on accuracy and UX. Happy to answer questions!
 <b>URL:</b> ${SITE_URL}
 <b>Category:</b> Invoice Management, OCR, Document Management
 <b>Description:</b>
-AI-powered invoice OCR tool that extracts data from PDF invoices and converts to Excel or Google Sheets. Free, no data stored, powered by Gemini AI.
+AI-powered invoice OCR tool that extracts data from PDF invoices and converts to Excel or Google Sheets. Free, no data stored, powered by Claude AI.
 
 3. Submit`,
   },
@@ -254,7 +254,7 @@ AI-powered invoice OCR tool that extracts data from PDF invoices and converts to
 <b>URL:</b> ${SITE_URL}
 <b>Category:</b> Invoice Management Software, OCR Software
 <b>Description:</b>
-InvoiceToData is a free AI-powered tool that converts PDF invoices into structured Excel and Google Sheets data using advanced OCR technology. Powered by Gemini AI, it handles scanned, digital, and photographed invoices with high accuracy. No data is retained — all processing happens in memory.
+InvoiceToData is a free AI-powered tool that converts PDF invoices into structured Excel and Google Sheets data using advanced OCR technology. Powered by Claude AI, it handles scanned, digital, and photographed invoices with high accuracy. No data is retained — all processing happens in memory.
 
 <b>Key Features:</b>
 • AI-powered OCR extraction

@@ -23,3 +23,24 @@ export function extractText(message: Anthropic.Message): string {
     .map((b) => b.text)
     .join("");
 }
+
+/**
+ * Parse a JSON array from a model response that may include preamble,
+ * postamble, or markdown fences around the JSON. Returns null if no
+ * valid array can be extracted.
+ */
+export function parseJsonArrayLoose(text: string): unknown | null {
+  if (!text) return null;
+  // Strip common markdown fences first.
+  const cleaned = text.replace(/```json|```/g, "").trim();
+  // Walk to the first '[' and last ']' so any wrapping prose is dropped.
+  const firstBracket = cleaned.indexOf("[");
+  const lastBracket = cleaned.lastIndexOf("]");
+  if (firstBracket === -1 || lastBracket <= firstBracket) return null;
+  const slice = cleaned.slice(firstBracket, lastBracket + 1);
+  try {
+    return JSON.parse(slice);
+  } catch {
+    return null;
+  }
+}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { PDF_MODEL, extractText, getAnthropic } from "@/lib/anthropic";
+import { PDF_MODEL, extractText, getAnthropic, parseJsonArrayLoose } from "@/lib/anthropic";
 
 const SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as a visual grid and reproduce its exact layout.
 
@@ -16,11 +16,13 @@ const SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as
 - If multiple elements (labels, checkboxes, values) appear on the same horizontal line, put each in a separate adjacent cell.
 - For multi-column sections (e.g. "Child 1", "Child 2", "Child 3"), keep values under their respective visual columns. Use null for empty cells.
 
-**Output Format**
-- Return ONLY a 2D JSON array: Array<Array<string | null>>.
+**Output Format (CRITICAL)**
+- Output ONLY a 2D JSON array: Array<Array<string | null>>.
+- Your entire response MUST start with the character \`[\` and end with the character \`]\`.
 - Example: [ ["Part I", "All Filers", null], ["1", "Tax Year", "2024"], ["2", "Name", "John Doe"] ]
 - Each inner array is one row; each element is one cell (string or null).
-- No markdown backticks, no 'json' prefix.
+- No markdown backticks, no 'json' prefix, no preamble like "Here is the data".
+- No commentary, summary, or trailing explanation after the array.
 - Do not merge or summarize. Act only as a Visual-to-Excel copier.`;
 
 const ALLOWED_TYPES = [
@@ -166,20 +168,22 @@ export async function POST(request: Request) {
     }
 
     const responseText = extractText(response);
-    const cleanJson = responseText.replace(/```json|```/g, "").trim();
-    if (!cleanJson) {
-      console.error("[Extract] Empty content after cleaning. Stop reason:", response.stop_reason);
+    if (!responseText.trim()) {
+      console.error("[Extract] Empty response. Stop reason:", response.stop_reason);
       return NextResponse.json(
         { error: "Extraction failed. No content returned." },
         { status: 500 }
       );
     }
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(cleanJson);
-    } catch (parseErr) {
-      console.error("[Extract] JSON parse error:", parseErr);
+    const parsed = parseJsonArrayLoose(responseText);
+    if (parsed == null) {
+      console.error(
+        "[Extract] JSON parse failed. Stop reason:",
+        response.stop_reason,
+        "Raw (first 500 chars):",
+        responseText.slice(0, 500)
+      );
       return NextResponse.json(
         { error: "Extraction failed. Invalid JSON from model." },
         { status: 500 }
