@@ -411,7 +411,7 @@ export default function PdfToExcelPage() {
                 className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
               >
                 <FileDown className="h-5 w-5" />
-                Extract to Excel
+                Download your Excel
               </button>
               <button
                 type="button"
@@ -419,7 +419,7 @@ export default function PdfToExcelPage() {
                 className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-5 py-3 font-semibold text-slate-400"
                 aria-disabled="true"
               >
-                Extract to Google Sheet
+                Download your Google Sheet
                 <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-500">
                   
                 </span>
