@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect, useRef, useMemo } from "react";
+import Link from "next/link";
 import {
   FileDown,
   FileUp,
@@ -12,7 +13,10 @@ import {
   Sparkles,
   Shield,
   LayoutGrid,
+  Building2,
+  ArrowRight,
 } from "lucide-react";
+import { BANK_ENTITIES } from "@/lib/bankEntities";
 import * as XLSX from "xlsx-js-style";
 import {
   Table,
@@ -603,6 +607,37 @@ export default function BankStatementToExcelPage() {
                 </p>
               </div>
             </div>
+          </section>
+
+          {/* Bank-specific landing page links — Layer 4 internal-link equity */}
+          <section aria-labelledby="banks-heading" className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <h2 id="banks-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                Specific bank guides
+              </h2>
+            </div>
+            <p className="mt-3 text-slate-600">
+              Step-by-step instructions for downloading and converting statements from major banks. The converter above works with any bank — these pages cover the specifics.
+            </p>
+            <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {BANK_ENTITIES.map((b) => (
+                <li key={b.slug}>
+                  <Link
+                    href={`/tools/bank/${b.slug}`}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 transition-colors hover:border-blue-300 hover:bg-blue-50/50"
+                  >
+                    <span>
+                      <span className="font-semibold text-slate-900">{b.name}</span>
+                      <span className="ml-2 text-xs text-slate-500">{b.country}</span>
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-slate-400" aria-hidden />
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </section>
 
           <section aria-labelledby="use-cases-heading">
