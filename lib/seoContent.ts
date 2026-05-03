@@ -479,17 +479,21 @@ export async function criticReview(opts: {
 }): Promise<CriticVerdict> {
   const client = opts.client ?? getAnthropic();
 
-  // Cap content to ~6000 chars for the scorer — the failure modes we care
-  // about (vague language, missing numbers, weak FAQ) all surface in the
-  // first ~half of any article.
-  const snippet = opts.content.slice(0, 6000);
+  // Send the FULL article to the critic. Earlier we capped at 6000 chars to
+  // save tokens, but the FAQ section lives at the END of every article, so
+  // truncation produced false-positive "no FAQ" + "draft cut off" verdicts.
+  // Full article ~15-25k chars (~4-6k tokens) costs ~$0.005 on Haiku — worth
+  // it to get accurate scores. Hard cap at 28000 chars as a runaway guard.
+  const fullArticle =
+    opts.content.length > 28000 ? opts.content.slice(0, 28000) : opts.content;
+  const wasTruncated = opts.content.length > 28000;
 
   const userPrompt = `Score this draft blog post against the quality gates defined in the score_draft tool. Be strict — we'd rather bounce a mediocre draft than publish slop.
 
 TITLE: ${opts.title}
 
-${opts.angleSummary ? `INTENDED ANGLE: ${opts.angleSummary}\n\n` : ""}DRAFT (first 6000 chars):
-${snippet}`;
+${opts.angleSummary ? `INTENDED ANGLE: ${opts.angleSummary}\n\n` : ""}DRAFT (${wasTruncated ? "first 28000 chars of a longer article — assume FAQ + Conclusion exist beyond this slice and do NOT penalize for them being missing here" : "complete article"}):
+${fullArticle}`;
 
   const response = await client.messages.create({
     model: PDF_MODEL,
