@@ -2,12 +2,25 @@ import { NextResponse } from "next/server";
 import { SEO_MODEL, extractText, getAnthropic } from "@/lib/anthropic";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
+import {
+  proposeAndScoreCandidates,
+  pickBestCandidate,
+  formatLockedAngle,
+  pickDiversityAxes,
+  formatDiversityAxes,
+  criticReview,
+  formatCriticVerdict,
+  type RecentPost,
+} from "@/lib/seoContent";
+
+/** Reject any candidate whose Haiku-scored similarity vs corpus is >= this. */
+const DEDUP_THRESHOLD = 65;
 
 /**
- * Vercel Cron Job — runs daily at 12:00 PM UTC (7:00 PM VN)
- * Second daily content cron — focuses on HIGH-CONVERSION content:
- * buyer-intent keywords, pricing comparisons, ROI calculators, case studies.
- * This complements the morning cron which focuses on informational content.
+ * Vercel Cron Job — runs daily at 12:00 PM UTC (7:00 PM VN) when invoked
+ * standalone. Also dispatched by /api/cron/master on buyer-intent days.
+ * Focuses on HIGH-CONVERSION content: buyer-intent keywords, pricing,
+ * ROI, case studies.
  */
 
 const SITE_URL = "https://invoicetodata.com";
@@ -95,52 +108,106 @@ async function pingSitemap(): Promise<void> {
   } catch { /* non-critical */ }
 }
 
-export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export type RunnerResult =
+  | { success: true; skipped?: false; slug: string; type: string }
+  | { success: true; skipped: true; reason: string; type: string };
+
+/**
+ * Exported so the master cron can invoke this runner directly. Returns a
+ * plain result object so the master can compose it with other runners.
+ */
+export async function runBuyerIntent(): Promise<RunnerResult> {
+  if (!process.env.ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
+  if (!hasSupabaseConfig) throw new Error("Missing Supabase config");
+
+  const dayOfYear = Math.floor(
+    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
+  );
+  const template = CONTENT_TEMPLATES[dayOfYear % CONTENT_TEMPLATES.length];
+
+  const supabase = getSupabase();
+  const { data: existingPosts } = await supabase
+    .from("blogs")
+    .select("title, slug, summary")
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  const existingSlugs = (existingPosts ?? []).map((p) => p.slug);
+  const recentForPlanner: RecentPost[] = (existingPosts ?? []).map((p) => ({
+    title: p.title,
+    summary: p.summary,
+  }));
+
+  // ─── LAYER 3: DIVERSITY AXES ─────────────────────────────────────────
+  // Random (persona × format × depth) combo per run. Layer 1 dedup gate
+  // already handles topical repetition; this just ensures structural and
+  // tonal variety so even adjacent topics feel distinct.
+  const axes = pickDiversityAxes();
+
+  // ─── LAYER 1: DEDUP GATE ─────────────────────────────────────────────
+  let chosenAngle;
+  try {
+    const candidates = await proposeAndScoreCandidates({
+      templatePrompt: template.prompt,
+      templateType: template.type,
+      recentPosts: recentForPlanner,
+      count: 3,
+      axes,
+    });
+    chosenAngle = pickBestCandidate(candidates, DEDUP_THRESHOLD);
+    if (!chosenAngle) {
+      const closest = candidates
+        .map((c) => `• ${c.title} (sim ${c.similarity_score} vs "${c.most_similar_title}")`)
+        .join("\n");
+      await sendTelegramMessage(
+        `⏭️ <b>SEO Content-2 — Skipped</b>\n\n` +
+          `Template: ${template.type} (buyer-intent)\n` +
+          `Reason: every candidate angle scored ≥ ${DEDUP_THRESHOLD} vs the corpus.\n\n` +
+          `Candidates considered:\n${closest}`
+      );
+      return {
+        success: true,
+        skipped: true,
+        reason: "dedup",
+        type: template.type,
+      };
+    }
+  } catch (planErr) {
+    console.error("[SEO Content-2] Planner failed, falling back:", planErr);
+    chosenAngle = null;
   }
 
-  try {
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
-    if (!hasSupabaseConfig) throw new Error("Missing Supabase config");
+  const internalLinksInstruction = INTERNAL_LINKS.map(
+    (l) => `- Link to ${l.url} with anchor text "${l.anchor}" at least once`
+  ).join("\n");
 
-    const dayOfYear = Math.floor(
-      (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
-    );
-    const template = CONTENT_TEMPLATES[dayOfYear % CONTENT_TEMPLATES.length];
+  const recentPosts = (existingPosts ?? []).slice(0, 5);
+  const recentLinksInstruction = recentPosts
+    .map((p) => `- You may link to ${SITE_URL}/blog/${p.slug} (titled: "${p.title}")`)
+    .join("\n");
 
-    const supabase = getSupabase();
-    const { data: existingPosts } = await supabase
-      .from("blogs")
-      .select("title, slug")
-      .order("created_at", { ascending: false })
-      .limit(30);
+  const angleBlock = chosenAngle
+    ? formatLockedAngle(chosenAngle)
+    : `TEMPLATE BRIEF:\n${template.prompt}`;
 
-    const existingTitles = (existingPosts ?? []).map((p) => p.title).join(", ");
-    const existingSlugs = (existingPosts ?? []).map((p) => p.slug);
+  const existingTitlesForAvoid = recentForPlanner
+    .map((p) => `"${p.title}"`)
+    .join(", ");
 
-    const internalLinksInstruction = INTERNAL_LINKS.map(
-      (l) => `- Link to ${l.url} with anchor text "${l.anchor}" at least once`
-    ).join("\n");
+  const fullPrompt = `You are an expert SEO content writer for InvoiceToData (${SITE_URL}), a SaaS tool that converts invoices into structured data using AI OCR.
 
-    const recentPosts = (existingPosts ?? []).slice(0, 5);
-    const recentLinksInstruction = recentPosts
-      .map((p) => `- You may link to ${SITE_URL}/blog/${p.slug} (titled: "${p.title}")`)
-      .join("\n");
+${angleBlock}
 
-    const fullPrompt = `You are an expert SEO content writer for InvoiceToData (${SITE_URL}), a SaaS tool that converts invoices into structured data using AI OCR.
-
-${template.prompt}
+${formatDiversityAxes(axes)}
 
 IMPORTANT — THIS IS CONVERSION-FOCUSED CONTENT:
-- Article must be 1500-2500 words
+- Article must be ${axes.depth.minWords}-${axes.depth.maxWords} words
 - Write in English
 - Target BUYER-INTENT keywords (people ready to purchase/try a solution)
 - Include pricing mentions, ROI data, and clear CTAs throughout
 - Every major section should end with a soft CTA like "Try InvoiceToData free →" or "See pricing →"
 - Include a compelling "## Why Choose InvoiceToData" section near the end
-- Do NOT use the same topic as: ${existingTitles}
+- Do NOT retread the same ground as: ${existingTitlesForAvoid}
 
 INTERNAL LINKING:
 ${internalLinksInstruction}
@@ -155,69 +222,109 @@ CONVERSION ELEMENTS TO INCLUDE:
 
 STRUCTURE:
 - Start with ## Introduction (hook with a business pain point and cost implication)
-- Use ## for main sections, ### for subsections
+- Use ## for main sections, ### for subsections (follow the LOCKED ANGLE outline above when present)
 - Include a ## Conclusion with strong CTA
 - Add "Related:" section linking to 2-3 existing blog posts
 
 FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
 TITLE: [Buyer-intent SEO title]
+SUMMARY: [60-80 word summary that captures the unique angle and key takeaway — used by future dedup checks, so be specific about what makes THIS post different]
 META: [Meta description, max 155 chars, include primary keyword + reason to click]
 KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5]
 ---
 [Article content in Markdown starting with ## Introduction]`;
 
-    const client = getAnthropic();
-    const message = await client.messages.create({
-      model: SEO_MODEL,
-      max_tokens: 16000,
-      output_config: { effort: "medium" },
-      messages: [{ role: "user", content: fullPrompt }],
-    });
-    const response = extractText(message);
+  const client = getAnthropic();
+  const message = await client.messages.create({
+    model: SEO_MODEL,
+    max_tokens: 16000,
+    output_config: { effort: "medium" },
+    messages: [{ role: "user", content: fullPrompt }],
+  });
+  const response = extractText(message);
 
-    const titleMatch = response.match(/TITLE:\s*(.+)/);
-    const metaMatch = response.match(/META:\s*(.+)/);
-    const keywordsMatch = response.match(/KEYWORDS:\s*(.+)/);
-    const contentStart = response.indexOf("---");
+  const titleMatch = response.match(/TITLE:\s*(.+)/);
+  const summaryMatch = response.match(/SUMMARY:\s*(.+)/);
+  const metaMatch = response.match(/META:\s*(.+)/);
+  const keywordsMatch = response.match(/KEYWORDS:\s*(.+)/);
+  const contentStart = response.indexOf("---");
 
-    if (!titleMatch || contentStart === -1) {
-      throw new Error("Failed to parse Claude response");
-    }
+  if (!titleMatch || contentStart === -1) {
+    throw new Error("Failed to parse Claude response");
+  }
 
-    const title = titleMatch[1].trim();
-    const metaDescription = metaMatch?.[1]?.trim().slice(0, 160) ?? "";
-    const keywords = keywordsMatch?.[1]?.trim() ?? "";
-    const content = response.slice(contentStart + 3).trim();
-    let slug = slugify(title);
+  const title = titleMatch[1].trim();
+  const summary =
+    summaryMatch?.[1]?.trim() || chosenAngle?.summary || `${title}.`;
+  const metaDescription = metaMatch?.[1]?.trim().slice(0, 160) ?? "";
+  const keywords = keywordsMatch?.[1]?.trim() ?? "";
+  const content = response.slice(contentStart + 3).trim();
 
-    if (existingSlugs.includes(slug)) {
-      const dateSuffix = new Date().toISOString().slice(0, 10);
-      slug = `${slug}-${dateSuffix}`;
-    }
+  // ─── LAYER 2: CRITIC GATE ────────────────────────────────────────────
+  // Catch generic / weak content BEFORE publishing. We don't auto-retry
+  // (that costs another full Sonnet call); we surface to Telegram so the
+  // user can decide.
+  const verdict = await criticReview({
+    title,
+    content,
+    angleSummary: chosenAngle?.summary,
+    client,
+  });
+  if (!verdict.pass) {
+    await sendTelegramMessage(
+      `🚫 <b>SEO Content-2 — Critic rejected draft</b>\n\n` +
+        `📝 <b>${title}</b>\n` +
+        `Type: ${template.type} (buyer-intent)\n\n` +
+        formatCriticVerdict(verdict)
+    );
+    return {
+      success: true,
+      skipped: true,
+      reason: `critic:${verdict.issues[0] ?? "quality"}`,
+      type: template.type,
+    };
+  }
 
-    const { error } = await supabase
-      .from("blogs")
-      .insert({ title, slug, meta_description: metaDescription, keywords, content })
-      .select()
-      .single();
+  let slug = slugify(title);
+  if (existingSlugs.includes(slug)) {
+    const dateSuffix = new Date().toISOString().slice(0, 10);
+    slug = `${slug}-${dateSuffix}`;
+  }
 
-    if (error) throw new Error(`Supabase insert failed: ${error.message}`);
+  const { error } = await supabase
+    .from("blogs")
+    .insert({ title, slug, meta_description: metaDescription, keywords, content, summary })
+    .select()
+    .single();
 
-    await pingSitemap();
+  if (error) throw new Error(`Supabase insert failed: ${error.message}`);
 
-    const msg = `✅ <b>Conversion Blog Post Published!</b>
+  await pingSitemap();
 
-📝 <b>${title}</b>
-📂 Type: ${template.type} (buyer-intent)
-🔑 Keywords: ${keywords}
-🔗 <a href="${SITE_URL}/blog/${slug}">View Post</a>
+  await sendTelegramMessage(
+    `✅ <b>Conversion Blog Post Published!</b>\n\n` +
+      `📝 <b>${title}</b>\n` +
+      `📂 Type: ${template.type} (buyer-intent)\n` +
+      `🎭 Persona: ${axes.persona.label} • Format: ${axes.format.label} • Depth: ${axes.depth.label}\n` +
+      `🔑 Keywords: ${keywords}\n` +
+      `🔗 <a href="${SITE_URL}/blog/${slug}">View Post</a>\n\n` +
+      `💰 Conversion-optimized with CTAs and pricing mentions\n` +
+      `✅ Critic passed (specifics ${verdict.scores.specificNumbers}, named entities ${verdict.scores.namedEntities})\n` +
+      `✅ Google sitemap ping sent`
+  );
 
-💰 Conversion-optimized with CTAs and pricing mentions
-✅ Google sitemap ping sent`;
+  return { success: true, slug, type: template.type };
+}
 
-    await sendTelegramMessage(msg);
+export async function GET(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    return NextResponse.json({ success: true, slug, type: template.type });
+  try {
+    const result = await runBuyerIntent();
+    return NextResponse.json(result);
   } catch (err) {
     console.error("[SEO Content-2 Cron] Error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
