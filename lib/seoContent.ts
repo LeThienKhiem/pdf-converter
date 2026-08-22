@@ -245,17 +245,55 @@ function jaccard(a: Set<string>, b: Set<string>): number {
  * boilerplate vocabulary ("invoice" is in 71% of titles, "ocr" in 33%) and
  * therefore carry no differentiating signal.
  */
-function boilerplateTokens(corpus: RecentPost[]): Set<string> {
+export function boilerplateTokens(titles: string[]): Set<string> {
   const freq = new Map<string, number>();
-  for (const post of corpus) {
-    for (const token of titleTokens(post.title)) {
+  for (const title of titles) {
+    for (const token of titleTokens(title)) {
       freq.set(token, (freq.get(token) ?? 0) + 1);
     }
   }
-  const cutoff = Math.max(2, Math.ceil(corpus.length * 0.15));
+  const cutoff = Math.max(2, Math.ceil(titles.length * 0.15));
   const common = new Set<string>();
   for (const [token, n] of freq) if (n >= cutoff) common.add(token);
   return common;
+}
+
+/**
+ * Would these two titles be the same article?
+ *
+ * The single definition of "duplicate" used by both the publish-time gate and
+ * the consolidation planner, so the bot never blocks something the planner
+ * would treat as distinct (or the reverse).
+ *
+ * Symmetric on purpose: each title must fail to bring a distinctive term the
+ * other lacks. "InvoiceToData vs Mindee" and "InvoiceToData vs Veryfi" share
+ * enough boilerplate to look similar, but each names a competitor the other
+ * doesn't — they are different articles, and a one-directional check would
+ * wrongly collapse them.
+ */
+export function areDuplicateTitles(
+  a: string,
+  b: string,
+  boilerplate: Set<string>
+): boolean {
+  if (normalizeTitle(a) === normalizeTitle(b)) return true;
+
+  const ta = titleTokens(a);
+  const tb = titleTokens(b);
+  const overlap = jaccard(ta, tb);
+
+  if (overlap < MECHANICAL_BLOCK_AT) return false;
+  if (overlap >= MECHANICAL_HARD_BLOCK_AT) return true;
+
+  const distinctive = (from: Set<string>, other: Set<string>) =>
+    [...from].filter(
+      (t) => !boilerplate.has(t) && !other.has(t) && !NON_DISTINCTIVE.has(t)
+    );
+
+  // Distinct if EITHER side contributes something topical the other lacks.
+  return (
+    distinctive(ta, tb).length === 0 && distinctive(tb, ta).length === 0
+  );
 }
 
 export type DupeVerdict = {
@@ -316,7 +354,7 @@ export function mechanicalDupeCheck(
 
   const candidateNorm = normalizeTitle(candidateTitle);
   const candidateTokens = titleTokens(candidateTitle);
-  const boilerplate = boilerplateTokens(corpus);
+  const boilerplate = boilerplateTokens(corpus.map((p) => p.title));
 
   let worstScore = 0;
   let closestTitle = "";
@@ -397,9 +435,7 @@ export function pickRelevantLinkTargets<T extends { title: string; slug: string 
   count = 6
 ): T[] {
   const seedTokens = titleTokens(seedText);
-  const boilerplate = boilerplateTokens(
-    corpus.map((c) => ({ title: c.title }))
-  );
+  const boilerplate = boilerplateTokens(corpus.map((c) => c.title));
 
   // Score on distinctive overlap only, so shared boilerplate ("invoice",
   // "ocr") doesn't make every post look equally relevant.
