@@ -4,17 +4,22 @@ import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 import {
   proposeAndScoreCandidates,
-  pickBestCandidate,
   formatLockedAngle,
   pickDiversityAxes,
   formatDiversityAxes,
   criticReview,
   formatCriticVerdict,
+  mechanicalDupeCheck,
+  pickRelevantLinkTargets,
+  normalizeTitle,
   type RecentPost,
 } from "@/lib/seoContent";
 
 /** Reject any candidate whose Haiku-scored similarity vs corpus is >= this. */
 const DEDUP_THRESHOLD = 65;
+
+/** How many corpus titles to name in the writer prompt as "don't retread". */
+const AVOID_LIST_SIZE = 25;
 
 /**
  * Vercel Cron Job — runs daily at 12:00 PM UTC (7:00 PM VN) when invoked
@@ -74,11 +79,22 @@ Include a pricing table, free tier comparison, cost per page, and value analysis
 Highlight that InvoiceToData offers a free tier and competitive pricing.`,
   },
   {
-    type: "case-study",
-    prompt: `Write a realistic case study about a business that improved their invoice processing with automation.
-Target keywords: "invoice automation case study", "invoice OCR results", "invoice processing improvement".
-Create a compelling story: company background, the problem (manual processing), the solution (InvoiceToData), the results (time saved, errors reduced, cost savings).
-Include specific metrics: "reduced processing time from 15 minutes to 30 seconds per invoice".`,
+    type: "worked-example",
+    prompt: `Write a worked cost example for a specific, clearly-hypothetical business profile.
+
+IMPORTANT — this template used to ask for a "realistic case study" with invented result metrics, and that produced real damage: two articles on this blog now describe the same scenario as delivering "95%" and "85%" efficiency gains. Contradictory invented numbers are worse than no numbers, because a reader who notices stops believing anything else on the page.
+
+So: no fake customers, no fake company names, no invented outcome percentages, no fabricated quotes.
+
+Instead, build a transparent model the reader can re-run with their own inputs:
+- State the profile plainly as an example, e.g. "a bookkeeping practice handling 400 invoices a month across 12 clients"
+- Show the arithmetic step by step: volume x minutes per document = hours; hours x hourly cost = spend
+- State every assumption in a table and label it as an assumption
+- Compare against InvoiceToData's real published pricing at ${SITE_URL}/pricing
+- Show the break-even point and be honest about when automation does NOT pay off (very low volume, highly irregular documents, cases needing line-level human review anyway)
+
+Target keywords: "invoice automation ROI", "cost of manual invoice processing", "invoice processing cost per invoice".
+The reader should finish able to compute their own number, not impressed by ours.`,
   },
   {
     type: "integration-guide",
@@ -86,6 +102,34 @@ Include specific metrics: "reduced processing time from 15 minutes to 30 seconds
 Target keywords: "invoice OCR integration", "connect invoice data to accounting software", "invoice automation workflow".
 Cover integrations with: QuickBooks, Xero, Google Sheets, Excel, Zapier.
 Show how InvoiceToData fits into existing workflows and saves time.`,
+  },
+
+  // ─── Buyer-intent templates for the untapped verticals ────────────────
+  // Same rationale as the informational side: the templates above are all
+  // invoice-OCR framings, and the corpus had run out of distinct angles.
+  // These target commercial queries the site already receives.
+
+  {
+    type: "llm-buying-decision",
+    prompt: `Write for someone deciding between "just use an AI assistant" and paying for a purpose-built tool.
+
+This is a real, current buying question and the site already ranks unusually well for the neighbouring queries — "claude pdf to excel" sits at position 5 with a 13% click-through rate, roughly thirty times the site average. Search Console also shows people arriving on "what's the most affordable ai solution for converting invoices to spreadsheets?" and "is there a tool that can automatically extract data from invoices and populate excel forms using ai?".
+
+Make the honest case on both sides. An AI assistant subscription is excellent for occasional one-off documents and costs nothing extra if the reader already pays for it. It falls down on repeated work: no batch processing, per-file manual effort, output shape that drifts between runs, no direct .xlsx export, and no audit trail.
+
+Be specific about the crossover point — roughly how many documents a month before a dedicated tool wins, and why. InvoiceToData runs on Claude, so the honest positioning is "the same model with the workflow a repeated task requires", never "AI assistants can't do this". A reader who leaves deciding the assistant is enough for their volume has still been served well, and will come back when volume changes.
+Target keywords: "claude pdf to excel", "chatgpt vs invoice ocr tool", "ai invoice extraction cost".`,
+  },
+  {
+    type: "bank-buying-guide",
+    prompt: `Write for someone evaluating how to get bank statement data into their accounting system at a specific scale.
+
+Search Console shows commercial intent here on pages 3-6, with no strong page to serve it: "bank statement to excel software" (position 75), "bank statement converter to excel" (position 57), "software to convert bank statements into excel" (position 49), "ai bank statement converter" (position 24), "bank statement converter ai free" (position 24).
+
+Pick ONE scale and write for it properly: a solo bookkeeper reconciling a handful of accounts, a practice handling twenty-plus clients across different banks, or a finance team closing monthly across multiple entities and currencies.
+
+Cover honestly: when the bank's own CSV export is all you need and no tool is warranted, what actually breaks at scale (mixed formats across banks, password-protected PDFs, multi-account statements, closed accounts with PDF-only history), what to look for in a converter, and how the output has to land for reconciliation to be quick rather than merely possible.
+Reference the real published pricing at ${SITE_URL}/pricing and link to /tools/bank-statement-to-excel.`,
   },
 ];
 
@@ -125,12 +169,14 @@ export async function runBuyerIntent(): Promise<RunnerResult> {
   );
   const template = CONTENT_TEMPLATES[dayOfYear % CONTENT_TEMPLATES.length];
 
+  // Full corpus, not a 30-post window — see the note in seo-content/route.ts:
+  // the window left 75% of posts invisible to the dedup gate.
   const supabase = getSupabase();
   const { data: existingPosts } = await supabase
     .from("blogs")
     .select("title, slug, summary")
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(2000);
 
   const existingSlugs = (existingPosts ?? []).map((p) => p.slug);
   const recentForPlanner: RecentPost[] = (existingPosts ?? []).map((p) => ({
@@ -154,16 +200,39 @@ export async function runBuyerIntent(): Promise<RunnerResult> {
       count: 3,
       axes,
     });
-    chosenAngle = pickBestCandidate(candidates, DEDUP_THRESHOLD);
+    // ─── LAYER 1b: MECHANICAL VETO ───────────────────────────────────────
+    // Independent re-check of the planner's self-scored similarity. Walks all
+    // candidates least-similar-first so a vetoed top pick falls through to
+    // candidates 2 and 3 instead of wasting the run.
+    const rejections: string[] = [];
+    const ranked = [...candidates].sort(
+      (a, b) => a.similarity_score - b.similarity_score
+    );
+
+    for (const candidate of ranked) {
+      if (candidate.similarity_score >= DEDUP_THRESHOLD) {
+        rejections.push(
+          `• ${candidate.title}\n   planner: ${candidate.similarity_score} vs "${candidate.most_similar_title}"`
+        );
+        continue;
+      }
+      const verdict = mechanicalDupeCheck(candidate.title, recentForPlanner);
+      if (verdict.isDupe) {
+        rejections.push(
+          `• ${candidate.title}\n   planner said ${candidate.similarity_score}, but mechanically: ${verdict.reason}\n   closest: "${verdict.closestTitle}"`
+        );
+        continue;
+      }
+      chosenAngle = candidate;
+      break;
+    }
+
     if (!chosenAngle) {
-      const closest = candidates
-        .map((c) => `• ${c.title} (sim ${c.similarity_score} vs "${c.most_similar_title}")`)
-        .join("\n");
       await sendTelegramMessage(
         `⏭️ <b>SEO Content-2 — Skipped</b>\n\n` +
           `Template: ${template.type} (buyer-intent)\n` +
-          `Reason: every candidate angle scored ≥ ${DEDUP_THRESHOLD} vs the corpus.\n\n` +
-          `Candidates considered:\n${closest}`
+          `Reason: no candidate cleared both the planner threshold (${DEDUP_THRESHOLD}) and the mechanical dedup check.\n\n` +
+          `Rejected:\n${rejections.join("\n")}`
       );
       return {
         success: true,
@@ -171,6 +240,12 @@ export async function runBuyerIntent(): Promise<RunnerResult> {
         reason: "dedup",
         type: template.type,
       };
+    }
+
+    if (rejections.length > 0) {
+      console.log(
+        `[SEO Content-2] Mechanical veto rejected ${rejections.length} candidate(s) before settling on "${chosenAngle.title}"`
+      );
     }
   } catch (planErr) {
     console.error("[SEO Content-2] Planner failed, falling back:", planErr);
@@ -181,8 +256,14 @@ export async function runBuyerIntent(): Promise<RunnerResult> {
     (l) => `- Link to ${l.url} with anchor text "${l.anchor}" at least once`
   ).join("\n");
 
-  const recentPosts = (existingPosts ?? []).slice(0, 5);
-  const recentLinksInstruction = recentPosts
+  // Link targets by topical relevance, not recency — the old `.slice(0, 5)`
+  // pooled all internal links on the newest few posts and orphaned the rest.
+  const linkTargets = pickRelevantLinkTargets(
+    `${chosenAngle?.title ?? template.type} ${chosenAngle?.summary ?? ""}`,
+    (existingPosts ?? []).map((p) => ({ title: p.title, slug: p.slug })),
+    6
+  );
+  const recentLinksInstruction = linkTargets
     .map((p) => `- You may link to ${SITE_URL}/blog/${p.slug} (titled: "${p.title}")`)
     .join("\n");
 
@@ -191,6 +272,7 @@ export async function runBuyerIntent(): Promise<RunnerResult> {
     : `TEMPLATE BRIEF:\n${template.prompt}`;
 
   const existingTitlesForAvoid = recentForPlanner
+    .slice(0, AVOID_LIST_SIZE)
     .map((p) => `"${p.title}"`)
     .join(", ");
 
@@ -216,12 +298,26 @@ ${recentLinksInstruction}
 CONVERSION ELEMENTS TO INCLUDE:
 - At least 2 CTAs linking to ${SITE_URL}/tools/pdf-to-excel or ${SITE_URL}/pricing
 - A comparison table if relevant
-- Specific numbers (time saved, cost reduced, error rates)
-- Social proof language ("thousands of businesses", "used by accounting firms worldwide")
+- Concrete, defensible numbers — published vendor pricing, arithmetic the
+  reader can redo themselves (e.g. "200 invoices x 4 minutes = 13 hours"),
+  or clearly-labelled worked examples
 - A ## Frequently Asked Questions section with 3-5 buyer-focused Q&As
 
+CLAIMS DISCIPLINE (do not skip this):
+- Do NOT invent customer counts, adoption claims, or vague social proof.
+  Phrases like "thousands of businesses" or "used by accounting firms
+  worldwide" are unverifiable and we do not have the numbers to back them.
+- Do NOT fabricate a statistic to make a point land. If there's no real
+  figure, explain the mechanism instead. Two posts on this blog already
+  describe the same case study as "95%" and "85%" efficiency gains —
+  contradictory invented numbers cost more trust than they buy attention.
+- Our real, stated facts: free first conversion without signup, free credits
+  on account creation, and the published pricing on ${SITE_URL}/pricing.
+  Sell with those.
+
 STRUCTURE:
-- Start with ## Introduction (hook with a business pain point and cost implication)
+- Open with a **bolded 2-3 sentence direct answer** to the question implied by the title, BEFORE any heading. No preamble. Someone who reads only these sentences should get the real answer — this is what an AI summary quotes.
+- Then ## Introduction (hook with a business pain point and cost implication)
 - Use ## for main sections, ### for subsections (follow the LOCKED ANGLE outline above when present)
 - Include a ## Conclusion with strong CTA
 - Add "Related:" section linking to 2-3 existing blog posts
@@ -285,10 +381,42 @@ KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5]
     };
   }
 
-  let slug = slugify(title);
+  // Collision = we already published this title. Stop, don't date-suffix and
+  // publish anyway — that path is what put two copies of "Invoice OCR Pricing
+  // Comparison 2026" into the index, splitting one keyword across both.
+  const slug = slugify(title);
   if (existingSlugs.includes(slug)) {
-    const dateSuffix = new Date().toISOString().slice(0, 10);
-    slug = `${slug}-${dateSuffix}`;
+    await sendTelegramMessage(
+      `🚫 <b>SEO Content-2 — Duplicate title blocked</b>\n\n` +
+        `📝 <b>${title}</b>\n` +
+        `Type: ${template.type} (buyer-intent)\n\n` +
+        `A post already lives at /blog/${slug}. Nothing published.`
+    );
+    return {
+      success: true,
+      skipped: true,
+      reason: "duplicate-slug",
+      type: template.type,
+    };
+  }
+
+  const titleNorm = normalizeTitle(title);
+  const titleClash = (existingPosts ?? []).find(
+    (p) => normalizeTitle(p.title) === titleNorm
+  );
+  if (titleClash) {
+    await sendTelegramMessage(
+      `🚫 <b>SEO Content-2 — Duplicate title blocked</b>\n\n` +
+        `📝 <b>${title}</b>\n` +
+        `Type: ${template.type} (buyer-intent)\n\n` +
+        `Matches the existing post at /blog/${titleClash.slug}. Nothing published.`
+    );
+    return {
+      success: true,
+      skipped: true,
+      reason: "duplicate-title",
+      type: template.type,
+    };
   }
 
   const { error } = await supabase

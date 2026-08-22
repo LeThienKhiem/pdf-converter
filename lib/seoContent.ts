@@ -181,6 +181,254 @@ export function pickBestCandidate(
   return best;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Layer 1b — Mechanical dedup check (independent of the planner)
+//
+// Layer 1 asks Haiku to score its OWN proposal's similarity, then filters on
+// that self-report. An audit of the live corpus (120 posts) found 34
+// near-duplicate title pairs, 23 of which were inside the window the planner
+// could see — it simply under-scored them. Self-grading is not a gate.
+//
+// This module re-checks the chosen candidate in plain code, so a lowballed
+// similarity_score can no longer wave a duplicate through.
+//
+// Why not raw title Jaccard alone: this corpus has heavy title boilerplate
+// ("Best Alternatives to X: Top 7 Invoice OCR Solutions for 2026"). Measured
+// on the real corpus, "Best Alternatives to Rossum…" vs "Best Alternatives to
+// ABBYY…" scores 0.40 — the same as genuinely distinct pairs — because the
+// shared scaffolding dominates. So overlap alone would either block real
+// articles or miss real dupes.
+//
+// The fix: overlap gates the check, but a candidate survives if it introduces
+// a DISTINCTIVE token the matched post lacks (a new competitor, bank, doc
+// type, industry). "Rossum" vs "ABBYY" differ that way and pass; the exact
+// re-publish of "Invoice OCR Pricing Comparison 2026" introduces nothing and
+// is blocked.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Words too generic to signal topical overlap in this corpus. */
+const TITLE_STOPWORDS = new Set([
+  "the", "a", "an", "and", "or", "for", "to", "of", "in", "on", "with", "your",
+  "you", "how", "what", "why", "is", "are", "vs", "best", "top", "guide",
+  "2026", "2025", "2024", "it", "that", "this", "from", "at", "by", "as", "be",
+  "can", "complete", "ultimate", "step", "steps", "into", "not", "no", "my",
+  "our", "when", "where", "which", "who", "will", "should", "does", "do",
+]);
+
+/** Collapse a title to a comparable form for exact-duplicate detection. */
+export function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Content-bearing tokens of a title, stopwords and short words removed. */
+export function titleTokens(title: string): Set<string> {
+  return new Set(
+    normalizeTitle(title)
+      .split(" ")
+      .filter((w) => w.length > 2 && !TITLE_STOPWORDS.has(w))
+  );
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let intersection = 0;
+  for (const w of a) if (b.has(w)) intersection++;
+  return intersection / (a.size + b.size - intersection);
+}
+
+/**
+ * Tokens that appear in >= 15% of corpus titles are treated as this site's
+ * boilerplate vocabulary ("invoice" is in 71% of titles, "ocr" in 33%) and
+ * therefore carry no differentiating signal.
+ */
+function boilerplateTokens(corpus: RecentPost[]): Set<string> {
+  const freq = new Map<string, number>();
+  for (const post of corpus) {
+    for (const token of titleTokens(post.title)) {
+      freq.set(token, (freq.get(token) ?? 0) + 1);
+    }
+  }
+  const cutoff = Math.max(2, Math.ceil(corpus.length * 0.15));
+  const common = new Set<string>();
+  for (const [token, n] of freq) if (n >= cutoff) common.add(token);
+  return common;
+}
+
+export type DupeVerdict = {
+  /** True when the candidate should NOT be published. */
+  isDupe: boolean;
+  /** Highest title overlap found against the corpus, 0-1. */
+  score: number;
+  /** The corpus title that drove the score. */
+  closestTitle: string;
+  /** Human-readable rationale for the Telegram alert. */
+  reason: string;
+};
+
+/** Overlap at or above this, with no new distinctive token, blocks publish. */
+const MECHANICAL_BLOCK_AT = 0.45;
+
+/**
+ * Above this, nothing rescues the candidate.
+ *
+ * Set from a replay of the live corpus: at 80% overlap, "How to Switch to
+ * Invoice Automation in 2026: A Step-by-Step Migration Guide for Businesses"
+ * was escaping the gate purely because it added the word "businesses" — the
+ * distinctive-term escape hatch is meaningless once overlap is this high.
+ */
+const MECHANICAL_HARD_BLOCK_AT = 0.65;
+
+/**
+ * Rhetorical and structural words that must never count as a distinctive
+ * term. They pass the corpus-frequency filter (each appears in well under
+ * 15% of titles) yet carry no topical differentiation, so without this list
+ * they rescue genuine duplicates. Kept separate from TITLE_STOPWORDS because
+ * these SHOULD still contribute to the overlap score — they just can't be
+ * the thing that makes an article "new".
+ */
+const NON_DISTINCTIVE = new Set([
+  "business", "businesses", "company", "companies", "team", "teams",
+  "proven", "ways", "tips", "guide", "guides", "choose", "choosing",
+  "automatically", "automated", "automating", "automation",
+  "scaling", "switch", "switching", "transforming", "transform",
+  "efficiency", "accuracy", "workflow", "workflows", "process", "processing",
+  "solution", "solutions", "tool", "tools", "software", "platform",
+  "comparison", "compared", "review", "reviews", "explained", "understanding",
+  "everything", "need", "know", "real", "true", "hidden", "secret",
+  "guide2026", "guide2025",
+]);
+
+/**
+ * Re-check a candidate title against the FULL corpus in code. Runs after the
+ * planner has chosen, and can veto that choice.
+ */
+export function mechanicalDupeCheck(
+  candidateTitle: string,
+  corpus: RecentPost[]
+): DupeVerdict {
+  if (corpus.length === 0) {
+    return { isDupe: false, score: 0, closestTitle: "", reason: "empty corpus" };
+  }
+
+  const candidateNorm = normalizeTitle(candidateTitle);
+  const candidateTokens = titleTokens(candidateTitle);
+  const boilerplate = boilerplateTokens(corpus);
+
+  let worstScore = 0;
+  let closestTitle = "";
+  let closestTokens = new Set<string>();
+
+  for (const post of corpus) {
+    // An identical title is a duplicate regardless of any other signal.
+    if (normalizeTitle(post.title) === candidateNorm) {
+      return {
+        isDupe: true,
+        score: 1,
+        closestTitle: post.title,
+        reason: "exact title match against an existing post",
+      };
+    }
+    const score = jaccard(candidateTokens, titleTokens(post.title));
+    if (score > worstScore) {
+      worstScore = score;
+      closestTitle = post.title;
+      closestTokens = titleTokens(post.title);
+    }
+  }
+
+  if (worstScore < MECHANICAL_BLOCK_AT) {
+    return {
+      isDupe: false,
+      score: worstScore,
+      closestTitle,
+      reason: `overlap ${(worstScore * 100).toFixed(0)}% is below the ${(MECHANICAL_BLOCK_AT * 100).toFixed(0)}% gate`,
+    };
+  }
+
+  if (worstScore >= MECHANICAL_HARD_BLOCK_AT) {
+    return {
+      isDupe: true,
+      score: worstScore,
+      closestTitle,
+      reason: `overlap ${(worstScore * 100).toFixed(0)}% exceeds the ${(MECHANICAL_HARD_BLOCK_AT * 100).toFixed(0)}% hard ceiling — no new angle can justify this much reuse`,
+    };
+  }
+
+  // Moderate overlap. Survive only by introducing a genuinely topical term the
+  // closest post lacks — a new competitor, bank, document type, or industry.
+  // Generic modifiers are excluded so they can't rescue a near-duplicate.
+  const newDistinctive = [...candidateTokens].filter(
+    (t) => !boilerplate.has(t) && !closestTokens.has(t) && !NON_DISTINCTIVE.has(t)
+  );
+
+  if (newDistinctive.length > 0) {
+    return {
+      isDupe: false,
+      score: worstScore,
+      closestTitle,
+      reason: `overlap ${(worstScore * 100).toFixed(0)}% but introduces new distinctive term(s): ${newDistinctive.join(", ")}`,
+    };
+  }
+
+  return {
+    isDupe: true,
+    score: worstScore,
+    closestTitle,
+    reason: `overlap ${(worstScore * 100).toFixed(0)}% with no distinctive term the existing post lacks`,
+  };
+}
+
+/**
+ * Rank corpus posts by topical relevance to a seed text (the chosen angle's
+ * title + keywords) so internal links point at genuinely related posts.
+ *
+ * Replaces the previous "5 most recent posts" heuristic, which concentrated
+ * every internal link on the newest handful and left the rest of the corpus
+ * orphaned — the measured cause of high-impression older posts stalling at
+ * position 60-85 with no path to accumulate internal link equity.
+ */
+export function pickRelevantLinkTargets<T extends { title: string; slug: string }>(
+  seedText: string,
+  corpus: T[],
+  count = 6
+): T[] {
+  const seedTokens = titleTokens(seedText);
+  const boilerplate = boilerplateTokens(
+    corpus.map((c) => ({ title: c.title }))
+  );
+
+  // Score on distinctive overlap only, so shared boilerplate ("invoice",
+  // "ocr") doesn't make every post look equally relevant.
+  const scored = corpus.map((post) => {
+    const postTokens = titleTokens(post.title);
+    let shared = 0;
+    for (const token of seedTokens) {
+      if (token !== "" && !boilerplate.has(token) && postTokens.has(token)) shared++;
+    }
+    return { post, score: shared };
+  });
+
+  const related = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
+
+  // Top up with the least-recently-surfaced posts when relevance is thin, so
+  // a run still spreads equity instead of falling back to the newest few.
+  const chosen = related.slice(0, count).map((s) => s.post);
+  if (chosen.length < count) {
+    const chosenSlugs = new Set(chosen.map((c) => c.slug));
+    for (let i = corpus.length - 1; i >= 0 && chosen.length < count; i--) {
+      if (!chosenSlugs.has(corpus[i].slug)) {
+        chosen.push(corpus[i]);
+        chosenSlugs.add(corpus[i].slug);
+      }
+    }
+  }
+  return chosen;
+}
+
 /**
  * Generate a 60-80 word summary for an existing article. Used by the backfill
  * route so we can populate the new `summary` column on legacy posts without

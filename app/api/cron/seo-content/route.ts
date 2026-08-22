@@ -4,17 +4,26 @@ import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 import {
   proposeAndScoreCandidates,
-  pickBestCandidate,
   formatLockedAngle,
   pickDiversityAxes,
   formatDiversityAxes,
   criticReview,
   formatCriticVerdict,
+  mechanicalDupeCheck,
+  pickRelevantLinkTargets,
+  normalizeTitle,
   type RecentPost,
 } from "@/lib/seoContent";
 
 /** Reject any candidate whose Haiku-scored similarity vs corpus is >= this. */
 const DEDUP_THRESHOLD = 65;
+
+/**
+ * How many corpus titles to name in the writer prompt as "don't retread
+ * these". The planner sees the whole corpus; the writer only needs the
+ * nearest neighbours, and listing 120 titles would crowd out the brief.
+ */
+const AVOID_LIST_SIZE = 25;
 
 /**
  * Vercel Cron Job — runs daily at 1:00 AM UTC (8:00 AM VN)
@@ -103,6 +112,100 @@ Choose ONE tool: "Best Alternatives to ABBYY", "Best Alternatives to Nanonets", 
 List 5-7 alternatives including InvoiceToData as the #1 recommended alternative.
 Include pros, cons, pricing, and use-case fit for each.`,
   },
+
+  // ─── Templates below target demand the first seven never reached ──────
+  //
+  // The seven templates above are all invoice-OCR framings. Measured on the
+  // live corpus, "invoice" appears in 71% of published titles and "ocr" in
+  // 33% — the bot had effectively exhausted its topic space, which is why the
+  // dedup gate was rejecting most runs and cadence had fallen to one post
+  // every 4.3 days. More prompt variety could not fix that; only new subject
+  // matter could.
+  //
+  // Each template below is anchored to queries the site already receives, so
+  // these are documented demand rather than guesses.
+
+  {
+    type: "llm-workflow",
+    prompt: `Write about using a general-purpose AI assistant to get data out of documents and into a spreadsheet.
+
+This is the highest-value topic on the blog and the least covered. Search Console shows these queries already ranking with click-through rates around 13-14%, roughly thirty times the site average, because almost nobody is writing for them:
+  "claude pdf to excel" (position 5), "claude ai pdf to excel" (position 4),
+  "can claude convert pdf to excel" (position 10), "claude convert pdf to excel" (position 8),
+  "gemini ocr" (position 51)
+
+Pick ONE specific angle, for example:
+- Can Claude convert a PDF to Excel? What works and where it breaks down
+- Claude vs ChatGPT vs Gemini for pulling tables out of PDFs
+- Using the Claude API to extract invoice data (developer walkthrough, real code)
+- Why a chat window is the wrong place to convert fifty bank statements
+- What a vision model actually "sees" when it reads a PDF table
+
+Be genuinely useful and honest, including about the limits: context windows, per-file manual effort, no batch processing, inconsistent output shape between runs, no direct .xlsx export. InvoiceToData runs on Claude, so the honest framing is "same underlying model, wrapped in the workflow a repeated task needs" — not "AI assistants are bad".
+Write for someone who has already tried pasting a PDF into a chat window.`,
+  },
+  {
+    type: "bank-export",
+    prompt: `Write a practical guide to getting transaction data out of a specific bank and into a spreadsheet.
+
+Search Console shows a whole cluster of this intent ranking on pages 3-6, meaning real demand and no strong page to serve it:
+  "how to download chase statements as csv" (position 41), "chase export transactions to excel" (position 35),
+  "how to download hsbc statements in csv" (position 49), "amex download statement as csv" (position 46),
+  "how to download citibank statement in excel" (position 17), "how to download barclays statements in csv format" (position 77),
+  "convert bank of america statement to excel" (position 82), "pnc bank statement generator" (position 32)
+
+Pick ONE bank and cover it properly: Chase, Bank of America, Wells Fargo, Citi, Capital One, Amex, HSBC, Barclays, PNC, TD Bank, US Bank, Discover.
+
+Cover: which export formats that bank actually offers, when the native CSV export is enough (say so plainly — don't push a conversion the reader doesn't need), what to do when only PDF statements exist (older records, closed accounts, international branches), how to handle password-protected downloads, and how to get the result into QuickBooks or Xero.
+
+Only state things that are generally true and stable. Do NOT invent exact menu paths, button labels, or screen names — online banking UIs change constantly and a wrong instruction is worse than a general one. Link to the matching page at /tools/bank/{bank-slug} where one exists.`,
+  },
+  {
+    type: "document-type",
+    prompt: `Write about extracting data from a document type that is NOT an invoice.
+
+The blog is saturated with invoice content while these adjacent queries sit unserved:
+  "remittance advice ocr" (position 80), "quotation ocr" (position 70),
+  "extract income statement of dva to excel" (position 79), "rent invoice data extractor" (position 60),
+  "reduce manual acord form data entry" (position 78), "multi-page invoice ocr" (position 20)
+
+Pick ONE document type and treat it as its own subject with its own quirks: receipts and expense reports, purchase orders, payslips and payroll registers, remittance advice, quotes and estimates, freight and BOL documents, rent rolls and lease schedules, insurance forms, tax forms, utility bills, or medical billing statements.
+
+Cover what fields matter for that document, the structural quirks that make it harder than an invoice (multi-column layouts, repeating groups, totals that must reconcile, per-line tax), what to check in the output before trusting it, and where the data usually needs to land.
+Mention invoices only where the comparison genuinely helps. This article should be about the other document.`,
+  },
+  {
+    type: "integration",
+    prompt: `Write a guide to moving extracted document data into one specific downstream system.
+
+Search Console shows this intent arriving with no dedicated page to receive it:
+  "integrate ocr data with quickbooks online automatically" (position 81),
+  "dynamically pull invoices from xero to google sheets" (position 60),
+  "xero automate data extraction" (position 54), "quickbooks ocr" (position 45),
+  "convert chase bank statement for quickbooks" (position 86), "bai to excel converter" (position 77)
+
+Pick ONE destination: QuickBooks Online, Xero, Sage, Wave, NetSuite, FreshBooks, Google Sheets as a live control layer, Excel Power Query, or a plain CSV import into a custom system.
+
+Cover the actual mechanics: what column layout that system expects, how dates and amounts must be formatted, how to handle multi-currency, what its importer rejects and why, how to reconcile against existing records, and what to do about duplicates on a re-import.
+Be concrete about field mapping — a table showing source field to destination field is the most useful thing this article can contain.`,
+  },
+  {
+    type: "direct-answer",
+    prompt: `Write a focused article that answers ONE specific question completely and immediately.
+
+Search Console shows conversational, full-sentence queries arriving and already ranking on page one, which means an AI summary or assistant is surfacing this content and quoting from it:
+  "what should i check before choosing an invoice ocr tool?" (position 10),
+  "which tools extract spreadsheet data from pdfs most accurately?" (position 14),
+  "how can i extract line-level charges from telecom invoices automatically?" (position 8),
+  "need help pulling key dates and payment terms from like 500 pdfs automatically, what software should i use" (position 8),
+  "how accurate is automated invoice extraction" (position 22),
+  "what's the most affordable ai solution for converting invoices to spreadsheets?" (position 57)
+
+Pick ONE such question — ideally one of the above, or a close variant — and make it the title, phrased as a real question a person would type or say.
+
+The structure that wins here is different from a normal SEO post: answer the question completely in the first two or three sentences, then earn the rest of the length by justifying that answer with specifics, edge cases, and worked examples. Someone who reads only the opening should already have the answer; someone who reads it all should understand why it's true.
+Do not bury the answer, and do not open with "in this article we'll explore".`,
+  },
 ];
 
 function slugify(text: string): string {
@@ -164,14 +267,20 @@ export async function runInformational() {
   );
   const template = CONTENT_TEMPLATES[dayOfYear % CONTENT_TEMPLATES.length];
 
-  // Pull existing posts WITH summaries — Layer 1 dedup gate uses these
+  // Pull the FULL corpus WITH summaries — Layer 1 dedup gate uses these
   // compact snapshots instead of the old "title-only" check.
+  //
+  // This used to be .limit(30). At 120 posts that left 75% of the corpus
+  // invisible to the dedup gate, and an audit traced 11 of 34 duplicate pairs
+  // directly to that blind spot. A title plus a 60-80 word summary is ~110
+  // tokens, so the whole corpus costs ~13k input tokens on Haiku — cheap
+  // enough that blinding the gate to save tokens was never a good trade.
   const supabase = getSupabase();
   const { data: existingPosts } = await supabase
     .from("blogs")
     .select("title, slug, summary")
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(2000);
 
   const existingSlugs = (existingPosts ?? []).map((p) => p.slug);
   const recentForPlanner: RecentPost[] = (existingPosts ?? []).map((p) => ({
@@ -199,18 +308,53 @@ export async function runInformational() {
       count: 3,
       axes,
     });
-    chosenAngle = pickBestCandidate(candidates, DEDUP_THRESHOLD);
+
+    // ─── LAYER 1b: MECHANICAL VETO ─────────────────────────────────────
+    // The planner scores its OWN proposals, and an audit of 120 live posts
+    // found 23 duplicate pairs it had waved through while the older post was
+    // right there in its context. So every candidate it likes gets re-checked
+    // in code before we pay for the write.
+    //
+    // We walk all candidates (least-similar first) rather than testing only
+    // the winner: if the top pick is a mechanical duplicate, candidates 2 and
+    // 3 are already paid for, and using them is what keeps cadence up.
+    const rejections: string[] = [];
+    const ranked = [...candidates].sort(
+      (a, b) => a.similarity_score - b.similarity_score
+    );
+
+    for (const candidate of ranked) {
+      if (candidate.similarity_score >= DEDUP_THRESHOLD) {
+        rejections.push(
+          `• ${candidate.title}\n   planner: ${candidate.similarity_score} vs "${candidate.most_similar_title}"`
+        );
+        continue;
+      }
+      const verdict = mechanicalDupeCheck(candidate.title, recentForPlanner);
+      if (verdict.isDupe) {
+        rejections.push(
+          `• ${candidate.title}\n   planner said ${candidate.similarity_score}, but mechanically: ${verdict.reason}\n   closest: "${verdict.closestTitle}"`
+        );
+        continue;
+      }
+      chosenAngle = candidate;
+      break;
+    }
+
     if (!chosenAngle) {
-      const closest = candidates
-        .map((c) => `• ${c.title} (sim ${c.similarity_score} vs "${c.most_similar_title}")`)
-        .join("\n");
       await sendTelegramMessage(
         `⏭️ <b>SEO Content — Skipped</b>\n\n` +
           `Template: ${template.type}\n` +
-          `Reason: every candidate angle scored ≥ ${DEDUP_THRESHOLD} vs the corpus.\n\n` +
-          `Candidates considered:\n${closest}`
+          `Reason: no candidate cleared both the planner threshold (${DEDUP_THRESHOLD}) and the mechanical dedup check.\n\n` +
+          `Rejected:\n${rejections.join("\n")}`
       );
       return { success: true, skipped: true, reason: "dedup", type: template.type };
+    }
+
+    if (rejections.length > 0) {
+      console.log(
+        `[SEO Content] Mechanical veto rejected ${rejections.length} candidate(s) before settling on "${chosenAngle.title}"`
+      );
     }
   } catch (planErr) {
     // Planner failure isn't fatal — fall back to old behavior so we don't
@@ -224,9 +368,19 @@ export async function runInformational() {
     (l) => `- Link to ${l.url} with anchor text "${l.anchor}" at least once`
   ).join("\n");
 
-  // Also suggest linking to recent blog posts
-  const recentPosts = (existingPosts ?? []).slice(0, 5);
-  const recentLinksInstruction = recentPosts
+  // Suggest internal links by TOPICAL RELEVANCE, not recency.
+  //
+  // This used to be `.slice(0, 5)` — the five newest posts. Every article
+  // therefore linked to the same handful, so link equity pooled around
+  // whatever was published last week and the other ~115 posts were orphaned.
+  // That is the mechanism behind high-impression posts stalling at position
+  // 60-85: real search demand, no internal links to build authority on.
+  const linkTargets = pickRelevantLinkTargets(
+    `${chosenAngle?.title ?? template.type} ${chosenAngle?.summary ?? ""}`,
+    (existingPosts ?? []).map((p) => ({ title: p.title, slug: p.slug })),
+    6
+  );
+  const recentLinksInstruction = linkTargets
     .map((p) => `- You may link to https://invoicetodata.com/blog/${p.slug} (titled: "${p.title}")`)
     .join("\n");
 
@@ -236,7 +390,10 @@ export async function runInformational() {
     ? formatLockedAngle(chosenAngle)
     : `TEMPLATE BRIEF:\n${template.prompt}`;
 
+  // The writer only needs the nearest neighbours to steer away from; the full
+  // corpus goes to the planner instead, where it actually gates the decision.
   const existingTitlesForAvoid = recentForPlanner
+    .slice(0, AVOID_LIST_SIZE)
     .map((p) => `"${p.title}"`)
     .join(", ");
 
@@ -259,18 +416,32 @@ ${internalLinksInstruction}
 ${recentLinksInstruction}
 
 STRUCTURE REQUIREMENTS:
-- Start with ## Introduction (engaging hook with statistics or a pain point)
+- Open with a **bolded 2-3 sentence direct answer** to the question implied by the title, BEFORE any heading. No preamble, no "in this article we will". Just answer it. Someone who reads only these sentences should get the real answer.
+- Then ## Introduction (engaging hook with statistics or a pain point)
 - Use ## for main sections, ### for subsections (follow the LOCKED ANGLE outline above when present)
 - Include at least one comparison table (markdown table) if relevant
-- Include a ## Frequently Asked Questions section with 3-5 Q&As (for Google featured snippets)
+- Include a ## Frequently Asked Questions section with 3-5 Q&As
 - End with a ## Conclusion and clear CTA linking to https://invoicetodata.com
 - Add "Related:" section at the bottom linking to 2-3 of our existing blog posts
+
+WHY THE OPENING ANSWER MATTERS:
+Search Console shows real traffic arriving on conversational, question-shaped
+queries ("what should i check before choosing an invoice ocr tool?", "which
+tools extract spreadsheet data from pdfs most accurately?") — the kind of
+query answered by an AI summary that quotes a source. To be the quoted
+source, the answer has to be self-contained and near the top. Write that
+opening block so it stands alone if lifted out of the page.
 
 E-E-A-T COMPLIANCE:
 - Include specific numbers, statistics, or data points where possible
 - Reference real tools and real use cases
 - Write from practical experience perspective
 - Be balanced and honest in comparisons
+- NEVER invent a statistic to make a point land. If you don't have a real
+  figure, describe the mechanism instead of quantifying it. Two articles on
+  this blog already claim the same case study produced "95%" and "85%"
+  efficiency gains — fabricated numbers that contradict each other are worse
+  than no numbers, because a reader who spots one stops trusting all of them.
 
 Do NOT start content with the title (I'll use it separately).
 
@@ -337,12 +508,51 @@ KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5]
     };
   }
 
-  let slug = slugify(title);
+  const slug = slugify(title);
 
-  // Ensure unique slug
+  // A slug collision means the writer produced a title we already published.
+  // This used to append a date suffix and publish anyway, which is how
+  // "Invoice OCR Pricing Comparison 2026: Finding the Best Value for Your
+  // Business" ended up live twice (2026-04-12 and again as
+  // ...-2026-04-19). Both URLs got indexed and now split the same keyword
+  // between them in Search Console. Detecting the collision and working
+  // around it was strictly worse than stopping.
   if (existingSlugs.includes(slug)) {
-    const dateSuffix = new Date().toISOString().slice(0, 10);
-    slug = `${slug}-${dateSuffix}`;
+    await sendTelegramMessage(
+      `🚫 <b>SEO Content — Duplicate title blocked</b>\n\n` +
+        `📝 <b>${title}</b>\n` +
+        `Type: ${template.type}\n\n` +
+        `The writer produced a title that already exists at /blog/${slug}. ` +
+        `Nothing was published — publishing it under a date-suffixed slug ` +
+        `would cannibalise the original.`
+    );
+    return {
+      success: true,
+      skipped: true,
+      reason: "duplicate-slug",
+      type: template.type,
+    };
+  }
+
+  // Same check on the title itself, since a near-identical title can differ
+  // by punctuation alone and still slugify differently.
+  const titleNorm = normalizeTitle(title);
+  const titleClash = (existingPosts ?? []).find(
+    (p) => normalizeTitle(p.title) === titleNorm
+  );
+  if (titleClash) {
+    await sendTelegramMessage(
+      `🚫 <b>SEO Content — Duplicate title blocked</b>\n\n` +
+        `📝 <b>${title}</b>\n` +
+        `Type: ${template.type}\n\n` +
+        `Matches the existing post at /blog/${titleClash.slug}. Nothing published.`
+    );
+    return {
+      success: true,
+      skipped: true,
+      reason: "duplicate-title",
+      type: template.type,
+    };
   }
 
   // Insert new blog post
