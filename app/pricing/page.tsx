@@ -9,7 +9,7 @@ import { PADDLE_PRICES, FOUNDING_MEMBER_CAP } from "@/lib/paddlePrices";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.invoicetodata.com";
 
 export const metadata: Metadata = {
-  title: "Pricing — Invoice OCR & PDF to Excel from $2 | InvoiceToData",
+  title: "Pricing — Invoice OCR & PDF to Excel from $2",
   description:
     "Convert PDF invoices and bank statements to Excel. Free 3 pages/month, $2 Week Pass, or Pro from $5/month. 7-day money-back guarantee.",
   keywords:
