@@ -38,10 +38,22 @@ const INTERNAL_LINKS = [
   { url: `${SITE_URL}/blog`, anchor: "our blog" },
 ];
 
-// HIGH-CONVERSION content templates — targets buyer-intent keywords
-const CONTENT_TEMPLATES = [
+/**
+ * HIGH-CONVERSION content templates — targets buyer-intent keywords.
+ *
+ * `weight` mirrors the informational side: slots are allocated from measured
+ * Search Console demand, not evenly. The alternative/competitor cluster is
+ * the closest thing the site has to page one (position 11.3 on "klippa
+ * alternative"), so buyer-intent framings of it get the most room. Uniform
+ * rotation would treat a 25-impression theme as equal to a 246-impression
+ * one. See the note in seo-content/route.ts for the full theme breakdown.
+ */
+type ContentTemplate = { type: string; weight: number; prompt: string };
+
+const CONTENT_TEMPLATES: ContentTemplate[] = [
   {
     type: "buyer-guide",
+    weight: 3,
     prompt: `Write a comprehensive buyer's guide for someone ready to purchase invoice processing software.
 Target keywords: "best invoice OCR software", "invoice OCR pricing", "buy invoice automation tool".
 Include a comparison table of 5+ tools with pricing, a "Who should buy what" section, and position InvoiceToData as the best value option.
@@ -49,6 +61,7 @@ Include a clear pricing/CTA section mentioning InvoiceToData's free tier and pai
   },
   {
     type: "roi-analysis",
+    weight: 2,
     prompt: `Write a detailed ROI analysis article about implementing invoice automation.
 Target keywords: "invoice automation ROI", "cost of manual invoice processing", "invoice OCR cost savings".
 Include real calculations: time saved per invoice, cost per invoice manually vs automated, annual savings for different business sizes.
@@ -57,6 +70,7 @@ End with CTA: "Calculate your savings — try InvoiceToData free".`,
   },
   {
     type: "vs-manual",
+    weight: 1,
     prompt: `Write an article comparing manual invoice processing vs automated solutions in detail.
 Target keywords: "manual vs automated invoice processing", "why automate invoices", "invoice automation benefits".
 Include real-world time comparisons, error rates, cost analysis.
@@ -65,6 +79,7 @@ Position InvoiceToData as the easy-to-adopt solution with free tier.`,
   },
   {
     type: "migration-guide",
+    weight: 1,
     prompt: `Write a practical migration guide for businesses switching from manual invoice processing to automation.
 Target keywords: "switch to invoice automation", "implement invoice OCR", "invoice automation setup guide".
 Include: planning checklist, tool selection criteria, implementation timeline, common pitfalls.
@@ -72,6 +87,7 @@ Recommend InvoiceToData for businesses that want to start quickly with zero setu
   },
   {
     type: "pricing-comparison",
+    weight: 3,
     prompt: `Write a comprehensive pricing comparison of invoice OCR tools in 2026.
 Target keywords: "invoice OCR pricing comparison", "cheapest invoice OCR", "invoice automation cost".
 Compare pricing of: ABBYY, Nanonets, Klippa, Rossum, Docsumo, Mindee, Veryfi, and InvoiceToData.
@@ -80,6 +96,7 @@ Highlight that InvoiceToData offers a free tier and competitive pricing.`,
   },
   {
     type: "worked-example",
+    weight: 1,
     prompt: `Write a worked cost example for a specific, clearly-hypothetical business profile.
 
 IMPORTANT — this template used to ask for a "realistic case study" with invented result metrics, and that produced real damage: two articles on this blog now describe the same scenario as delivering "95%" and "85%" efficiency gains. Contradictory invented numbers are worse than no numbers, because a reader who notices stops believing anything else on the page.
@@ -98,6 +115,7 @@ The reader should finish able to compute their own number, not impressed by ours
   },
   {
     type: "integration-guide",
+    weight: 1,
     prompt: `Write a detailed guide about integrating invoice OCR with popular business tools.
 Target keywords: "invoice OCR integration", "connect invoice data to accounting software", "invoice automation workflow".
 Cover integrations with: QuickBooks, Xero, Google Sheets, Excel, Zapier.
@@ -111,6 +129,7 @@ Show how InvoiceToData fits into existing workflows and saves time.`,
 
   {
     type: "llm-buying-decision",
+    weight: 2,
     prompt: `Write for someone deciding between "just use an AI assistant" and paying for a purpose-built tool.
 
 This is a real, current buying question and the site already ranks unusually well for the neighbouring queries — "claude pdf to excel" sits at position 5 with a 13% click-through rate, roughly thirty times the site average. Search Console also shows people arriving on "what's the most affordable ai solution for converting invoices to spreadsheets?" and "is there a tool that can automatically extract data from invoices and populate excel forms using ai?".
@@ -122,6 +141,7 @@ Target keywords: "claude pdf to excel", "chatgpt vs invoice ocr tool", "ai invoi
   },
   {
     type: "bank-buying-guide",
+    weight: 2,
     prompt: `Write for someone evaluating how to get bank statement data into their accounting system at a specific scale.
 
 Search Console shows commercial intent here on pages 3-6, with no strong page to serve it: "bank statement to excel software" (position 75), "bank statement converter to excel" (position 57), "software to convert bank statements into excel" (position 49), "ai bank statement converter" (position 24), "bank statement converter ai free" (position 24).
@@ -132,6 +152,26 @@ Cover honestly: when the bank's own CSV export is all you need and no tool is wa
 Reference the real published pricing at ${SITE_URL}/pricing and link to /tools/bank-statement-to-excel.`,
   },
 ];
+
+/** Interleaved weighted slate — see buildRotationSlate in seo-content/route.ts. */
+function buildRotationSlate(templates: ContentTemplate[]): ContentTemplate[] {
+  const remaining = templates.map((t) => ({ t, left: Math.max(1, t.weight) }));
+  const slate: ContentTemplate[] = [];
+  let anyLeft = true;
+  while (anyLeft) {
+    anyLeft = false;
+    for (const entry of remaining) {
+      if (entry.left > 0) {
+        slate.push(entry.t);
+        entry.left--;
+        if (entry.left > 0) anyLeft = true;
+      }
+    }
+  }
+  return slate;
+}
+
+const ROTATION_SLATE = buildRotationSlate(CONTENT_TEMPLATES);
 
 function slugify(text: string): string {
   return text
@@ -167,7 +207,7 @@ export async function runBuyerIntent(): Promise<RunnerResult> {
   const dayOfYear = Math.floor(
     (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
   );
-  const template = CONTENT_TEMPLATES[dayOfYear % CONTENT_TEMPLATES.length];
+  const template = ROTATION_SLATE[dayOfYear % ROTATION_SLATE.length];
 
   // Full corpus, not a 30-post window — see the note in seo-content/route.ts:
   // the window left 75% of posts invisible to the dedup gate.

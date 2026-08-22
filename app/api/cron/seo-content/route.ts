@@ -39,10 +39,38 @@ const INTERNAL_LINKS = [
   { url: "https://invoicetodata.com/blog", anchor: "our blog" },
 ];
 
-// SEO content calendar — rotates based on day of year
-const CONTENT_TEMPLATES = [
+/**
+ * SEO content calendar.
+ *
+ * `weight` is how many slots a template gets in the rotation, set from
+ * measured Search Console demand rather than by gut feel. Grouping the
+ * 90-day query export by theme:
+ *
+ *   head commercial (invoice ocr / data extraction)  2697 imp, best pos 41.6
+ *   bank statement                                    291 imp, best pos 55.3
+ *   alternative / competitor                          246 imp, best pos 11.3
+ *   LLM (claude / gemini)                             119 imp, best pos  7.6
+ *   conversational questions                           54 imp
+ *   non-invoice document types                         32 imp
+ *   accounting integrations                            25 imp
+ *
+ * The alternative/competitor cluster carries the most weight because it is by
+ * far the closest to page one — position 11.3 on 60 impressions for "klippa
+ * alternative", against 41.6 at best for the head terms. Competitors don't
+ * publish "alternatives to ourselves", so it is winnable ground; the head
+ * terms mean outranking ABBYY and Rossum on their own turf.
+ *
+ * Weights matter because rotation used to be uniform, and adding five
+ * templates in one go silently cut the best-evidenced category from one run
+ * in seven to one in twelve. Uniform rotation treats a 32-impression theme as
+ * equal to a 246-impression one.
+ */
+type ContentTemplate = { type: string; weight: number; prompt: string };
+
+const CONTENT_TEMPLATES: ContentTemplate[] = [
   {
     type: "comparison",
+    weight: 3,
     prompt: `Write a detailed comparison article for the invoice OCR software market.
 Pick ONE specific competitor to compare against InvoiceToData. Choose from: Klippa, Nanonets, Rossum, Docsumo, Mindee, ABBYY, Veryfi, Tabula, Amazon Textract.
 DO NOT pick the same competitor as a previous article.
@@ -51,6 +79,7 @@ Position InvoiceToData favorably but fairly.`,
   },
   {
     type: "how-to",
+    weight: 2,
     prompt: `Write a detailed how-to guide about invoice data extraction or PDF processing.
 Choose a specific practical topic like:
 - How to extract data from PDF invoices automatically
@@ -63,6 +92,7 @@ Include step-by-step instructions and mention InvoiceToData as a recommended sol
   },
   {
     type: "listicle",
+    weight: 2,
     prompt: `Write a "Top X" or "Best X" listicle article about invoice processing or accounting automation.
 Choose a specific topic like:
 - Best invoice OCR tools for small businesses
@@ -74,6 +104,7 @@ Include InvoiceToData in the list and position it as a top choice.`,
   },
   {
     type: "industry",
+    weight: 1,
     prompt: `Write an informative article about trends and developments in invoice processing, AP automation, or OCR technology.
 Choose a specific angle like:
 - The future of AI in invoice processing
@@ -85,6 +116,7 @@ Naturally mention InvoiceToData as an example of modern solutions.`,
   },
   {
     type: "use-case",
+    weight: 1,
     prompt: `Write a use-case or scenario-based article showing how InvoiceToData solves real business problems.
 Choose a specific industry or scenario:
 - Invoice processing for e-commerce businesses
@@ -96,6 +128,7 @@ Include practical tips and a clear CTA to try InvoiceToData.`,
   },
   {
     type: "glossary",
+    weight: 1,
     prompt: `Write a comprehensive glossary/explainer article about a key concept in invoice processing or OCR.
 Choose a topic like:
 - What is Invoice OCR? Complete Guide for 2026
@@ -107,6 +140,7 @@ Make it thorough, educational, and naturally link to InvoiceToData as a solution
   },
   {
     type: "alternative",
+    weight: 3,
     prompt: `Write a "Best Alternatives to X" article targeting users searching for alternatives to a popular tool.
 Choose ONE tool: "Best Alternatives to ABBYY", "Best Alternatives to Nanonets", "Best Alternatives to Klippa", "Best Alternatives to Rossum", "Best Alternatives to Docsumo".
 List 5-7 alternatives including InvoiceToData as the #1 recommended alternative.
@@ -122,17 +156,31 @@ Include pros, cons, pricing, and use-case fit for each.`,
   // every 4.3 days. More prompt variety could not fix that; only new subject
   // matter could.
   //
-  // Each template below is anchored to queries the site already receives, so
-  // these are documented demand rather than guesses.
+  // Each template below is anchored to queries the site already receives.
+  //
+  // On reading the evidence honestly: these are EXPLORATORY. The queries cited
+  // are real, but most carry single-digit impressions over 90 days, where an
+  // average position is close to meaningless — a post at "position 8" may have
+  // surfaced twice in three months. An earlier version of these prompts quoted
+  // those positions and click-through rates as proven demand, which overstated
+  // what the data supports and would have had the writer arguing from figures
+  // that cannot bear the weight.
+  //
+  // They are still worth writing, for a reason that does not depend on current
+  // volume: the competition is thin and the topics are adjacent to what we
+  // genuinely do. That is a bet on where demand is going, and the prompts now
+  // say so rather than dressing it up as measurement.
 
   {
     type: "llm-workflow",
+    weight: 2,
     prompt: `Write about using a general-purpose AI assistant to get data out of documents and into a spreadsheet.
 
-This is the highest-value topic on the blog and the least covered. Search Console shows these queries already ranking with click-through rates around 13-14%, roughly thirty times the site average, because almost nobody is writing for them:
-  "claude pdf to excel" (position 5), "claude ai pdf to excel" (position 4),
-  "can claude convert pdf to excel" (position 10), "claude convert pdf to excel" (position 8),
-  "gemini ocr" (position 51)
+Why this topic: of all the themes in Search Console, this is the only one currently converting at all — 119 impressions produced 3 of the site's clicks, where the head commercial terms produced zero from 2697. That is a small sample and the click-through rate it implies is statistically fragile, so treat it as encouraging rather than proven. The durable reasons to write here are that competition is thin, the questions are ones real people are actually asking, and InvoiceToData runs on Claude — so we can speak to it with first-hand authority instead of speculation.
+
+Queries in this space (low volume individually, so don't lean on the numbers):
+  "claude pdf to excel", "claude ai pdf to excel", "can claude convert pdf to excel",
+  "claude convert pdf to excel", "gemini ocr"
 
 Pick ONE specific angle, for example:
 - Can Claude convert a PDF to Excel? What works and where it breaks down
@@ -146,13 +194,15 @@ Write for someone who has already tried pasting a PDF into a chat window.`,
   },
   {
     type: "bank-export",
+    weight: 2,
     prompt: `Write a practical guide to getting transaction data out of a specific bank and into a spreadsheet.
 
-Search Console shows a whole cluster of this intent ranking on pages 3-6, meaning real demand and no strong page to serve it:
-  "how to download chase statements as csv" (position 41), "chase export transactions to excel" (position 35),
-  "how to download hsbc statements in csv" (position 49), "amex download statement as csv" (position 46),
-  "how to download citibank statement in excel" (position 17), "how to download barclays statements in csv format" (position 77),
-  "convert bank of america statement to excel" (position 82), "pnc bank statement generator" (position 32)
+Why this topic: bank-statement intent is the broadest long-tail cluster the site receives — 87 distinct queries over 90 days. Individually they are tiny, but together they total 291 impressions, and the best of them still sits around position 55, so there is demand arriving with no strong page to meet it. The programmatic pages at /tools/bank/{slug} already exist to catch it.
+
+Representative queries (each low-volume on its own — the value is in the aggregate, not any single one):
+  "how to download chase statements as csv", "chase export transactions to excel",
+  "how to download hsbc statements in csv", "amex download statement as csv",
+  "how to download citibank statement in excel", "convert bank of america statement to excel"
 
 Pick ONE bank and cover it properly: Chase, Bank of America, Wells Fargo, Citi, Capital One, Amex, HSBC, Barclays, PNC, TD Bank, US Bank, Discover.
 
@@ -162,12 +212,14 @@ Only state things that are generally true and stable. Do NOT invent exact menu p
   },
   {
     type: "document-type",
+    weight: 1,
     prompt: `Write about extracting data from a document type that is NOT an invoice.
 
-The blog is saturated with invoice content while these adjacent queries sit unserved:
-  "remittance advice ocr" (position 80), "quotation ocr" (position 70),
-  "extract income statement of dva to excel" (position 79), "rent invoice data extractor" (position 60),
-  "reduce manual acord form data entry" (position 78), "multi-page invoice ocr" (position 20)
+Why this topic: "invoice" appears in 71% of published titles, so the corpus has almost no coverage of anything else — which is both a dedup problem and a coverage gap. Be clear-eyed that the measured demand here is currently thin (roughly 32 impressions across these queries over 90 days), so this is exploratory rather than chasing proven volume. It earns its slot by widening what the site can rank for at all.
+
+Queries seen (all low-volume — do not cite them as evidence of scale):
+  "remittance advice ocr", "quotation ocr", "rent invoice data extractor",
+  "reduce manual acord form data entry", "multi-page invoice ocr"
 
 Pick ONE document type and treat it as its own subject with its own quirks: receipts and expense reports, purchase orders, payslips and payroll registers, remittance advice, quotes and estimates, freight and BOL documents, rent rolls and lease schedules, insurance forms, tax forms, utility bills, or medical billing statements.
 
@@ -176,13 +228,15 @@ Mention invoices only where the comparison genuinely helps. This article should 
   },
   {
     type: "integration",
+    weight: 1,
     prompt: `Write a guide to moving extracted document data into one specific downstream system.
 
-Search Console shows this intent arriving with no dedicated page to receive it:
-  "integrate ocr data with quickbooks online automatically" (position 81),
-  "dynamically pull invoices from xero to google sheets" (position 60),
-  "xero automate data extraction" (position 54), "quickbooks ocr" (position 45),
-  "convert chase bank statement for quickbooks" (position 86), "bai to excel converter" (position 77)
+Why this topic: extraction is only half the job — the reader's actual goal is data sitting correctly in their accounting system, and the site has no page covering that last step. Measured demand is small so far (about 25 impressions across these queries over 90 days), so this is exploratory. It earns its slot because it targets the moment of highest intent: someone who already has the file and is stuck on the import.
+
+Queries seen (low-volume — don't present them as scale):
+  "integrate ocr data with quickbooks online automatically",
+  "dynamically pull invoices from xero to google sheets",
+  "xero automate data extraction", "quickbooks ocr", "bai to excel converter"
 
 Pick ONE destination: QuickBooks Online, Xero, Sage, Wave, NetSuite, FreshBooks, Google Sheets as a live control layer, Excel Power Query, or a plain CSV import into a custom system.
 
@@ -191,15 +245,17 @@ Be concrete about field mapping — a table showing source field to destination 
   },
   {
     type: "direct-answer",
+    weight: 1,
     prompt: `Write a focused article that answers ONE specific question completely and immediately.
 
-Search Console shows conversational, full-sentence queries arriving and already ranking on page one, which means an AI summary or assistant is surfacing this content and quoting from it:
-  "what should i check before choosing an invoice ocr tool?" (position 10),
-  "which tools extract spreadsheet data from pdfs most accurately?" (position 14),
-  "how can i extract line-level charges from telecom invoices automatically?" (position 8),
-  "need help pulling key dates and payment terms from like 500 pdfs automatically, what software should i use" (position 8),
-  "how accurate is automated invoice extraction" (position 22),
-  "what's the most affordable ai solution for converting invoices to spreadsheets?" (position 57)
+Why this topic: full-sentence, conversational queries are showing up in Search Console — the shape of query that comes from someone talking to an AI assistant rather than typing keywords. Total measured volume is small (around 54 impressions over 90 days) and some of these appeared only once or twice, so the positions attached to them mean very little. This is a bet on a shift in how people search, not a response to established volume.
+
+Queries seen (treat as directional, not as scale):
+  "what should i check before choosing an invoice ocr tool?"
+  "which tools extract spreadsheet data from pdfs most accurately?"
+  "how can i extract line-level charges from telecom invoices automatically?"
+  "need help pulling key dates and payment terms from like 500 pdfs automatically, what software should i use"
+  "what's the most affordable ai solution for converting invoices to spreadsheets?"
 
 Pick ONE such question — ideally one of the above, or a close variant — and make it the title, phrased as a real question a person would type or say.
 
@@ -207,6 +263,34 @@ The structure that wins here is different from a normal SEO post: answer the que
 Do not bury the answer, and do not open with "in this article we'll explore".`,
   },
 ];
+
+/**
+ * Expand the weighted templates into a flat rotation slate, interleaved so a
+ * weight of 3 spreads across the cycle instead of producing three
+ * consecutive runs of the same template.
+ *
+ * Round-robin rather than naive repetition: emit one slot per template per
+ * pass, skipping those whose budget is spent. With weights 3/2/1 that yields
+ * A B C A B A rather than A A A B B C.
+ */
+function buildRotationSlate(templates: ContentTemplate[]): ContentTemplate[] {
+  const remaining = templates.map((t) => ({ t, left: Math.max(1, t.weight) }));
+  const slate: ContentTemplate[] = [];
+  let anyLeft = true;
+  while (anyLeft) {
+    anyLeft = false;
+    for (const entry of remaining) {
+      if (entry.left > 0) {
+        slate.push(entry.t);
+        entry.left--;
+        if (entry.left > 0) anyLeft = true;
+      }
+    }
+  }
+  return slate;
+}
+
+const ROTATION_SLATE = buildRotationSlate(CONTENT_TEMPLATES);
 
 function slugify(text: string): string {
   return text
@@ -261,11 +345,11 @@ export async function runInformational() {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
   if (!hasSupabaseConfig) throw new Error("Missing Supabase config");
 
-  // Pick content type based on day of year (rotates through all templates)
+  // Pick content type from the weighted rotation slate (see ROTATION_SLATE).
   const dayOfYear = Math.floor(
     (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
   );
-  const template = CONTENT_TEMPLATES[dayOfYear % CONTENT_TEMPLATES.length];
+  const template = ROTATION_SLATE[dayOfYear % ROTATION_SLATE.length];
 
   // Pull the FULL corpus WITH summaries — Layer 1 dedup gate uses these
   // compact snapshots instead of the old "title-only" check.
