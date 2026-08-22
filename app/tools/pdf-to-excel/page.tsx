@@ -617,10 +617,10 @@ export default function PdfToExcelPage() {
 
         </div>
 
-        {/* Heavy content block — wide wrapper for card grids, prose capped per-section */}
-        <div className="max-w-6xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-16">
+        {/* Heavy content block — same centered 4xl column as the SEO block above */}
+        <div className="max-w-4xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-16">
           {/* Section 1: The Evolution of Document Extraction */}
-          <section className="space-y-6 max-w-4xl" aria-labelledby="evolution-heading">
+          <section className="space-y-6" aria-labelledby="evolution-heading">
             <h2 id="evolution-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               The Evolution of Document Extraction: AI vs. Traditional OCR
             </h2>
@@ -640,10 +640,10 @@ export default function PdfToExcelPage() {
             <h2 id="supported-docs-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               Supported Document Types
             </h2>
-            <p className="text-slate-600 leading-relaxed max-w-3xl">
+            <p className="text-slate-600 leading-relaxed">
               Our converter handles a wide variety of business and financial documents. Below is a clear breakdown of what you can convert and what kind of data you can expect to extract.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col">
                 <h3 className="text-lg font-semibold text-slate-900 mb-3">Invoices &amp; Bills</h3>
                 <p className="text-slate-600 text-sm leading-relaxed flex-1">
@@ -672,7 +672,7 @@ export default function PdfToExcelPage() {
           </section>
 
           {/* Section 3: A Comprehensive Guide (How it Works in Detail) */}
-          <section className="space-y-10 max-w-4xl" aria-labelledby="comprehensive-guide-heading">
+          <section className="space-y-10" aria-labelledby="comprehensive-guide-heading">
             <h2 id="comprehensive-guide-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               A Comprehensive Guide: How It Works in Detail
             </h2>
@@ -708,7 +708,7 @@ export default function PdfToExcelPage() {
           </section>
 
           {/* Section 4: Expanded FAQ */}
-          <section className="space-y-8 max-w-4xl" aria-labelledby="expanded-faq-heading">
+          <section className="space-y-8" aria-labelledby="expanded-faq-heading">
             <h2 id="expanded-faq-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               Expanded Frequently Asked Questions
             </h2>
