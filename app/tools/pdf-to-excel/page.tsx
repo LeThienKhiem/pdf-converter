@@ -292,7 +292,9 @@ export default function PdfToExcelPage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      <main>
+        {/* Narrow container: the tool itself only — SEO sections below get full width */}
+        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
           Extract Data from PDF Invoice to Excel
         </h1>
@@ -458,6 +460,7 @@ export default function PdfToExcelPage() {
             {toastMessage}
           </div>
         )}
+        </div>
 
         {/* SEO content */}
         <div className="mx-auto max-w-4xl mt-20 space-y-16 px-4 pb-20 sm:px-6 lg:px-8">
@@ -614,10 +617,10 @@ export default function PdfToExcelPage() {
 
         </div>
 
-        {/* Heavy content block — 1440px wrapper, fully responsive */}
-        <div className="max-w-[1440px] mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-16">
+        {/* Heavy content block — wide wrapper for card grids, prose capped per-section */}
+        <div className="max-w-6xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-16">
           {/* Section 1: The Evolution of Document Extraction */}
-          <section className="space-y-6" aria-labelledby="evolution-heading">
+          <section className="space-y-6 max-w-4xl" aria-labelledby="evolution-heading">
             <h2 id="evolution-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               The Evolution of Document Extraction: AI vs. Traditional OCR
             </h2>
@@ -669,7 +672,7 @@ export default function PdfToExcelPage() {
           </section>
 
           {/* Section 3: A Comprehensive Guide (How it Works in Detail) */}
-          <section className="space-y-10" aria-labelledby="comprehensive-guide-heading">
+          <section className="space-y-10 max-w-4xl" aria-labelledby="comprehensive-guide-heading">
             <h2 id="comprehensive-guide-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               A Comprehensive Guide: How It Works in Detail
             </h2>
@@ -705,7 +708,7 @@ export default function PdfToExcelPage() {
           </section>
 
           {/* Section 4: Expanded FAQ */}
-          <section className="space-y-8" aria-labelledby="expanded-faq-heading">
+          <section className="space-y-8 max-w-4xl" aria-labelledby="expanded-faq-heading">
             <h2 id="expanded-faq-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               Expanded Frequently Asked Questions
             </h2>

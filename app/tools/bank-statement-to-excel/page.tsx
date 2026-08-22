@@ -296,7 +296,9 @@ export default function BankStatementToExcelPage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      <main>
+        {/* Narrow container: the tool itself only — SEO sections below get full width */}
+        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
           AI Bank Statement to Excel Converter
         </h1>
@@ -462,6 +464,7 @@ export default function BankStatementToExcelPage() {
             {toastMessage}
           </div>
         )}
+        </div>
 
         {/* SEO content */}
         <div className="mx-auto max-w-4xl mt-20 space-y-16 px-4 pb-20 sm:px-6 lg:px-8">

@@ -156,7 +156,7 @@ export default async function ToolLandingPage({ params }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(toolSchema) }} />
 
-      <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
         {/* Hero */}
         <header className="rounded-3xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-white px-6 py-12 text-center shadow-sm sm:px-10 sm:py-16">
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
