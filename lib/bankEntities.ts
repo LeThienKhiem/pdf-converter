@@ -46,6 +46,13 @@ export type BankEntity = {
   note: string;
   /** Common account types whose statements this tool handles for the bank. */
   accountTypes: ReadonlyArray<string>;
+  /**
+   * Optional expanded prose block (~120-160 words) rendered as an additional
+   * on-page section. Populated only for high-impression bank pages where GSC
+   * shows long-tail queries the short `note` doesn't cover (e.g. "download
+   * chase statements as csv"). Must stay factual — no invented UI steps.
+   */
+  deepDive?: string;
 };
 
 export const BANK_ENTITIES: ReadonlyArray<BankEntity> = [
@@ -59,6 +66,8 @@ export const BANK_ENTITIES: ReadonlyArray<BankEntity> = [
     passwordProtected: false,
     note: "Chase statements are typically issued monthly per account; if you have multiple Chase accounts (checking, savings, credit), you'll receive a separate PDF for each.",
     accountTypes: ["Checking", "Savings", "Credit Card", "Business"],
+    deepDive:
+      "Chase provides several ways to access transaction data through the Chase online banking portal at chase.com — PDF statements are available for every account, and CSV or QFX downloads are offered for most checking, savings, and credit card accounts. If you already have a Chase CSV export, you can open it directly in Excel with no conversion. The AI converter is designed for the PDF case: if you only have the PDF statement, or you need to standardize multiple Chase accounts into one workbook, the extractor reads the transaction table straight from the PDF layout and outputs a structured Excel or CSV file with date, description, amount, and balance columns. This works for Chase checking, savings, credit card, and business account statements. USD amounts and Chase's date formatting pass through unchanged, and the resulting spreadsheet is ready to import into QuickBooks, Xero, Sage, or Wave.",
   },
   {
     slug: "bank-of-america",
@@ -92,6 +101,8 @@ export const BANK_ENTITIES: ReadonlyArray<BankEntity> = [
     passwordProtected: false,
     note: "Citi credit card statements include a payment summary and a per-cardholder transaction breakdown for joint cards — both extract into structured rows.",
     accountTypes: ["Checking", "Credit Card", "Business"],
+    deepDive:
+      "Citi provides PDF and CSV statement downloads through the Citi online banking portal; the exact export options depend on your account type and region (Citibank US, Citi UK, Citi International). If your Citibank statement is already in CSV format, you can open it directly in Excel with no conversion needed. For PDF-only statements — common on international accounts and older records — the AI converter reads the Citi transaction table and outputs a structured Excel or CSV spreadsheet with date, description, amount, and balance columns. This works for Citi checking, credit card, and business banking statements. Joint credit card accounts include a per-cardholder transaction breakdown that the extractor preserves as separately labeled sections in the output. USD amounts and Citi's date formatting stay intact, and the resulting spreadsheet is ready to import into QuickBooks, Xero, or Sage without reformatting.",
   },
   {
     slug: "us-bank",
@@ -147,6 +158,8 @@ export const BANK_ENTITIES: ReadonlyArray<BankEntity> = [
     passwordProtected: true,
     note: "HSBC PDF statements are commonly password-protected on download; you'll need to remove the password (open in Preview/Acrobat, save without password) before uploading.",
     accountTypes: ["Current Account", "Savings", "Credit Card", "Business"],
+    deepDive:
+      "HSBC offers PDF statements through both HSBC UK and international online banking, with CSV exports available for many current accounts and business accounts. Because HSBC PDFs are commonly password-protected on download, you'll need to unlock the file first: open it in Preview (Mac) or Acrobat (Windows), enter the password, then save a copy without the password before uploading to the converter. Once uploaded, the AI extracts each transaction row into a structured Excel or CSV spreadsheet, preserving GBP amounts and HSBC's DD/MM/YYYY date format without conversion. This works for HSBC current accounts, savings, credit cards, and business banking statements. If your HSBC download is already in CSV format, you don't need conversion — but many international HSBC statements are PDF-only, which is where the AI extractor becomes essential. The output is ready for Xero, QuickBooks Online, or Sage import.",
   },
   {
     slug: "barclays",
@@ -169,6 +182,8 @@ export const BANK_ENTITIES: ReadonlyArray<BankEntity> = [
     passwordProtected: false,
     note: "Amex statements list transactions per cardmember (primary plus authorized users) — each cardmember's transactions extract as a separate labeled section.",
     accountTypes: ["Credit Card", "Charge Card", "Business"],
+    deepDive:
+      "American Express provides several statement formats through the Amex online banking portal — PDF, CSV, QFX, and QuickBooks-compatible QBO. If you already have an Amex CSV or QBO export, you can import it directly into Excel or QuickBooks without conversion. The AI extractor is designed for the PDF case, which many cardholders receive by default with their monthly billing statement. The extractor handles Amex's per-cardmember transaction breakdown — primary cardmember plus authorized users — preserving each cardholder's line items as a separately labeled section in the Excel output. This works for Amex consumer credit cards, charge cards, and business cards. The resulting spreadsheet has date, description, amount, and cardmember columns ready for expense tracking, ROI analysis, or accounting import. USD amounts and Amex's MM/DD/YYYY dates pass through unchanged, matching what you see in the PDF exactly.",
   },
   {
     slug: "discover",

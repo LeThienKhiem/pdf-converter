@@ -3,9 +3,9 @@ import Link from "next/link";
 import { Layers, Zap, Infinity, ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Enterprise-Grade PDF Extraction",
+  title: "Enterprise Invoice OCR: Batch PDF to Excel at Scale",
   description:
-    "Batch processing, unlimited file size, and uncapped usage. PDF extraction built for business scale.",
+    "Enterprise-grade invoice OCR with batch processing, unlimited files, and API access. Convert thousands of PDFs to Excel or JSON — try free today.",
 };
 
 export default function BusinessPage() {

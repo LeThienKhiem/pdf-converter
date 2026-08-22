@@ -25,9 +25,9 @@ function slugifyKeyword(label: string): string {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Free AI PDF to Excel & Google Sheets Converters | Invoice To Data",
+  title: "Free PDF to Excel Tools: AI Invoice OCR by Industry",
   description:
-    "Professional AI tools to extract data from PDF invoices to Excel and Google Sheets while keeping exact formatting. Fast, accurate, and secure.",
+    "Free AI tools to convert PDF invoices, bank statements, and industry docs to Excel or Google Sheets. Discover your converter — start free today.",
 };
 
 type BlogRow = {

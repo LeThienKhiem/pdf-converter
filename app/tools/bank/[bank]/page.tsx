@@ -258,6 +258,23 @@ export default async function BankStatementLandingPage({ params }: Props) {
           </dl>
         </section>
 
+        {/* Deep-dive prose section — only rendered for banks with expanded copy
+            (currently the highest-impression GSC targets: Chase, HSBC, AmEx, Citi). */}
+        {entity.deepDive && (
+          <section
+            className="mt-10 rounded-2xl border border-slate-200 bg-white px-6 py-8 shadow-sm sm:px-8 sm:py-10"
+            aria-labelledby="deep-dive-heading"
+          >
+            <h2
+              id="deep-dive-heading"
+              className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl"
+            >
+              About {entity.name} statement exports
+            </h2>
+            <p className="mt-4 text-slate-700 leading-relaxed">{entity.deepDive}</p>
+          </section>
+        )}
+
         {/* Step-by-step */}
         <section
           className="mt-14 rounded-2xl border border-slate-200 bg-white px-6 py-10 shadow-sm sm:px-8 sm:py-12"

@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Convert PDF Bank Statements to Excel & CSV Free | AI Extractor",
+  title: "Bank Statement to Excel Free: AI PDF Converter",
   description:
-    "Securely extract transactions from PDF bank statements to Excel or CSV in seconds using AI. Perfect for Xero, QuickBooks, and bank reconciliation.",
+    "Convert PDF bank statements to Excel or CSV free — any bank, any layout. AI extracts transactions in seconds for Xero, QuickBooks, and reconciliation.",
   openGraph: {
-    title: "Convert PDF Bank Statements to Excel & CSV Free | AI Extractor",
+    title: "Bank Statement to Excel Free: AI PDF Converter",
     description:
-      "Securely extract transactions from PDF bank statements to Excel or CSV in seconds using AI. Perfect for Xero, QuickBooks, and bank reconciliation.",
+      "Convert PDF bank statements to Excel or CSV free — any bank, any layout. AI extracts transactions in seconds for Xero, QuickBooks, and reconciliation.",
   },
 };
 

@@ -11,11 +11,11 @@ import {
 export const metadata: Metadata = {
   title: "How It Works - PDF to Excel Converter | Step-by-Step Guide",
   description:
-    "Learn how to convert PDF to Excel in 3 steps: upload your document, let Powerful AI Model extract the layout, and download your styled Excel file. Supports invoices, forms, and tax documents.",
+    "Learn how to convert PDF to Excel in 3 easy steps: upload your PDF, let AI extract tables and layout, and download a styled Excel file — try free.",
   openGraph: {
     title: "How It Works - PDF to Excel Converter | Step-by-Step Guide",
     description:
-      "Learn how to convert PDF to Excel in 3 steps: upload your document, let Powerful AI Model extract the layout, and download your styled Excel file.",
+      "Learn how to convert PDF to Excel in 3 easy steps: upload your PDF, let AI extract tables and layout, and download a styled Excel file — try free.",
     type: "article",
   },
   twitter: {

@@ -20,11 +20,11 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.invoicetodata.c
 
 export const metadata: Metadata = {
   title: {
-    default: "Invoice OCR — Convert PDF Invoices to Excel & Google Sheets Free | InvoiceToData",
+    default: "PDF to Excel Free: AI Invoice OCR | InvoiceToData",
     template: "%s | InvoiceToData",
   },
   description:
-    "Free AI-powered invoice OCR tool. Extract data from PDF invoices, bank statements, and receipts into Excel or Google Sheets in seconds. No sign-up required.",
+    "Convert PDF invoices, bank statements, and receipts to Excel or Google Sheets free. AI OCR extracts tables in seconds — no sign-up needed.",
   keywords: [
     "invoice OCR",
     "PDF to Excel",
@@ -42,9 +42,9 @@ export const metadata: Metadata = {
     canonical: siteUrl,
   },
   openGraph: {
-    title: "Invoice OCR — Convert PDF Invoices to Excel Free",
+    title: "PDF to Excel Free: AI Invoice OCR",
     description:
-      "Free AI-powered invoice OCR. Extract data from PDF invoices into Excel or Google Sheets in seconds. No sign-up required.",
+      "Convert PDF invoices, bank statements, and receipts to Excel or Google Sheets free. AI OCR extracts tables in seconds — no sign-up needed.",
     url: siteUrl,
     siteName: "InvoiceToData",
     locale: "en_US",
@@ -52,9 +52,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Invoice OCR — Convert PDF Invoices to Excel Free",
+    title: "PDF to Excel Free: AI Invoice OCR",
     description:
-      "Free AI-powered invoice OCR. Extract data from PDF invoices into Excel or Google Sheets in seconds.",
+      "Convert PDF invoices, bank statements, and receipts to Excel or Google Sheets free. AI OCR extracts tables in seconds.",
   },
 };
 

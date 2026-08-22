@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Extract Data from PDF Invoice to Excel | Powered by Claude AI",
+  title: "Claude PDF to Excel: Free AI Invoice OCR in Seconds",
   description:
-    "Free AI tool to automatically extract data from PDF invoices to Excel and Google Sheets. Powered by Anthropic Claude for accurate table and line-item extraction.",
+    "Convert PDF invoices to Excel with Claude AI, free. Extract tables, line items, and totals in seconds. Discover the fastest AI OCR — try free today.",
   openGraph: {
-    title: "Extract Data from PDF Invoice to Excel | Powered by Claude AI",
+    title: "Claude PDF to Excel: Free AI Invoice OCR in Seconds",
     description:
-      "Free AI tool to automatically extract data from PDF invoices to Excel and Google Sheets. Powered by Anthropic Claude for accurate table and line-item extraction.",
+      "Convert PDF invoices to Excel with Claude AI, free. Extract tables, line items, and totals in seconds. Discover the fastest AI OCR — try free today.",
   },
 };
 

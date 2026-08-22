@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Convert PDF to Google Sheets with AI - Free Online Tool",
+  title: "PDF to Google Sheets Free: AI Extraction in 1 Click",
   description:
-    "Automatically extract data from PDFs, invoices, and forms directly into Google Sheets using AI. Paste your Sheet URL and sync in one click.",
+    "Convert PDFs and invoices to Google Sheets free with AI. Paste your Sheet URL and sync in one click — no downloads, no reformatting, ready in seconds.",
   openGraph: {
-    title: "Convert PDF to Google Sheets with AI - Free Online Tool",
+    title: "PDF to Google Sheets Free: AI Extraction in 1 Click",
     description:
-      "Automatically extract data from PDFs, invoices, and forms directly into Google Sheets using AI.",
+      "Convert PDFs and invoices to Google Sheets free with AI. Paste your Sheet URL and sync in one click — no downloads, no reformatting.",
   },
 };
 
