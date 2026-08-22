@@ -20,8 +20,14 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.invoicetodata.c
 
 export const metadata: Metadata = {
   title: {
-    default: "PDF to Excel Free: AI Invoice OCR | InvoiceToData",
-    template: "%s | InvoiceToData",
+    default: "PDF to Excel Free: AI Invoice OCR | Invoice To Data",
+    // Spaced form on purpose — it matches how the brand is actually searched
+    // ("invoice to data", 65 impressions), and until today no page title
+    // carried it at all. Earlier metadata work removed the one title that did,
+    // on /tools, without noticing it was the site's only spaced-brand signal.
+    // Flagged as a hypothesis to measure, not a certainty: Google tokenises
+    // "InvoiceToData" too, so the gain may be small.
+    template: "%s | Invoice To Data",
   },
   description:
     "Convert PDF invoices, bank statements, and receipts to Excel or Google Sheets free. AI OCR extracts tables in seconds — no sign-up needed.",
@@ -73,6 +79,24 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "Organization",
               name: "InvoiceToData",
+              // Search Console shows "invoice to data" — the spaced form of our
+              // own name — returning this site at position 48.5 on 65
+              // impressions. A site should not be buried on page 5 for its own
+              // brand. Part of the cause is that nothing told Google the
+              // spaced and unspaced forms are one entity, so the queries were
+              // never being treated as navigational.
+              //
+              // Worth being clear-eyed that this is only part of it: "invoice
+              // to data" is also a literal description of the product
+              // category, so Google has grounds to read it as informational
+              // intent rather than as a brand. alternateName helps establish
+              // the entity; it cannot make a generic phrase distinctive.
+              alternateName: [
+                "Invoice To Data",
+                "Invoice to Data",
+                "invoicetodata",
+                "invoicetodata.com",
+              ],
               url: siteUrl,
               logo: `${siteUrl}/favicon.ico`,
               description:
@@ -95,6 +119,7 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "WebSite",
               name: "InvoiceToData",
+              alternateName: ["Invoice To Data", "invoicetodata.com"],
               url: siteUrl,
               description:
                 "Free AI-powered invoice OCR. Convert PDF invoices to Excel and Google Sheets.",

@@ -4,6 +4,7 @@ import { runInformational } from "@/app/api/cron/seo-content/route";
 import { runBuyerIntent } from "@/app/api/cron/seo-content-2/route";
 import { runContentRefresh } from "@/app/api/cron/content-refresh/route";
 import { runEmailDrip } from "@/app/api/cron/email-drip/route";
+import { runBacklinkTasks } from "@/app/api/cron/backlink-tasks/route";
 
 /**
  * Master cron — the ONLY entry registered in vercel.json (Vercel Hobby
@@ -82,10 +83,32 @@ export async function GET(request: Request) {
       emailDrip = { error: dripErr instanceof Error ? dripErr.message : "failed" };
     }
 
+    // Backlink reminders, Mondays only.
+    //
+    // /api/cron/backlink-tasks was never registered in vercel.json and never
+    // dispatched from here, so it had never fired — ten prepared submissions
+    // (Product Hunt, AlternativeTo, G2, Show HN and the rest) sat unused.
+    //
+    // Worth wiring because it addresses the one gap on-page work cannot.
+    // Search Console shows 2697 impressions — 55% of measured demand — stuck
+    // at positions 41 to 87 on head commercial terms against ABBYY, Rossum
+    // and Nanonets. That is a domain-authority contest, and off-site links are
+    // the only lever that reaches it.
+    let backlinks: unknown = null;
+    if (day === 1) {
+      try {
+        backlinks = await runBacklinkTasks();
+      } catch (blErr) {
+        console.error("[Master Cron] Backlink tasks failed:", blErr);
+        backlinks = { error: blErr instanceof Error ? blErr.message : "failed" };
+      }
+    }
+
     return NextResponse.json({
       master: { day, task, overridden: !!validOverride },
       result,
       emailDrip,
+      backlinks,
     });
   } catch (err) {
     console.error("[Master Cron] Error:", err);

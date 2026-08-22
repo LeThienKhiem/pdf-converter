@@ -270,25 +270,39 @@ InvoiceToData is a free AI-powered tool that converts PDF invoices into structur
   },
 ];
 
-export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export type BacklinkResult = {
+  success: true;
+  week: number;
+  tasks: string[];
+};
 
-  try {
-    // TURBO MODE: Send 2 tasks per week instead of 1
-    const campaignStart = new Date("2026-03-01").getTime();
-    const now = Date.now();
-    const weekNumber = Math.floor((now - campaignStart) / (7 * 24 * 60 * 60 * 1000));
+/**
+ * Send this week's backlink tasks to Telegram.
+ *
+ * Exported as a runner so the master cron can dispatch it, because this route
+ * was never registered anywhere — not in vercel.json, not in master's rotation
+ * — and had therefore never fired. Ten prepared, copy-paste-ready submissions
+ * (Product Hunt, AlternativeTo, G2, Hacker News and the rest) sat here unused.
+ *
+ * That matters more than it looks. Search Console shows 2697 impressions, 55%
+ * of measured demand, sitting at positions 41 to 87 on head commercial terms
+ * against ABBYY, Rossum and Nanonets. That gap is a domain-authority contest,
+ * and no amount of on-page work reaches it — off-site links are the only lever
+ * that does. The most valuable SEO asset in this repo was the one not wired up.
+ */
+export async function runBacklinkTasks(): Promise<BacklinkResult> {
+  // TURBO MODE: Send 2 tasks per week instead of 1
+  const campaignStart = new Date("2026-03-01").getTime();
+  const now = Date.now();
+  const weekNumber = Math.floor((now - campaignStart) / (7 * 24 * 60 * 60 * 1000));
 
-    // Send 2 tasks per run (accelerated backlink building)
-    const taskIndex1 = (weekNumber * 2) % BACKLINK_TASKS.length;
-    const taskIndex2 = (weekNumber * 2 + 1) % BACKLINK_TASKS.length;
-    const tasks = [BACKLINK_TASKS[taskIndex1], BACKLINK_TASKS[taskIndex2]];
+  // Send 2 tasks per run (accelerated backlink building)
+  const taskIndex1 = (weekNumber * 2) % BACKLINK_TASKS.length;
+  const taskIndex2 = (weekNumber * 2 + 1) % BACKLINK_TASKS.length;
+  const tasks = [BACKLINK_TASKS[taskIndex1], BACKLINK_TASKS[taskIndex2]];
 
-    for (const task of tasks) {
-      const msg = `🔗 <b>Backlink Task — DO THIS NOW</b>
+  for (const task of tasks) {
+    const msg = `🔗 <b>Backlink Task — DO THIS NOW</b>
 
 ${task.title}
 ⏱️ Thời gian: ~${task.timeEstimate}
@@ -299,16 +313,26 @@ ${task.instructions}
 
 💰 <i>Payment gateway is LIVE — every backlink = more organic traffic = more revenue!</i>`;
 
-      await sendTelegramMessage(msg);
-      // Small delay between messages to avoid Telegram rate limit
-      await new Promise((r) => setTimeout(r, 1000));
-    }
+    await sendTelegramMessage(msg);
+    // Small delay between messages to avoid Telegram rate limit
+    await new Promise((r) => setTimeout(r, 1000));
+  }
 
-    return NextResponse.json({
-      success: true,
-      week: weekNumber + 1,
-      tasks: tasks.map((t) => t.title),
-    });
+  return {
+    success: true,
+    week: weekNumber + 1,
+    tasks: tasks.map((t) => t.title),
+  };
+}
+
+export async function GET(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    return NextResponse.json(await runBacklinkTasks());
   } catch (err) {
     console.error("[Backlink Tasks Cron] Error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
