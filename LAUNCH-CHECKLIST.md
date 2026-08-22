@@ -34,10 +34,18 @@ destination hiện tại: bật thêm các event
 ## 3. Setup Resend (email drip)
 
 1. Đăng ký resend.com (free 100 email/ngày — quá đủ).
-2. Verify domain `invoicetodata.com` (thêm DNS records họ đưa).
+2. Verify domain `invoicetodata.com` (thêm DNS records họ đưa — SPF + DKIM, quyết định
+   việc vào inbox hay spam).
 3. Set env vars:
    - `RESEND_API_KEY` = key từ Resend
-   - `EMAIL_FROM` = `InvoiceToData <hello@invoicetodata.com>`
+   - `EMAIL_FROM` = `Kivora - CEO of Invoicetodata <kivora@invoicetodata.com>`
+   - `EMAIL_REPLY_TO` = `kivora.lynx@gmail.com` (mặc định trong code đã là địa chỉ này;
+     người nhận bấm Reply là thư về Gmail)
+
+**Lưu ý deliverability:** KHÔNG thể để FROM là `@gmail.com` — DMARC của Gmail sẽ đánh
+spam mọi email giả sender gmail gửi qua dịch vụ thứ ba. FROM phải thuộc domain đã verify
+(`invoicetodata.com`); Gmail cá nhân dùng làm Reply-To. Email viết dạng thư cá nhân
+plain-text từ founder (không button, không ảnh, ít link) — đúng công thức tránh spam folder.
 
 Chưa set thì drip tự skip, không crash cron — có thể deploy trước, setup email sau.
 

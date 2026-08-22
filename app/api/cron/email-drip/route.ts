@@ -85,8 +85,8 @@ export async function runEmailDrip(): Promise<{
         .insert({ user_id: user.id, email_type: stage.type });
       if (claimError) continue;
 
-      const { subject, html } = dripEmail(stage.type, user.id);
-      const ok = await sendEmail({ to: user.email!, subject, html });
+      const { subject, html, text } = dripEmail(stage.type, user.id);
+      const ok = await sendEmail({ to: user.email!, subject, html, text });
       if (ok) {
         sent += 1;
         byType[stage.type] = (byType[stage.type] ?? 0) + 1;

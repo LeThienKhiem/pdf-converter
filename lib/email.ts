@@ -31,9 +31,13 @@ export async function sendEmail(params: {
   to: string;
   subject: string;
   html: string;
+  text?: string;
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
+  // Replies go to the founder's real inbox. Note: the FROM address must be on
+  // the Resend-verified domain (you cannot send as @gmail.com — DMARC).
+  const replyTo = process.env.EMAIL_REPLY_TO ?? "kivora.lynx@gmail.com";
   if (!apiKey || !from) {
     console.warn("[Email] RESEND_API_KEY / EMAIL_FROM not set — skipping send");
     return false;
@@ -44,7 +48,14 @@ export async function sendEmail(params: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from, to: params.to, subject: params.subject, html: params.html }),
+    body: JSON.stringify({
+      from,
+      to: params.to,
+      reply_to: replyTo,
+      subject: params.subject,
+      html: params.html,
+      ...(params.text && { text: params.text }),
+    }),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -55,16 +66,31 @@ export async function sendEmail(params: {
 }
 
 // ── Drip templates ──────────────────────────────────────────────────────────
+// Written as personal notes from the founder, not marketing blasts:
+// plain paragraphs, no buttons/images, few links, real reply-to.
+// That style is also what keeps them out of the spam folder.
 
 const SITE = "https://www.invoicetodata.com";
+const SIGNATURE = "Kivora\nCEO, InvoiceToData";
 
-function layout(inner: string, userId: string): string {
+/** Convert the plain-text body to minimal HTML (paragraphs + clickable links). */
+function textToHtml(text: string, userId: string): string {
+  const escaped = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const linked = escaped.replace(
+    /(https?:\/\/[^\s]+)/g,
+    '<a href="$1" style="color:#2563eb;">$1</a>'
+  );
+  const paragraphs = linked
+    .split(/\n\n+/)
+    .map((p) => `<p style="margin:0 0 16px;white-space:pre-line;">${p}</p>`)
+    .join("\n");
   return `
-  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a;line-height:1.6;">
-    ${inner}
-    <hr style="border:none;border-top:1px solid #e2e8f0;margin:32px 0 16px;" />
-    <p style="font-size:12px;color:#94a3b8;">
-      InvoiceToData — AI invoice &amp; bank statement OCR.<br/>
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a;font-size:15px;line-height:1.6;">
+    ${paragraphs}
+    <p style="font-size:12px;color:#94a3b8;margin-top:32px;">
       Don't want these emails? <a href="${unsubscribeUrl(userId)}" style="color:#94a3b8;">Unsubscribe</a>.
     </p>
   </div>`;
@@ -72,66 +98,66 @@ function layout(inner: string, userId: string): string {
 
 export type DripType = "welcome" | "case_study" | "founding_offer";
 
-export function dripEmail(type: DripType, userId: string): { subject: string; html: string } {
+export function dripEmail(
+  type: DripType,
+  userId: string
+): { subject: string; html: string; text: string } {
+  let subject: string;
+  let body: string;
+
   switch (type) {
     case "welcome":
-      return {
-        subject: "Your 3 free pages are ready — here's how to use them well",
-        html: layout(
-          `
-          <h2 style="margin:0 0 12px;">Welcome to InvoiceToData 👋</h2>
-          <p>You get <strong>3 free pages every month</strong> — they reset automatically, so come back any time.</p>
-          <p>Three things people convert most:</p>
-          <ul>
-            <li><a href="${SITE}/tools/bank-statement-to-excel">Bank statements → Excel</a> (reconciliation, loan applications)</li>
-            <li><a href="${SITE}/tools/pdf-to-excel">PDF invoices → Excel</a> (line items, totals, dates)</li>
-            <li><a href="${SITE}/tools/pdf-to-gsheet">PDF → Google Sheets</a> (straight into your Drive)</li>
-          </ul>
-          <p>Scanned or photographed documents work too — the AI reads them like a human would.</p>
-          <p><a href="${SITE}/tools/pdf-to-excel" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:600;">Convert your first document</a></p>
-          `,
-          userId
-        ),
-      };
+      subject = "thanks for signing up (a quick tip)";
+      body = `Hi,
+
+Kivora here — I'm the CEO of InvoiceToData. We're a small team, so yes, the CEO sends the welcome emails.
+
+Thanks for signing up. Three things worth knowing:
+
+1. You get 3 free pages every month, and they reset automatically — no card needed.
+2. Scanned and photographed documents work, not just digital PDFs. Bank statements, invoices, receipts.
+3. Most people start here: ${SITE}/tools/pdf-to-excel
+
+One ask from me: if you convert a document and the result isn't right, just hit reply and tell me what type of document it was. I read every reply personally, and extraction bugs usually get fixed within days.
+
+${SIGNATURE}`;
+      break;
+
     case "case_study":
-      return {
-        subject: "How bookkeepers turn a shoebox of statements into clean Excel",
-        html: layout(
-          `
-          <h2 style="margin:0 0 12px;">The 2-hour job that now takes 4 minutes</h2>
-          <p>The most common workflow we see from bookkeepers and accountants:</p>
-          <ol>
-            <li>Client sends 12 months of bank statements as PDFs (often scans).</li>
-            <li>Each statement goes through <a href="${SITE}/tools/bank-statement-to-excel">Bank Statement → Excel</a>.</li>
-            <li>The extracted table downloads with every transaction on its own row.</li>
-            <li>Pro users hit <strong>“Export for QuickBooks”</strong> and import the 3-column CSV straight into QuickBooks or Xero.</li>
-          </ol>
-          <p>Typing one statement by hand takes ~20 minutes. The AI does it in ~30 seconds, including scanned documents.</p>
-          <p><a href="${SITE}/tools/bank-statement-to-excel" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:600;">Try it with one statement</a></p>
-          `,
-          userId
-        ),
-      };
+      subject = "the 2-hour job that takes 4 minutes now";
+      body = `Hi,
+
+Kivora from InvoiceToData again. Quick story about the most common way people use us.
+
+A bookkeeper gets 12 months of bank statements from a client — usually scans, sometimes phone photos. The old way: retype every transaction into Excel, about 20 minutes per statement. Two hours gone on one client.
+
+The new way: drop each statement into ${SITE}/tools/bank-statement-to-excel and every transaction comes out on its own row, in order, in about 30 seconds. Pro users then click "Export for QuickBooks" and import the CSV straight into QuickBooks or Xero.
+
+If you've got a stack of statements sitting somewhere, try it with one. And if the output isn't right for your bank's format, reply and tell me which bank — I'll look at it myself.
+
+${SIGNATURE}`;
+      break;
+
     case "founding_offer":
-      return {
-        subject: "Founding Member: lock in Pro at $3/month — forever",
-        html: layout(
-          `
-          <h2 style="margin:0 0 12px;">You're early — that comes with a deal</h2>
-          <p>We're opening <strong>50 Founding Member seats</strong>: Pro at <strong>$3/month, locked in for life</strong> (regular price $5/month).</p>
-          <p>Pro gets you:</p>
-          <ul>
-            <li><strong>200 pages every month</strong></li>
-            <li>QuickBooks-ready CSV export</li>
-            <li>No watermark on exports</li>
-            <li>Priority processing</li>
-          </ul>
-          <p>When the 50 seats are gone, they're gone. 7-day money-back guarantee, cancel anytime.</p>
-          <p><a href="${SITE}/pricing" style="display:inline-block;background:#217346;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:600;">Claim a Founding seat — $3/mo</a></p>
-          <p style="font-size:13px;color:#64748b;">Only need it for one project? There's also a <a href="${SITE}/pricing">$2 Week Pass</a> — unlimited for 7 days, one-time.</p>
-          `,
-          userId
-        ),
-      };
+      subject = "50 founding seats at $3/month (you're early)";
+      body = `Hi,
+
+Kivora here. You joined InvoiceToData early, and I want to say thanks in a way that's actually worth something.
+
+We just opened 50 Founding Member seats: Pro at $3/month, locked in for as long as you stay subscribed. Regular price is $5/month, and once the 50 seats are taken, that's it.
+
+Pro gives you 200 pages a month, QuickBooks-ready CSV export, no watermark on your files, and priority processing. There's a 7-day money-back guarantee and you can cancel anytime, so trying it is genuinely risk-free.
+
+Claim a seat here: ${SITE}/pricing
+
+Only need it for one project? There's also a $2 Week Pass on the same page — unlimited for 7 days, one-time payment, nothing to cancel.
+
+Either way, thanks for being here early.
+
+${SIGNATURE}`;
+      break;
   }
+
+  const text = `${body}\n\nUnsubscribe: ${unsubscribeUrl(userId)}`;
+  return { subject, html: textToHtml(body, userId), text };
 }
