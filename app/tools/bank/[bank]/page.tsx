@@ -42,6 +42,86 @@ export function generateStaticParams(): { bank: string }[] {
   return getAllBankSlugs().map((bank) => ({ bank }));
 }
 
+/**
+ * All copy that depends on whether the bank password-protects statement PDFs.
+ *
+ * Centralised because `passwordProtected` has three states, and "unknown" is
+ * truthy — a stray `entity.passwordProtected ? a : b` would silently treat an
+ * unknown as a definite yes and tell the reader their bank encrypts
+ * statements when we have no idea. Deriving every variant once makes that
+ * mistake impossible to reintroduce in one of a dozen call sites.
+ *
+ * The three voices differ in certainty, not just wording:
+ *   true      — state it plainly, the reader should expect a password
+ *   "unknown" — condition it, the reader should check
+ *   false     — reassure, no extra step needed
+ */
+type PasswordGuidance = {
+  showsUnlockStep: boolean;
+  uploadStepNumber: number;
+  downloadStepNumber: number;
+  heroBadge: string;
+  metaFragment: string;
+  faqQuestion: string;
+  faqAnswer: string;
+  unlockHeading: string;
+  unlockBody: string;
+  howToStepName: string;
+  howToStepText: string;
+};
+
+function passwordGuidance(entity: BankEntity): PasswordGuidance {
+  const unlockHow =
+    "open it in Preview (Mac) or Acrobat (Windows), enter the password, then save a copy without the password";
+
+  if (entity.passwordProtected === true) {
+    return {
+      showsUnlockStep: true,
+      uploadStepNumber: 3,
+      downloadStepNumber: 4,
+      heroBadge: " • Password-protected PDFs",
+      metaFragment: "handles password-protected statements (after unlocking)",
+      faqQuestion: `Does the converter handle password-protected ${entity.name} PDFs?`,
+      faqAnswer: `Not directly — for security we don't process encrypted PDFs. ${entity.name} typically password-protects statement downloads, so unlock the PDF first (${unlockHow}) and then upload.`,
+      unlockHeading: "Remove the password from the PDF",
+      unlockBody: `${entity.name} typically protects statement PDFs with a password. For security reasons our converter does not process encrypted PDFs — ${unlockHow} before uploading.`,
+      howToStepName: "Remove the PDF password",
+      howToStepText: `${entity.name} typically password-protects statement PDFs. Unlock it first: ${unlockHow}, then upload.`,
+    };
+  }
+
+  if (entity.passwordProtected === false) {
+    return {
+      showsUnlockStep: false,
+      uploadStepNumber: 2,
+      downloadStepNumber: 3,
+      heroBadge: "",
+      metaFragment: "no manual data entry",
+      faqQuestion: `Does the converter handle downloaded ${entity.name} PDFs?`,
+      faqAnswer: `Yes. ${entity.name} downloads statement PDFs without password protection by default, so you can upload directly without preprocessing.`,
+      unlockHeading: "",
+      unlockBody: "",
+      howToStepName: "",
+      howToStepText: "",
+    };
+  }
+
+  // "unknown" — say only what's true: it might be protected, here's the fix.
+  return {
+    showsUnlockStep: true,
+    uploadStepNumber: 3,
+    downloadStepNumber: 4,
+    heroBadge: "",
+    metaFragment: "no manual data entry",
+    faqQuestion: `Can the converter handle a password-protected ${entity.name} PDF?`,
+    faqAnswer: `Encrypted PDFs aren't processed, for security reasons. Whether ${entity.name} protects statement downloads can vary by account type and region, so if the file asks for a password when you open it, unlock it first (${unlockHow}) and then upload.`,
+    unlockHeading: "Unlock the PDF if it asks for a password",
+    unlockBody: `Some banks protect statement downloads with a password and some don't, and it can differ by account type. If your ${entity.name} PDF prompts for one when you open it, our converter can't read it while it's encrypted — ${unlockHow}, then upload that copy. If it opens without a prompt, skip this step.`,
+    howToStepName: "Unlock the PDF if it is password-protected",
+    howToStepText: `If your ${entity.name} statement asks for a password when opened, ${unlockHow}, then upload the unlocked copy. If it opens without a prompt, no action is needed.`,
+  };
+}
+
 /** Build per-page <title> + meta keyed off the bank entity. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { bank } = await params;
@@ -50,7 +130,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const pageUrl = `${SITE_URL}/tools/bank/${entity.slug}`;
   const title = `Convert ${entity.name} Bank Statements to Excel — Free AI Converter`;
-  const description = `Convert ${entity.name} (${entity.country}) PDF bank statements to Excel or CSV in seconds. AI-powered, ${entity.passwordProtected ? "handles password-protected statements (after unlocking)" : "no manual data entry"}, ready for Xero/QuickBooks.`;
+  const description = `Convert ${entity.name} (${entity.country}) PDF bank statements to Excel or CSV in seconds. AI-powered, ${passwordGuidance(entity).metaFragment}, ready for Xero/QuickBooks.`;
 
   return {
     title,
@@ -68,6 +148,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 function buildStructuredData(entity: BankEntity, pageUrl: string) {
+  const pw = passwordGuidance(entity);
+
   const breadcrumb = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -97,25 +179,25 @@ function buildStructuredData(entity: BankEntity, pageUrl: string) {
         name: `Download your ${entity.name} statement`,
         text: `Sign in to your ${entity.name} online banking at ${entity.domain} and download the statement as a PDF.`,
       },
-      ...(entity.passwordProtected
+      ...(pw.showsUnlockStep
         ? [
             {
               "@type": "HowToStep",
               position: 2,
-              name: "Remove the PDF password",
-              text: `${entity.name} typically password-protects statement PDFs. Open it in Preview (Mac) or Acrobat (Windows), enter the password, then save a copy without the password before uploading.`,
+              name: pw.howToStepName,
+              text: pw.howToStepText,
             },
           ]
         : []),
       {
         "@type": "HowToStep",
-        position: entity.passwordProtected ? 3 : 2,
+        position: pw.uploadStepNumber,
         name: "Upload to InvoiceToData",
-        text: `Drop the unlocked PDF onto the converter. The AI reads the transaction table directly from the visual layout — no template setup needed.`,
+        text: `Drop the PDF onto the converter. The AI reads the transaction table directly from the visual layout — no template setup needed.`,
       },
       {
         "@type": "HowToStep",
-        position: entity.passwordProtected ? 4 : 3,
+        position: pw.downloadStepNumber,
         name: "Download Excel or CSV",
         text: `Click "Download your Excel" to save a structured spreadsheet ready to import into Xero, QuickBooks, or your accounting workflow.`,
       },
@@ -136,12 +218,10 @@ function buildStructuredData(entity: BankEntity, pageUrl: string) {
       },
       {
         "@type": "Question",
-        name: `Does the converter handle ${entity.passwordProtected ? "password-protected" : "downloaded"} ${entity.name} PDFs?`,
+        name: pw.faqQuestion,
         acceptedAnswer: {
           "@type": "Answer",
-          text: entity.passwordProtected
-            ? `Not directly — for security we don't process encrypted PDFs. ${entity.name} typically password-protects statement downloads, so unlock the PDF first (open in Preview or Acrobat, enter the password, save a copy without the password) and then upload.`
-            : `Yes. ${entity.name} downloads PDF statements without password protection by default, so you can upload directly without preprocessing.`,
+          text: pw.faqAnswer,
         },
       },
       {
@@ -173,6 +253,7 @@ export default async function BankStatementLandingPage({ params }: Props) {
 
   const pageUrl = `${SITE_URL}/tools/bank/${entity.slug}`;
   const structuredData = buildStructuredData(entity, pageUrl);
+  const pw = passwordGuidance(entity);
 
   // Suggest related banks (same country first, then any) for cross-linking
   const related = BANK_ENTITIES.filter(
@@ -200,7 +281,7 @@ export default async function BankStatementLandingPage({ params }: Props) {
         <header className="rounded-3xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-white px-6 py-12 text-center shadow-sm sm:px-10 sm:py-16">
           <p className="mb-3 text-sm font-medium uppercase tracking-wide text-blue-600">
             {entity.country} • {entity.currency}
-            {entity.passwordProtected && " • Password-protected PDFs"}
+            {pw.heroBadge}
           </p>
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
             Convert {entity.name} Bank Statements to Excel
@@ -302,30 +383,22 @@ export default async function BankStatementLandingPage({ params }: Props) {
                 </p>
               </div>
             </li>
-            {entity.passwordProtected && (
+            {pw.showsUnlockStep && (
               <li className="flex gap-4">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-white">
                   <Lock className="h-4 w-4" aria-hidden />
                 </span>
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900">
-                    Remove the password from the PDF
+                    {pw.unlockHeading}
                   </h3>
-                  <p className="mt-2 text-slate-600">
-                    {entity.name} typically protects statement PDFs with a
-                    password (often a portion of your account number, date of
-                    birth, or other identifier you set up). For security
-                    reasons our converter does not process encrypted PDFs —
-                    open the file in Preview (Mac) or Acrobat (Windows),
-                    enter the password, then choose <em>File → Save As</em>{" "}
-                    and save a copy without the password.
-                  </p>
+                  <p className="mt-2 text-slate-600">{pw.unlockBody}</p>
                 </div>
               </li>
             )}
             <li className="flex gap-4">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
-                {entity.passwordProtected ? "3" : "2"}
+                {pw.uploadStepNumber}
               </span>
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">
@@ -347,7 +420,7 @@ export default async function BankStatementLandingPage({ params }: Props) {
             </li>
             <li className="flex gap-4">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
-                {entity.passwordProtected ? "4" : "3"}
+                {pw.downloadStepNumber}
               </span>
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">
@@ -445,15 +518,9 @@ export default async function BankStatementLandingPage({ params }: Props) {
             </div>
             <div>
               <dt className="text-base font-semibold text-slate-900">
-                Does the converter handle{" "}
-                {entity.passwordProtected ? "password-protected" : "downloaded"}{" "}
-                {entity.name} PDFs?
+                {pw.faqQuestion}
               </dt>
-              <dd className="mt-2 text-slate-600">
-                {entity.passwordProtected
-                  ? `Not directly — for security we don't process encrypted PDFs. ${entity.name} typically password-protects statement downloads, so unlock the PDF first (open in Preview or Acrobat, enter the password, save a copy without the password) and then upload.`
-                  : `Yes. ${entity.name} downloads statement PDFs without password protection by default, so you can upload directly without preprocessing.`}
-              </dd>
+              <dd className="mt-2 text-slate-600">{pw.faqAnswer}</dd>
             </div>
             <div>
               <dt className="text-base font-semibold text-slate-900">

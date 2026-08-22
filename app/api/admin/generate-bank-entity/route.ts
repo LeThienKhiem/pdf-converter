@@ -55,14 +55,18 @@ const ENTITY_TOOL: Anthropic.Tool = {
       },
       statementFormats: {
         type: "array",
-        items: { type: "string", enum: ["PDF", "CSV", "QFX", "OFX", "QBO"] },
+        items: {
+          type: "string",
+          enum: ["PDF", "CSV", "QFX", "OFX", "QBO", "MT940", "CAMT053"],
+        },
         description:
-          "Statement download formats this bank typically offers. PDF is universal — only include the others if you're confident the bank publishes them.",
+          "Statement download formats this bank typically offers. PDF is universal — only include the others if you're confident the bank publishes them. QFX and QBO are Quicken/QuickBooks formats and in practice US-only. MT940 and CAMT053 are the SWIFT and ISO 20022 formats common for German and other European banks.",
       },
       passwordProtected: {
-        type: "boolean",
+        type: ["boolean", "string"],
+        enum: [true, false, "unknown"],
         description:
-          "Whether the bank commonly password-protects statement PDFs by default (more common for UK/EU banks than US).",
+          "Whether the bank commonly password-protects statement PDFs by default (more common for UK/EU banks than US). Answer \"unknown\" unless you are actually confident — this value is rendered as a definite statement on a public page, so a false guess tells a real user their statements are not encrypted when they may be. \"unknown\" produces neutral copy that covers both cases, and is always the safe answer.",
       },
       note: {
         type: "string",
@@ -145,6 +149,8 @@ export async function GET(request: Request) {
 This will become a programmatic SEO landing page at /tools/bank/{slug} targeting "convert ${bankName} statement to excel" search queries.
 
 Be CONSERVATIVE — when uncertain about a specific fact, prefer general/safe values. The 'note' field in particular: do NOT invent specifics about the bank's exact statement layout. Only state things that are plausibly true of any standard statement from this institution.
+
+On passwordProtected specifically: "unknown" is the right answer unless you actually know. It is not a cop-out — it renders neutral copy that covers both cases, whereas a wrong boolean puts a false assurance in front of a real user. Guessing here is worse than abstaining.
 
 Return via the draft_bank_entity tool.`,
         },

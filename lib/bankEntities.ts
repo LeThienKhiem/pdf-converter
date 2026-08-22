@@ -34,10 +34,30 @@ export type BankEntity = {
   currency: string;
   /** Primary public domain — used for "log in to your X account" guidance. */
   domain: string;
-  /** Statement formats the bank typically offers for download. */
-  statementFormats: ReadonlyArray<"PDF" | "CSV" | "QFX" | "OFX" | "QBO">;
-  /** Whether the institution commonly password-protects PDF statements. */
-  passwordProtected: boolean;
+  /**
+   * Statement formats the bank typically offers for download.
+   *
+   * QFX/QBO are Quicken and QuickBooks formats, in practice US-only. MT940 is
+   * the SWIFT statement format German and other European banks commonly
+   * publish for accounting import, and CAMT053 is its ISO 20022 successor
+   * used across SEPA.
+   */
+  statementFormats: ReadonlyArray<
+    "PDF" | "CSV" | "QFX" | "OFX" | "QBO" | "MT940" | "CAMT053"
+  >;
+  /**
+   * Whether the institution commonly password-protects PDF statements.
+   *
+   * "unknown" is a first-class value, not a placeholder to fill in later.
+   * Whether a given bank protects statement downloads is frequently not
+   * publicly documented, and it changes. Forcing true/false meant the page
+   * made a definite claim either way — `false` renders "downloads statement
+   * PDFs without password protection by default", which is a real assurance
+   * to put in front of a user on the strength of a guess. When we don't know,
+   * the page should say what is actually true: it may be protected, and here
+   * is what to do if it is.
+   */
+  passwordProtected: boolean | "unknown";
   /**
    * One sentence specific to this bank's statement workflow that adds
    * actual value (not generic). Keep it factual + general — no made-up
@@ -195,6 +215,92 @@ export const BANK_ENTITIES: ReadonlyArray<BankEntity> = [
     passwordProtected: false,
     note: "Discover statements include a 'Cashback Bonus' summary above transactions; the extractor isolates the transaction table from the rewards summary so your spreadsheet contains only line items.",
     accountTypes: ["Credit Card", "Checking", "Savings"],
+  },
+
+  // ─── German institutions ──────────────────────────────────────────────
+  //
+  // Added because Germany is the third-highest impression country in Search
+  // Console (434 impressions over 90 days) with zero clicks, and the
+  // programmatic bank template is the cheapest content per page on the site.
+  // Deliberately written in English: "Deutsche Bank statement to Excel" is a
+  // query an English-speaking finance team at a German subsidiary would type,
+  // and whether German-language pages are warranted is still unverified —
+  // see docs/german-locale-pilot.md.
+  //
+  // passwordProtected is "unknown" on every entry here. That is honest rather
+  // than lazy: I could not establish these banks' PDF protection behaviour
+  // from a reliable source, and this file exists to keep invented facts off
+  // public pages. The "unknown" copy covers both cases correctly.
+  //
+  // MT940 and CAMT053 are the genuinely distinguishing German fact — the
+  // SWIFT and ISO 20022 statement formats German banks publish for import
+  // into accounting software, which have no US equivalent in this list.
+
+  {
+    slug: "deutsche-bank",
+    name: "Deutsche Bank",
+    country: "DE",
+    currency: "EUR",
+    domain: "deutsche-bank.de",
+    statementFormats: ["PDF", "CSV", "MT940", "CAMT053"],
+    passwordProtected: "unknown",
+    note: "German banks commonly offer MT940 or CAMT.053 alongside PDF, and those structured formats import directly into accounting software — check for them before converting a PDF, since it saves a step.",
+    accountTypes: ["Current Account", "Savings", "Credit Card", "Business"],
+  },
+  {
+    slug: "commerzbank",
+    name: "Commerzbank",
+    country: "DE",
+    currency: "EUR",
+    domain: "commerzbank.de",
+    statementFormats: ["PDF", "CSV", "MT940", "CAMT053"],
+    passwordProtected: "unknown",
+    note: "Commerzbank statements use European conventions — DD.MM.YYYY dates and comma decimal separators — which the extractor preserves as-is rather than reformatting to US style.",
+    accountTypes: ["Current Account", "Savings", "Credit Card", "Business"],
+  },
+  {
+    slug: "sparkasse",
+    name: "Sparkasse",
+    country: "DE",
+    currency: "EUR",
+    domain: "sparkasse.de",
+    statementFormats: ["PDF", "CSV", "MT940", "CAMT053"],
+    passwordProtected: "unknown",
+    note: "Sparkasse is a network of several hundred legally independent regional savings banks rather than one institution, so statement layouts differ between them — which is exactly the case template-based converters struggle with and a layout-reading approach handles.",
+    accountTypes: ["Current Account", "Savings", "Credit Card", "Business"],
+  },
+  {
+    slug: "dkb",
+    name: "DKB",
+    country: "DE",
+    currency: "EUR",
+    domain: "dkb.de",
+    statementFormats: ["PDF", "CSV", "MT940"],
+    passwordProtected: "unknown",
+    note: "DKB is a direct bank, so statements are retrieved from online banking rather than posted — worth exporting regularly, as online archives of older statements are usually time-limited.",
+    accountTypes: ["Current Account", "Savings", "Credit Card"],
+  },
+  {
+    slug: "ing-germany",
+    name: "ING Germany",
+    country: "DE",
+    currency: "EUR",
+    domain: "ing.de",
+    statementFormats: ["PDF", "CSV", "MT940"],
+    passwordProtected: "unknown",
+    note: "ING operates under different brands per country (ING-DiBa historically in Germany), so statement formats differ between ING entities — this page covers the German operation.",
+    accountTypes: ["Current Account", "Savings", "Credit Card"],
+  },
+  {
+    slug: "n26",
+    name: "N26",
+    country: "DE",
+    currency: "EUR",
+    domain: "n26.com",
+    statementFormats: ["PDF", "CSV"],
+    passwordProtected: "unknown",
+    note: "N26 is mobile-first, so statements are generated in-app and often reach a desktop as a shared PDF — the converter reads that PDF without needing the original download session.",
+    accountTypes: ["Current Account", "Savings", "Business"],
   },
 ];
 

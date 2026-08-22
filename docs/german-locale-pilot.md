@@ -115,7 +115,33 @@ part carries no i18n risk and can ship independently.
 Run the 15-minute check first. Everything else here is contingent on it, and
 the current evidence leans toward "don't translate — fix ranking".
 
-Regardless of the outcome, add the German banks to `lib/bankEntities.ts` in
-English. That has independent value and no downside.
-
 Do not start the routing refactor until the query-language split is known.
+
+## Already done
+
+The unconditional part has shipped: Deutsche Bank, Commerzbank, Sparkasse,
+DKB, ING Germany and N26 are in `lib/bankEntities.ts`, in English, live at
+`/tools/bank/{slug}`. That needed no i18n decision — "Deutsche Bank statement
+to Excel" is a query an English-speaking finance team at a German subsidiary
+would type.
+
+Two things came out of writing them:
+
+**`passwordProtected` now accepts `"unknown"`.** These banks' PDF protection
+behaviour could not be established from a reliable source, and the field was a
+required boolean — so adding them meant either inventing a fact or not adding
+them. `false` renders "downloads statement PDFs without password protection by
+default", a real assurance to give a user on the strength of a guess. The third
+state renders conditional copy that is correct either way. The entity generator
+at `app/api/admin/generate-bank-entity/route.ts` had the same forced-guess
+problem and now prefers `"unknown"` too.
+
+**`statementFormats` gained MT940 and CAMT053.** The SWIFT and ISO 20022
+statement formats German banks publish for accounting import. This is the
+genuinely useful German-specific fact on these pages: if the reader can export
+CAMT.053 they should, and no PDF conversion is needed at all. Saying so costs
+us a conversion and earns the trust that brings them back for the statements
+where only a PDF exists.
+
+Still open: whether German-*language* pages are worth building. That is what
+the check above decides.
