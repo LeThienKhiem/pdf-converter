@@ -124,12 +124,13 @@ export default function RootLayout({
                 priceCurrency: "USD",
                 description: "Free tier with 3 credits. Credit packs from $9.99.",
               },
-              aggregateRating: {
-                "@type": "AggregateRating",
-                ratingValue: "4.8",
-                ratingCount: "127",
-                bestRating: "5",
-              },
+              // No aggregateRating here on purpose. It previously claimed
+              // 4.8 from 127 ratings, but no rating or review is displayed
+              // anywhere on the site. Google requires review markup to
+              // reflect content visible on the page, so unsupported ratings
+              // risk a structured-data manual action for no CTR benefit
+              // (Search Console reports zero rich results for this site
+              // either way). Add it back only alongside real, visible reviews.
             }),
           }}
         />
@@ -153,7 +154,7 @@ export default function RootLayout({
                   name: "Is the PDF to Excel converter free?",
                   acceptedAnswer: {
                     "@type": "Answer",
-                    text: "Yes. You get 1 free extraction without signing up, and 3 free credits when you create an account. Additional credits are $9.99 for 50 (about $0.20 per page).",
+                    text: "Yes. You get 1 free extraction without signing up, and 3 free pages every month when you create an account. Need more? Get a $2 Week Pass (unlimited for 7 days) or Pro from $5/month.",
                   },
                 },
                 {

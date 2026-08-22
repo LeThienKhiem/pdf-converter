@@ -25,6 +25,9 @@ import {
 import { canGuestConvert, incrementGuestUsage } from "@/lib/pdfUsage";
 import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimitModal";
 import { createClient } from "@/lib/supabase/client";
+import { downloadQuickBooksCsv } from "@/lib/quickbooks";
+
+const WATERMARK_TEXT = "Converted free at invoicetodata.com — upgrade to remove this line";
 
 const ACCEPT = ".pdf,image/*";
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -111,6 +114,7 @@ export default function PdfToExcelPage() {
   const [extractError, setExtractError] = useState<string | null>(null);
   const [showQuotaModal, setShowQuotaModal] = useState(false);
   const [quotaModalVariant, setQuotaModalVariant] = useState<QuotaLimitVariant>("guest");
+  const [isPaidExtract, setIsPaidExtract] = useState(false);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const supabase = useMemo(() => createClient(), []);
 
@@ -181,25 +185,12 @@ export default function PdfToExcelPage() {
   const handleExtract = useCallback(async () => {
     if (!selectedFile) return;
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      if (!canGuestConvert()) {
-        setQuotaModalVariant("guest");
-        setShowQuotaModal(true);
-        return;
-      }
-    } else {
-      const credRes = await fetch("/api/credits");
-      if (!credRes.ok) {
-        setQuotaModalVariant("out_of_credits");
-        setShowQuotaModal(true);
-        return;
-      }
-      const { credits } = await credRes.json();
-      if (credits <= 0) {
-        setQuotaModalVariant("out_of_credits");
-        setShowQuotaModal(true);
-        return;
-      }
+    // Advisory fast-path only — the server inside /api/extract is the
+    // authority and returns 402 with a reason code when the limit is hit.
+    if (!session && !canGuestConvert()) {
+      setQuotaModalVariant("guest");
+      setShowQuotaModal(true);
+      return;
     }
 
     if (typeof window !== "undefined" && window.gtag) {
@@ -240,13 +231,13 @@ export default function PdfToExcelPage() {
         setProgress(100);
 
         if (res.ok && Array.isArray(json.data) && json.data.every((r: unknown) => Array.isArray(r))) {
-          if (session) {
-            await fetch("/api/credits", { method: "POST" });
-          } else {
-            incrementGuestUsage();
-          }
+          if (!session) incrementGuestUsage();
+          setIsPaidExtract(json.source === "plan" || json.source === "credits");
           setExtractionResult(json.data as GridData);
           setExtractedFileName(nameForResult);
+        } else if (res.status === 402) {
+          setQuotaModalVariant(json?.reason === "guest_limit" ? "guest" : "out_of_credits");
+          setShowQuotaModal(true);
         } else {
           setExtractError(json?.error ?? "Extraction failed.");
         }
@@ -267,12 +258,32 @@ export default function PdfToExcelPage() {
 
   const handleExportExcel = useCallback(() => {
     if (extractionResult.length === 0) return;
-    const ws = XLSX.utils.aoa_to_sheet(extractionResult);
+    const exportRows = isPaidExtract
+      ? extractionResult
+      : [...extractionResult, [], [WATERMARK_TEXT]];
+    const ws = XLSX.utils.aoa_to_sheet(exportRows);
     applyStylesAndAutoFit(ws, extractionResult);
+    if (!isPaidExtract) {
+      const ref = "A" + exportRows.length;
+      if (ws[ref]) ws[ref].s = { font: { italic: true, color: { rgb: "999999" } } };
+    }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
     XLSX.writeFile(wb, "extracted-data.xlsx");
-  }, [extractionResult]);
+  }, [extractionResult, isPaidExtract]);
+
+  const handleExportQuickBooks = useCallback(() => {
+    if (extractionResult.length === 0) return;
+    if (!isPaidExtract) {
+      setQuotaModalVariant("pro_feature");
+      setShowQuotaModal(true);
+      return;
+    }
+    const rows = downloadQuickBooksCsv(extractionResult);
+    if (rows === 0) {
+      setToastMessage("No transaction rows (date + amount) were detected in this document.");
+    }
+  }, [extractionResult, isPaidExtract]);
 
   const colCount = getColumnCount(extractionResult);
   const headers = Array.from({ length: colCount }, (_, i) => `Column ${i + 1}`);
@@ -415,13 +426,26 @@ export default function PdfToExcelPage() {
               </button>
               <button
                 type="button"
+                onClick={handleExportQuickBooks}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#217346] bg-white px-5 py-3 font-semibold text-[#217346] shadow-sm transition-colors hover:bg-emerald-50"
+              >
+                <FileDown className="h-5 w-5" />
+                Export for QuickBooks
+                {!isPaidExtract && (
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                    Pro
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
                 disabled
                 className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-5 py-3 font-semibold text-slate-400"
                 aria-disabled="true"
               >
                 Download your Google Sheet
                 <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-500">
-                  
+
                 </span>
               </button>
             </div>

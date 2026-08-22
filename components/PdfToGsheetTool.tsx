@@ -89,25 +89,12 @@ export default function PdfToGsheetTool({
         return;
       }
       const { data: { session } } = await supabaseBrowser.auth.getSession();
-      if (!session) {
-        if (!canGuestConvert()) {
-          setQuotaModalVariant("guest");
-          setShowQuotaModal(true);
-          return;
-        }
-      } else {
-        const credRes = await fetch("/api/credits");
-        if (!credRes.ok) {
-          setQuotaModalVariant("out_of_credits");
-          setShowQuotaModal(true);
-          return;
-        }
-        const { credits } = await credRes.json();
-        if (credits <= 0) {
-          setQuotaModalVariant("out_of_credits");
-          setShowQuotaModal(true);
-          return;
-        }
+      // Advisory fast-path only — the server inside /api/gsheet is the
+      // authority and returns 402 with a reason code when the limit is hit.
+      if (!session && !canGuestConvert()) {
+        setQuotaModalVariant("guest");
+        setShowQuotaModal(true);
+        return;
       }
       setIsLoading(true);
       let isAuthRedirect = false;
@@ -126,6 +113,12 @@ export default function PdfToGsheetTool({
           body: formData,
         });
         const json = await res.json();
+
+        if (res.status === 402) {
+          setQuotaModalVariant(json?.reason === "guest_limit" ? "guest" : "out_of_credits");
+          setShowQuotaModal(true);
+          return;
+        }
 
         if (!res.ok) {
           const isAuthError =
@@ -148,11 +141,7 @@ export default function PdfToGsheetTool({
           return;
         }
 
-        if (session) {
-          await fetch("/api/credits", { method: "POST" });
-        } else {
-          incrementGuestUsage();
-        }
+        if (!session) incrementGuestUsage();
         setSuccessMessage(json?.message ?? "Your sheet is ready.");
         setCopyUrl(json?.copyUrl ?? null);
         setFile(null);

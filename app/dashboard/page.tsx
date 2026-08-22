@@ -50,7 +50,11 @@ export default async function DashboardPage() {
   }
 
   const [userRow, transactionsResult] = await Promise.all([
-    supabase.from("users").select("credits").eq("id", user.id).single(),
+    supabase
+      .from("users")
+      .select("credits, plan, plan_expires_at, pages_used")
+      .eq("id", user.id)
+      .single(),
     supabase
       .from("transactions")
       .select("created_at, amount_usd, credits_added, status")
@@ -59,6 +63,20 @@ export default async function DashboardPage() {
   ]);
 
   const credits = userRow?.data?.credits ?? 0;
+  const rawPlan = (userRow?.data as { plan?: string } | null)?.plan ?? "free";
+  const planExpiresAt = (userRow?.data as { plan_expires_at?: string | null } | null)
+    ?.plan_expires_at;
+  const weekPassExpired =
+    rawPlan === "week_pass" && planExpiresAt != null && new Date(planExpiresAt) < new Date();
+  const plan = weekPassExpired ? "free" : rawPlan;
+  const planLabel =
+    plan === "pro"
+      ? "Pro — 200 pages/month"
+      : plan === "pro_yearly"
+        ? "Pro Yearly — 200 pages/month"
+        : plan === "week_pass"
+          ? `Week Pass — unlimited until ${planExpiresAt ? new Date(planExpiresAt).toLocaleDateString() : ""}`
+          : "Free — 3 pages/month";
   const transactions: TransactionRow[] = transactionsResult.data ?? [];
 
   return (
@@ -89,10 +107,14 @@ export default async function DashboardPage() {
               </div>
               <div>
                 <h2 id="credits-heading" className="text-sm font-medium text-slate-500">
-                  Available credits
+                  Current plan
                 </h2>
-                <p className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-                  {credits}
+                <p className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                  {planLabel}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {credits > 0 ? `${credits} legacy credits remaining · ` : ""}
+                  Credits are used before your monthly quota
                 </p>
               </div>
             </div>
@@ -100,7 +122,7 @@ export default async function DashboardPage() {
               href="/pricing"
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#217346] px-6 py-3.5 text-base font-semibold text-white shadow-md transition-all hover:bg-[#1d603d] hover:shadow-lg sm:w-auto"
             >
-              Buy More Credits
+              {plan === "free" ? "Upgrade" : "Manage Plan"}
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
           </div>

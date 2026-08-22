@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { PDF_MODEL, extractText, getAnthropic, parseJsonArrayLoose } from "@/lib/anthropic";
+import { checkAndConsume, recordExtraction, refundExtraction } from "@/lib/entitlements";
 
 const SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as a visual grid and reproduce its exact layout.
 
@@ -143,6 +144,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // Server-side paywall: the ONLY authoritative quota/credit check.
+    // Consumes one unit up front; refunded below if the AI call fails.
+    const entitlement = await checkAndConsume();
+    if (!entitlement.allowed) {
+      return NextResponse.json(
+        { error: entitlement.message, reason: entitlement.reason },
+        { status: entitlement.status }
+      );
+    }
+
     const client = getAnthropic();
     console.log("[Extract API] Using model:", PDF_MODEL);
 
@@ -157,6 +168,8 @@ export async function POST(request: Request) {
         ],
       });
     } catch (err) {
+      await refundExtraction(entitlement);
+      await recordExtraction(entitlement, "pdf-to-excel", "failed");
       if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError) {
         console.warn("[Extract API] Anthropic transient error after retries:", err.status, err.message);
         return NextResponse.json(
@@ -170,6 +183,8 @@ export async function POST(request: Request) {
     const responseText = extractText(response);
     if (!responseText.trim()) {
       console.error("[Extract] Empty response. Stop reason:", response.stop_reason);
+      await refundExtraction(entitlement);
+      await recordExtraction(entitlement, "pdf-to-excel", "failed");
       return NextResponse.json(
         { error: "Extraction failed. No content returned." },
         { status: 500 }
@@ -184,6 +199,8 @@ export async function POST(request: Request) {
         "Raw (first 500 chars):",
         responseText.slice(0, 500)
       );
+      await refundExtraction(entitlement);
+      await recordExtraction(entitlement, "pdf-to-excel", "failed");
       return NextResponse.json(
         { error: "Extraction failed. Invalid JSON from model." },
         { status: 500 }
@@ -191,8 +208,14 @@ export async function POST(request: Request) {
     }
 
     const data = normalizeTo2DArray(parsed);
+    await recordExtraction(entitlement, "pdf-to-excel", "success");
     console.log("[Extract API] Success, rows:", data.length, "cols:", data[0]?.length ?? 0);
-    return NextResponse.json({ data });
+    return NextResponse.json({
+      data,
+      plan: entitlement.plan,
+      source: entitlement.source,
+      remaining: entitlement.remaining,
+    });
   } catch (err) {
     console.error("[Extract] Unexpected error:", err);
     return NextResponse.json(

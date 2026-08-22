@@ -3,6 +3,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { runInformational } from "@/app/api/cron/seo-content/route";
 import { runBuyerIntent } from "@/app/api/cron/seo-content-2/route";
 import { runContentRefresh } from "@/app/api/cron/content-refresh/route";
+import { runEmailDrip } from "@/app/api/cron/email-drip/route";
 
 /**
  * Master cron — the ONLY entry registered in vercel.json (Vercel Hobby
@@ -72,9 +73,19 @@ export async function GET(request: Request) {
 
     const result = await dispatch(task);
 
+    // Onboarding email drip runs every day alongside the content task.
+    let emailDrip: unknown = null;
+    try {
+      emailDrip = await runEmailDrip();
+    } catch (dripErr) {
+      console.error("[Master Cron] Email drip failed:", dripErr);
+      emailDrip = { error: dripErr instanceof Error ? dripErr.message : "failed" };
+    }
+
     return NextResponse.json({
       master: { day, task, overridden: !!validOverride },
       result,
+      emailDrip,
     });
   } catch (err) {
     console.error("[Master Cron] Error:", err);

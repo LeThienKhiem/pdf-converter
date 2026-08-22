@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase";
+import { getPaidStatus } from "@/lib/entitlements";
 
-/** GET: return current user's credit balance. */
+/** GET: current user's credits + plan snapshot (used for UI decisions like watermark). */
 export async function GET() {
   const supabase = await createClient();
   const {
@@ -16,7 +17,7 @@ export async function GET() {
   const admin = getSupabase();
   const { data, error } = await admin
     .from("users")
-    .select("credits")
+    .select("credits, plan, plan_expires_at, pages_used")
     .eq("id", user.id)
     .single();
 
@@ -27,11 +28,17 @@ export async function GET() {
     );
   }
 
-  const credits = (data as { credits: number }).credits ?? 0;
-  return NextResponse.json({ credits });
+  const { isPaid, plan, credits } = await getPaidStatus(user.id);
+  const pagesUsed = (data as { pages_used?: number }).pages_used ?? 0;
+
+  return NextResponse.json({ credits, plan, isPaid, pagesUsed });
 }
 
-/** POST: deduct 1 credit for the current user. Returns new balance or 402 if out of credits. */
+/**
+ * POST: DEPRECATED — deduction now happens server-side inside /api/extract
+ * and /api/gsheet. Kept as a no-op so older cached clients that still call
+ * it after a conversion don't double-charge users. Returns current balance.
+ */
 export async function POST() {
   const supabase = await createClient();
   const {
@@ -42,40 +49,6 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const admin = getSupabase();
-  const { data: row, error: fetchError } = await admin
-    .from("users")
-    .select("credits")
-    .eq("id", user.id)
-    .single();
-
-  if (fetchError || row == null) {
-    return NextResponse.json(
-      { error: fetchError?.message ?? "User not found" },
-      { status: 404 }
-    );
-  }
-
-  const current = (row as { credits: number }).credits ?? 0;
-  if (current <= 0) {
-    return NextResponse.json(
-      { error: "Out of credits", credits: 0 },
-      { status: 402 }
-    );
-  }
-
-  const newCredits = current - 1;
-  const { error: updateError } = await admin
-    .from("users")
-    .update({ credits: newCredits })
-    .eq("id", user.id);
-
-  if (updateError) {
-    return NextResponse.json(
-      { error: updateError.message },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json({ credits: newCredits });
+  const { credits, plan, isPaid } = await getPaidStatus(user.id);
+  return NextResponse.json({ credits, plan, isPaid, deprecated: true });
 }

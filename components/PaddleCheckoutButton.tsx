@@ -11,6 +11,7 @@ interface PaddleCheckoutButtonProps {
   userId?: string;
   children?: React.ReactNode;
   className?: string;
+  successMessage?: string;
 }
 
 export default function PaddleCheckoutButton({
@@ -19,6 +20,7 @@ export default function PaddleCheckoutButton({
   userId,
   children = "Buy credits",
   className = "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#217346] px-6 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-[#1d603d] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed",
+  successMessage = "Your purchase is complete. You can start converting right away.",
 }: PaddleCheckoutButtonProps) {
   const [paddle, setPaddle] = useState<PaddleInstance | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,9 +96,7 @@ export default function PaddleCheckoutButton({
               </svg>
             </div>
             <h2 className="text-xl font-bold text-slate-900">Payment Successful!</h2>
-            <p className="mt-2 text-slate-600">
-              50 credits have been added to your account. You can start converting invoices right away.
-            </p>
+            <p className="mt-2 text-slate-600">{successMessage}</p>
             <button
               type="button"
               onClick={() => {

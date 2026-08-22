@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { google } from "googleapis";
 import { PDF_MODEL, extractText, getAnthropic, parseJsonArrayLoose } from "@/lib/anthropic";
+import { checkAndConsume, recordExtraction, refundExtraction } from "@/lib/entitlements";
 
 const SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as a visual grid and reproduce its exact layout.
 
@@ -131,6 +132,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Server-side paywall: consumes one unit; refunded below on AI failure.
+    const entitlement = await checkAndConsume();
+    if (!entitlement.allowed) {
+      return NextResponse.json(
+        { error: entitlement.message, reason: entitlement.reason },
+        { status: entitlement.status }
+      );
+    }
+
     const client = getAnthropic();
     let aiResponse: Anthropic.Message;
     try {
@@ -151,6 +161,8 @@ export async function POST(request: Request) {
         ],
       });
     } catch (err) {
+      await refundExtraction(entitlement);
+      await recordExtraction(entitlement, "pdf-to-gsheet", "failed");
       if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError) {
         return NextResponse.json(
           { error: "Our AI is currently processing a high volume of documents. Please try again in a few seconds." },
@@ -162,6 +174,8 @@ export async function POST(request: Request) {
 
     const responseText = extractText(aiResponse);
     if (!responseText.trim()) {
+      await refundExtraction(entitlement);
+      await recordExtraction(entitlement, "pdf-to-gsheet", "failed");
       return NextResponse.json(
         { error: "Extraction failed. No content returned from AI." },
         { status: 500 }
@@ -176,6 +190,8 @@ export async function POST(request: Request) {
         "Raw (first 500 chars):",
         responseText.slice(0, 500)
       );
+      await refundExtraction(entitlement);
+      await recordExtraction(entitlement, "pdf-to-gsheet", "failed");
       return NextResponse.json(
         { error: "Extraction failed. Invalid AI output." },
         { status: 500 }
@@ -185,11 +201,14 @@ export async function POST(request: Request) {
     const data = normalizeTo2DArray(parsed);
     const values = toSheetsValues(data);
     if (values.length === 0) {
+      await refundExtraction(entitlement);
+      await recordExtraction(entitlement, "pdf-to-gsheet", "failed");
       return NextResponse.json(
         { error: "No data was extracted from the PDF." },
         { status: 400 }
       );
     }
+    await recordExtraction(entitlement, "pdf-to-gsheet", "success");
 
     // --- OAuth2 + Sheets + Drive (use provider_refresh_token from session when present) ---
     const clientId = process.env.GOOGLE_CLIENT_ID;
