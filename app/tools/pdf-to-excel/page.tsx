@@ -26,11 +26,17 @@ import { canGuestConvert, incrementGuestUsage } from "@/lib/pdfUsage";
 import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimitModal";
 import { createClient } from "@/lib/supabase/client";
 import { downloadQuickBooksCsv } from "@/lib/quickbooks";
+import { extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
 
 const WATERMARK_TEXT = "Converted free at invoicetodata.com — upgrade to remove this line";
 
+function reasonToVariant(reason: string | undefined): QuotaLimitVariant {
+  if (reason === "guest_limit") return "guest";
+  if (reason === "file_too_large") return "file_too_large";
+  return "out_of_credits";
+}
+
 const ACCEPT = ".pdf,image/*";
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const PROGRESS_DURATION_MS = 15000;
 const PROGRESS_TICK_MS = 100;
 
@@ -151,8 +157,8 @@ export default function PdfToExcelPage() {
       setToastMessage("Please upload a PDF or image only.");
       return;
     }
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      setToastMessage("File too large. Please upload a PDF under 5MB for faster processing.");
+    if (file.size > PAID_MAX_BYTES) {
+      setToastMessage("File too large. Maximum size is 25MB (paid) / 5MB (free).");
       return;
     }
     setSelectedFile(file);
@@ -218,38 +224,26 @@ export default function PdfToExcelPage() {
       setProgress((p) => Math.min(90, (elapsed / PROGRESS_DURATION_MS) * 90));
     }, PROGRESS_TICK_MS);
 
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-
-    fetch("/api/extract", { method: "POST", body: formData })
-      .then(async (res) => {
-        const json = await res.json();
+    extractFileClient(selectedFile, "pdf-to-excel", supabase)
+      .then((outcome) => {
         if (progressIntervalRef.current) {
           clearInterval(progressIntervalRef.current);
           progressIntervalRef.current = null;
         }
         setProgress(100);
 
-        if (res.ok && Array.isArray(json.data) && json.data.every((r: unknown) => Array.isArray(r))) {
+        if (outcome.ok) {
           if (!session) incrementGuestUsage();
-          setIsPaidExtract(json.source === "plan" || json.source === "credits");
-          setExtractionResult(json.data as GridData);
+          setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
+          setExtractionResult(outcome.grid);
           setExtractedFileName(nameForResult);
-        } else if (res.status === 402) {
-          setQuotaModalVariant(json?.reason === "guest_limit" ? "guest" : "out_of_credits");
+        } else if (outcome.status === 402 || outcome.status === 413 || outcome.status === 401) {
+          setQuotaModalVariant(reasonToVariant(outcome.reason));
           setShowQuotaModal(true);
         } else {
-          setExtractError(json?.error ?? "Extraction failed.");
+          setExtractError(outcome.error);
         }
         setTimeout(() => setProgress(-1), 500);
-      })
-      .catch((err) => {
-        if (progressIntervalRef.current) {
-          clearInterval(progressIntervalRef.current);
-          progressIntervalRef.current = null;
-        }
-        setProgress(-1);
-        setExtractError(err instanceof Error ? err.message : "Network error.");
       })
       .finally(() => {
         setIsExtracting(false);
@@ -323,7 +317,7 @@ export default function PdfToExcelPage() {
           <span className="mt-3 font-medium text-slate-700">
             {selectedFile ? selectedFile.name : "Drop a file here or click to browse"}
           </span>
-          <span className="mt-1 text-sm text-slate-500">PDF and images under 5MB</span>
+          <span className="mt-1 text-sm text-slate-500">PDF and images — 5MB free, up to 25MB on paid plans</span>
         </div>
         <p className="mt-3 text-center text-xs font-medium text-slate-500">
           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-2.5 py-1 text-slate-600 shadow-sm">
@@ -476,7 +470,7 @@ export default function PdfToExcelPage() {
                 <p className="mt-4 font-mono text-sm font-medium text-blue-600">Step 1</p>
                 <h3 className="mt-1 font-semibold text-slate-900">Upload Document</h3>
                 <p className="mt-2 text-sm text-slate-600">
-                  Drag and drop your PDF or image (under 5MB), or click to browse. We accept invoices, forms, and scanned documents.
+                  Drag and drop your PDF or image (5MB free, 25MB on paid plans), or click to browse. We accept invoices, forms, and scanned documents.
                 </p>
               </div>
               <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">

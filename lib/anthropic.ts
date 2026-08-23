@@ -11,8 +11,16 @@ export function getAnthropic(): Anthropic {
   return _client;
 }
 
-/** Cheap + fast model for PDF / image extraction. */
+/** Cheap + fast model for free-tier PDF / image extraction. */
 export const PDF_MODEL = "claude-haiku-4-5";
+
+/**
+ * Premium extraction model for paying users (plan or credits).
+ * Sonnet 5 has high-resolution vision (2576px vs 1568px) — the difference
+ * shows on scanned/photographed documents; digital PDFs are near-perfect
+ * on Haiku already. This is what "priority processing" actually delivers.
+ */
+export const PDF_MODEL_PREMIUM = "claude-sonnet-5";
 
 /** Higher-quality model for long-form SEO content generation. */
 export const SEO_MODEL = "claude-sonnet-4-6";

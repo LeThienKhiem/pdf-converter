@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import BankStatementEmbed from "@/components/BankStatementEmbed";
 import {
   ArrowRight,
-  FileBarChart,
   ShieldCheck,
   Lock,
   CheckCircle2,
@@ -291,20 +291,80 @@ export default async function BankStatementLandingPage({ params }: Props) {
             file, get a clean Excel or CSV ready for Xero, QuickBooks, or your
             accounting spreadsheet — in under a minute.
           </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link
-              href="/tools/bank-statement-to-excel"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#217346] px-6 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-[#1d603d] hover:shadow-lg"
-            >
-              <FileBarChart className="h-5 w-5 shrink-0" aria-hidden />
-              Convert your {entity.name} statement
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <span className="text-sm text-slate-500">
-              No sign-up required for the first conversion
-            </span>
-          </div>
         </header>
+
+        {/* Embedded converter — visitors convert right here instead of clicking away */}
+        <section className="mt-8" aria-labelledby="embed-tool-heading">
+          <h2 id="embed-tool-heading" className="sr-only">
+            Convert your {entity.name} statement now
+          </h2>
+          <BankStatementEmbed bankName={entity.name} />
+        </section>
+
+        {/* Sample output — shows exactly what the extracted Excel looks like */}
+        <section
+          className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+          aria-labelledby="sample-output-heading"
+        >
+          <h2 id="sample-output-heading" className="text-lg font-semibold text-slate-900">
+            What your {entity.name} Excel output looks like
+          </h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Every transaction lands on its own row with the running balance intact.
+            Paid plans also get the AI-assigned <strong>Category</strong> column shown below
+            and one-click QuickBooks CSV export.
+          </p>
+          <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  {["Date", "Description", "Withdrawals", "Deposits", "Balance", "Category"].map((h) => (
+                    <th key={h} scope="col" className="px-3 py-2 text-left font-semibold text-slate-700">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white text-slate-600">
+                <tr>
+                  <td className="px-3 py-2 whitespace-nowrap">01/03/2026</td>
+                  <td className="px-3 py-2">ACH Deposit — Client Payment</td>
+                  <td className="px-3 py-2"></td>
+                  <td className="px-3 py-2">2,340.55</td>
+                  <td className="px-3 py-2">10,791.75</td>
+                  <td className="px-3 py-2">Income</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 whitespace-nowrap">01/05/2026</td>
+                  <td className="px-3 py-2">Check #1044 — Office Rent</td>
+                  <td className="px-3 py-2">1,850.00</td>
+                  <td className="px-3 py-2"></td>
+                  <td className="px-3 py-2">8,941.75</td>
+                  <td className="px-3 py-2">Rent/Mortgage</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 whitespace-nowrap">01/06/2026</td>
+                  <td className="px-3 py-2">Card Purchase — Fuel Station</td>
+                  <td className="px-3 py-2">68.44</td>
+                  <td className="px-3 py-2"></td>
+                  <td className="px-3 py-2">8,873.31</td>
+                  <td className="px-3 py-2">Fuel</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 whitespace-nowrap">01/08/2026</td>
+                  <td className="px-3 py-2">Monthly Service Fee</td>
+                  <td className="px-3 py-2">25.00</td>
+                  <td className="px-3 py-2"></td>
+                  <td className="px-3 py-2">8,848.31</td>
+                  <td className="px-3 py-2">Bank Fees</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-slate-500">
+            Sample data for illustration — your file is processed in memory and never stored.
+          </p>
+        </section>
 
         {/* Bank-specific note */}
         <section

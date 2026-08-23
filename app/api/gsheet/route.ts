@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { google } from "googleapis";
-import { PDF_MODEL, extractText, getAnthropic, parseJsonArrayLoose } from "@/lib/anthropic";
+import { PDF_MODEL, PDF_MODEL_PREMIUM, extractText, getAnthropic, parseJsonArrayLoose } from "@/lib/anthropic";
 import { checkAndConsume, recordExtraction, refundExtraction } from "@/lib/entitlements";
 
 const SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as a visual grid and reproduce its exact layout.
@@ -141,11 +141,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const isPaidExtract =
+      entitlement.source === "plan" || entitlement.source === "credits";
     const client = getAnthropic();
     let aiResponse: Anthropic.Message;
     try {
       aiResponse = await client.messages.create({
-        model: PDF_MODEL,
+        model: isPaidExtract ? PDF_MODEL_PREMIUM : PDF_MODEL,
         max_tokens: 16000,
         system: SYSTEM_PROMPT,
         messages: [

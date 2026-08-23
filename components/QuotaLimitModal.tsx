@@ -7,7 +7,31 @@ import { createClient } from "@/lib/supabase/client";
 import PaddleCheckoutButton from "@/components/PaddleCheckoutButton";
 import { PADDLE_PRICES } from "@/lib/paddlePrices";
 
-export type QuotaLimitVariant = "guest" | "out_of_credits" | "pro_feature";
+export type QuotaLimitVariant =
+  | "guest"
+  | "out_of_credits"
+  | "pro_feature"
+  | "file_too_large"
+  | "batch";
+
+const PAID_VARIANT_COPY: Record<string, { title: string; body: string }> = {
+  out_of_credits: {
+    title: "You're Out of Free Pages",
+    body: "Keep going right now with a $2 Week Pass — unlimited conversions for 7 days, one-time payment, nothing to cancel.",
+  },
+  pro_feature: {
+    title: "QuickBooks Export is a Paid Feature",
+    body: "Unlock QuickBooks-ready CSV exports (and unlimited conversions) with a $2 Week Pass — one-time payment, nothing to cancel.",
+  },
+  file_too_large: {
+    title: "Files Over 5MB Need a Paid Plan",
+    body: "Big statements and long documents (up to 25MB) are a paid feature. Unlock them with a $2 Week Pass — one-time payment, nothing to cancel.",
+  },
+  batch: {
+    title: "Batch Upload is a Paid Feature",
+    body: "Convert a whole stack of statements at once — one merged Excel file, one sheet per document. Unlock it with a $2 Week Pass.",
+  },
+};
 
 type QuotaLimitModalProps = {
   open: boolean;
@@ -80,16 +104,12 @@ export default function QuotaLimitModal({ open, onClose, variant }: QuotaLimitMo
           <h2 id="limit-modal-title" className="mt-4 text-lg font-semibold text-slate-900">
             {isGuest
               ? "Get 3 Free Pages Every Month"
-              : variant === "pro_feature"
-                ? "QuickBooks Export is a Paid Feature"
-                : "You're Out of Free Pages"}
+              : (PAID_VARIANT_COPY[variant] ?? PAID_VARIANT_COPY.out_of_credits!).title}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
             {isGuest
               ? "You've used your free guest conversion. Sign up free and get 3 pages every month — no credit card needed."
-              : variant === "pro_feature"
-                ? "Unlock QuickBooks-ready CSV exports (and unlimited conversions) with a $2 Week Pass — one-time payment, nothing to cancel."
-                : "Keep going right now with a $2 Week Pass — unlimited conversions for 7 days, one-time payment, nothing to cancel."}
+              : (PAID_VARIANT_COPY[variant] ?? PAID_VARIANT_COPY.out_of_credits!).body}
           </p>
           <div className="mt-6 flex w-full flex-col gap-3">
             {isGuest ? (

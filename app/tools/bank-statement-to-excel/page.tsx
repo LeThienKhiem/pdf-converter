@@ -29,12 +29,33 @@ import {
 import { canGuestConvert, incrementGuestUsage } from "@/lib/pdfUsage";
 import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimitModal";
 import { createClient } from "@/lib/supabase/client";
-import { downloadQuickBooksCsv } from "@/lib/quickbooks";
+import { gridToQuickBooksRows, quickBooksCsv } from "@/lib/quickbooks";
+import { extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
 
 const WATERMARK_TEXT = "Converted free at invoicetodata.com — upgrade to remove this line";
+const MAX_BATCH_FILES = 20;
+
+function reasonToVariant(reason: string | undefined): QuotaLimitVariant {
+  if (reason === "guest_limit") return "guest";
+  if (reason === "file_too_large") return "file_too_large";
+  return "out_of_credits";
+}
+
+/** Excel sheet names: ≤31 chars, no []:*?/\ and unique per workbook. */
+function sheetNameFor(fileName: string, index: number, used: Set<string>): string {
+  let base = fileName.replace(/\.[^.]+$/, "").replace(/[[\]:*?/\\]/g, " ").trim().slice(0, 28);
+  if (!base) base = `Statement ${index + 1}`;
+  let name = base;
+  let n = 2;
+  while (used.has(name)) name = `${base.slice(0, 25)} ${n++}`;
+  used.add(name);
+  return name;
+}
+
+type FileStatus = "pending" | "processing" | "done" | "error";
+type BatchItem = { file: File; status: FileStatus; rows: number; error?: string };
 
 const ACCEPT = ".pdf,image/*";
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const PROGRESS_DURATION_MS = 15000;
 const PROGRESS_TICK_MS = 100;
 
@@ -107,7 +128,8 @@ function applyStylesAndAutoFit(ws: XLSX.WorkSheet, tableRows: GridData): void {
 }
 
 export default function BankStatementToExcelPage() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [batch, setBatch] = useState<BatchItem[]>([]);
+  const [batchResults, setBatchResults] = useState<{ name: string; grid: GridData }[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -146,20 +168,21 @@ export default function BankStatementToExcelPage() {
     setIsDragging(false);
   }, []);
 
-  const setFileWithValidation = useCallback((file: File | null) => {
-    if (!file) {
-      setSelectedFile(null);
-      return;
+  const addFiles = useCallback((list: FileList | null) => {
+    if (!list || list.length === 0) return;
+    const valid: BatchItem[] = [];
+    for (const file of Array.from(list)) {
+      if (!isValidFileType(file)) {
+        setToastMessage(`${file.name}: only PDF and images are supported.`);
+        continue;
+      }
+      if (file.size > PAID_MAX_BYTES) {
+        setToastMessage(`${file.name}: over the 25MB limit.`);
+        continue;
+      }
+      valid.push({ file, status: "pending", rows: 0 });
     }
-    if (!isValidFileType(file)) {
-      setToastMessage("Please upload a PDF or image only.");
-      return;
-    }
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      setToastMessage("File too large. Please upload a PDF under 5MB for faster processing.");
-      return;
-    }
-    setSelectedFile(file);
+    setBatch((prev) => [...prev, ...valid].slice(0, MAX_BATCH_FILES));
   }, []);
 
   const handleDrop = useCallback(
@@ -167,19 +190,17 @@ export default function BankStatementToExcelPage() {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
-      const file = e.dataTransfer.files?.[0];
-      setFileWithValidation(file ?? null);
+      addFiles(e.dataTransfer.files);
     },
-    [setFileWithValidation]
+    [addFiles]
   );
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      setFileWithValidation(file ?? null);
+      addFiles(e.target.files);
       e.target.value = "";
     },
-    [setFileWithValidation]
+    [addFiles]
   );
 
   const handleZoneClick = useCallback(() => {
@@ -187,7 +208,7 @@ export default function BankStatementToExcelPage() {
   }, []);
 
   const handleExtract = useCallback(async () => {
-    if (!selectedFile) return;
+    if (batch.length === 0 || isExtracting) return;
     const { data: { session } } = await supabase.auth.getSession();
     // Advisory fast-path only — the server inside /api/extract is the
     // authority and returns 402 with a reason code when the limit is hit.
@@ -197,102 +218,143 @@ export default function BankStatementToExcelPage() {
       return;
     }
 
+    // Batch (2+ files) is a paid feature — check before burning quota.
+    if (batch.length > 1) {
+      if (!session) {
+        setQuotaModalVariant("batch");
+        setShowQuotaModal(true);
+        return;
+      }
+      const credRes = await fetch("/api/credits");
+      const cred = credRes.ok ? await credRes.json() : null;
+      if (!cred?.isPaid) {
+        setQuotaModalVariant("batch");
+        setShowQuotaModal(true);
+        return;
+      }
+    }
+
     if (typeof window !== "undefined" && window.gtag) {
-      window.gtag("event", "click_convert", { target_format: "excel" });
+      window.gtag("event", "click_convert", {
+        target_format: "excel",
+        batch_size: batch.length,
+      });
     }
     setExtractError(null);
     setExtractionResult([]);
+    setBatchResults([]);
     setExtractedFileName("");
     setTableExpanded(false);
     setIsExtracting(true);
     setProgress(0);
-    const nameForResult = selectedFile.name;
+    setBatch((prev) => prev.map((b) => ({ ...b, status: "pending" as FileStatus, rows: 0, error: undefined })));
 
-    const startTime = Date.now();
-    progressIntervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      if (elapsed >= PROGRESS_DURATION_MS) {
-        if (progressIntervalRef.current) {
-          clearInterval(progressIntervalRef.current);
-          progressIntervalRef.current = null;
-        }
-        setProgress((p) => (p < 90 ? 90 : p));
-        return;
+    const items = batch;
+    const results: { name: string; grid: GridData }[] = [];
+    let paidSeen = false;
+    let hitPaywall = false;
+
+    for (let i = 0; i < items.length; i++) {
+      setBatch((prev) => prev.map((b, j) => (j === i ? { ...b, status: "processing" as FileStatus } : b)));
+
+      // Smooth per-file progress ramp within this file's share of the bar.
+      const startTime = Date.now();
+      const base = (i / items.length) * 100;
+      const span = 95 / items.length;
+      progressIntervalRef.current = setInterval(() => {
+        const elapsed = Math.min(Date.now() - startTime, PROGRESS_DURATION_MS);
+        setProgress(base + (elapsed / PROGRESS_DURATION_MS) * span);
+      }, PROGRESS_TICK_MS);
+
+      const outcome = await extractFileClient(items[i]!.file, "bank-statement-to-excel", supabase);
+
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
       }
-      setProgress((p) => Math.min(90, (elapsed / PROGRESS_DURATION_MS) * 90));
-    }, PROGRESS_TICK_MS);
+      setProgress(((i + 1) / items.length) * 100);
 
-    const formData = new FormData();
-    formData.append("file", selectedFile);
+      if (outcome.ok) {
+        if (!session) incrementGuestUsage();
+        paidSeen = outcome.source === "plan" || outcome.source === "credits";
+        results.push({ name: items[i]!.file.name, grid: outcome.grid });
+        setBatch((prev) =>
+          prev.map((b, j) => (j === i ? { ...b, status: "done" as FileStatus, rows: outcome.grid.length } : b))
+        );
+      } else if (outcome.status === 402 || outcome.status === 413 || outcome.status === 401) {
+        setQuotaModalVariant(reasonToVariant(outcome.reason));
+        setShowQuotaModal(true);
+        hitPaywall = true;
+        setBatch((prev) =>
+          prev.map((b, j) => (j === i ? { ...b, status: "error" as FileStatus, error: outcome.error } : b))
+        );
+        break;
+      } else {
+        setBatch((prev) =>
+          prev.map((b, j) => (j === i ? { ...b, status: "error" as FileStatus, error: outcome.error } : b))
+        );
+      }
+    }
 
-    fetch("/api/extract", { method: "POST", body: formData })
-      .then(async (res) => {
-        const json = await res.json();
-        if (progressIntervalRef.current) {
-          clearInterval(progressIntervalRef.current);
-          progressIntervalRef.current = null;
-        }
-        setProgress(100);
-
-        if (res.ok && Array.isArray(json.data) && json.data.every((r: unknown) => Array.isArray(r))) {
-          if (!session) incrementGuestUsage();
-          setIsPaidExtract(json.source === "plan" || json.source === "credits");
-          setExtractionResult(json.data as GridData);
-          setExtractedFileName(nameForResult);
-        } else if (res.status === 402) {
-          setQuotaModalVariant(json?.reason === "guest_limit" ? "guest" : "out_of_credits");
-          setShowQuotaModal(true);
-        } else {
-          setExtractError(json?.error ?? "Extraction failed.");
-        }
-        setTimeout(() => setProgress(-1), 500);
-      })
-      .catch((err) => {
-        if (progressIntervalRef.current) {
-          clearInterval(progressIntervalRef.current);
-          progressIntervalRef.current = null;
-        }
-        setProgress(-1);
-        setExtractError(err instanceof Error ? err.message : "Network error.");
-      })
-      .finally(() => {
-        setIsExtracting(false);
-      });
-  }, [selectedFile, supabase]);
+    setIsPaidExtract(paidSeen);
+    setBatchResults(results);
+    if (results.length > 0) {
+      setExtractionResult(results[0]!.grid);
+      setExtractedFileName(
+        results.length > 1 ? `${results.length} statements` : results[0]!.name
+      );
+    } else if (!hitPaywall) {
+      setExtractError("Extraction failed. Please check the files and try again.");
+    }
+    setTimeout(() => setProgress(-1), 500);
+    setIsExtracting(false);
+  }, [batch, isExtracting, supabase]);
 
   const handleExportExcel = useCallback(() => {
-    if (extractionResult.length === 0) return;
-    const exportRows = isPaidExtract
-      ? extractionResult
-      : [...extractionResult, [], [WATERMARK_TEXT]];
-    const ws = XLSX.utils.aoa_to_sheet(exportRows);
-    applyStylesAndAutoFit(ws, extractionResult);
-    if (!isPaidExtract) {
-      const ref = "A" + exportRows.length;
-      if (ws[ref]) ws[ref].s = { font: { italic: true, color: { rgb: "999999" } } };
-    }
+    if (batchResults.length === 0) return;
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-    XLSX.writeFile(wb, "extracted-data.xlsx");
-  }, [extractionResult, isPaidExtract]);
+    const used = new Set<string>();
+    batchResults.forEach((r, i) => {
+      const exportRows = isPaidExtract ? r.grid : [...r.grid, [], [WATERMARK_TEXT]];
+      const ws = XLSX.utils.aoa_to_sheet(exportRows);
+      applyStylesAndAutoFit(ws, r.grid);
+      if (!isPaidExtract) {
+        const ref = "A" + exportRows.length;
+        if (ws[ref]) ws[ref].s = { font: { italic: true, color: { rgb: "999999" } } };
+      }
+      XLSX.utils.book_append_sheet(wb, ws, sheetNameFor(r.name, i, used));
+    });
+    XLSX.writeFile(wb, batchResults.length > 1 ? "bank-statements.xlsx" : "extracted-data.xlsx");
+  }, [batchResults, isPaidExtract]);
 
   const handleExportQuickBooks = useCallback(() => {
-    if (extractionResult.length === 0) return;
+    if (batchResults.length === 0) return;
     if (!isPaidExtract) {
       setQuotaModalVariant("pro_feature");
       setShowQuotaModal(true);
       return;
     }
-    const rows = downloadQuickBooksCsv(extractionResult);
-    if (rows === 0) {
-      setToastMessage("No transaction rows (date + amount) were detected in this document.");
+    const allRows = batchResults.flatMap((r) => gridToQuickBooksRows(r.grid));
+    if (allRows.length === 0) {
+      setToastMessage("No transaction rows (date + amount) were detected in these documents.");
+      return;
     }
-  }, [extractionResult, isPaidExtract]);
+    const blob = new Blob([quickBooksCsv(allRows)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "quickbooks-import.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [batchResults, isPaidExtract]);
 
   const colCount = getColumnCount(extractionResult);
   const headers = Array.from({ length: colCount }, (_, i) => `Column ${i + 1}`);
   const showProgress = progress >= 0 && isExtracting;
-  const showResult = extractionResult.length > 0 && !isExtracting;
+  const showResult = batchResults.length > 0 && !isExtracting;
+  const isBatch = batch.length > 1;
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -310,9 +372,10 @@ export default function BankStatementToExcelPage() {
           id="bank-statement-file-input"
           type="file"
           accept={ACCEPT}
+          multiple
           onChange={handleFileChange}
           className="sr-only"
-          aria-label="Upload PDF or image (bank statement)"
+          aria-label="Upload PDFs or images (bank statements)"
         />
         <div
           onClick={handleZoneClick}
@@ -325,10 +388,44 @@ export default function BankStatementToExcelPage() {
         >
           <FileUp className="h-10 w-10 text-slate-400" />
           <span className="mt-3 font-medium text-slate-700">
-            {selectedFile ? selectedFile.name : "Drop a file here or click to browse"}
+            {batch.length === 0
+              ? "Drop files here or click to browse"
+              : batch.length === 1
+                ? batch[0]!.file.name
+                : `${batch.length} statements selected`}
           </span>
-          <span className="mt-1 text-sm text-slate-500">PDF and images under 5MB</span>
+          <span className="mt-1 text-sm text-slate-500">
+            PDF and images — 5MB free, up to 25MB &amp; batch on paid plans
+          </span>
         </div>
+
+        {batch.length > 0 && (
+          <div className="mt-4 space-y-1.5">
+            {batch.map((item, i) => (
+              <div
+                key={`${item.file.name}-${i}`}
+                className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm"
+              >
+                <span className="truncate text-slate-700">{item.file.name}</span>
+                <span className="shrink-0 text-xs font-medium">
+                  {item.status === "pending" && <span className="text-slate-400">queued</span>}
+                  {item.status === "processing" && <span className="text-blue-600">extracting…</span>}
+                  {item.status === "done" && <span className="text-emerald-600">✓ {item.rows} rows</span>}
+                  {item.status === "error" && <span className="text-red-600">failed</span>}
+                </span>
+              </div>
+            ))}
+            {!isExtracting && (
+              <button
+                type="button"
+                onClick={() => { setBatch([]); setBatchResults([]); setExtractionResult([]); }}
+                className="text-xs font-medium text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
+              >
+                Clear files
+              </button>
+            )}
+          </div>
+        )}
         <p className="mt-3 text-center text-xs font-medium text-slate-500">
           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-2.5 py-1 text-slate-600 shadow-sm">
             ✨ Powered by Anthropic Claude AI Vision
@@ -339,10 +436,14 @@ export default function BankStatementToExcelPage() {
           <button
             type="button"
             onClick={handleExtract}
-            disabled={!selectedFile || isExtracting}
+            disabled={batch.length === 0 || isExtracting}
             className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isExtracting ? "Extracting…" : "Extract"}
+            {isExtracting
+              ? "Extracting…"
+              : isBatch
+                ? `Extract ${batch.length} Statements`
+                : "Extract"}
           </button>
         </div>
 

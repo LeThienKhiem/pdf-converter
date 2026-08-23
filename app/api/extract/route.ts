@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { PDF_MODEL, extractText, getAnthropic, parseJsonArrayLoose } from "@/lib/anthropic";
-import { checkAndConsume, recordExtraction, refundExtraction } from "@/lib/entitlements";
+import {
+  PDF_MODEL,
+  PDF_MODEL_PREMIUM,
+  extractText,
+  getAnthropic,
+  parseJsonArrayLoose,
+} from "@/lib/anthropic";
+import {
+  checkAndConsume,
+  getPaidStatus,
+  recordExtraction,
+  refundExtraction,
+} from "@/lib/entitlements";
+import { createClient } from "@/lib/supabase/server";
+import { getSupabase } from "@/lib/supabase";
 
-const SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as a visual grid and reproduce its exact layout.
+const BASE_SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as a visual grid and reproduce its exact layout.
 
 **Vision-to-Grid Mapping**
 - Treat the document as a grid. Every visual line (row) in the PDF must become exactly one row in the output.
@@ -26,6 +39,16 @@ const SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as
 - No commentary, summary, or trailing explanation after the array.
 - Do not merge or summarize. Act only as a Visual-to-Excel copier.`;
 
+// Paid feature: bank-statement extractions get an extra AI-assigned category
+// column — costs nothing extra since it rides the same extraction call.
+const CATEGORIZE_APPENDIX = `
+
+**Transaction Categorization (this document only)**
+- This document is a bank statement. Append one extra column named "Category" to the header row of the transaction table, and to every transaction row.
+- Assign each transaction one of: Income, Transfer, Rent/Mortgage, Utilities, Payroll, Insurance, Software/Subscriptions, Office/Supplies, Travel, Meals, Fuel, Bank Fees, Taxes, Loan Payment, Shopping, Healthcare, Other.
+- Base the category on the transaction description. Non-transaction rows (headers, balances, summaries) get null in the Category cell.
+- All other rules above still apply — do not change any other column.`;
+
 const ALLOWED_TYPES = [
   "application/pdf",
   "image/jpeg",
@@ -34,7 +57,9 @@ const ALLOWED_TYPES = [
   "image/gif",
 ];
 
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB – no temp storage; buffer used only for base64 then discarded
+const FREE_MAX_BYTES = 5 * 1024 * 1024; // 5MB — also the practical serverless body limit
+const PAID_MAX_BYTES = 25 * 1024 * 1024; // 25MB — delivered via storage upload path
+const STORAGE_BUCKET = "uploads";
 
 function toCell(value: unknown): string | null {
   if (value == null) return null;
@@ -85,28 +110,64 @@ export async function POST(request: Request) {
 
     let base64: string;
     let mimeType: string;
+    let tool = "pdf-to-excel";
+    let byteSize = 0;
 
     const contentType = request.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) {
-      const body = (await request.json()) as { base64?: string; mimeType?: string };
-      if (!body.base64 || typeof body.base64 !== "string") {
-        return NextResponse.json(
-          { error: "Missing or invalid 'base64' in JSON body." },
-          { status: 400 }
-        );
-      }
-      base64 = body.base64;
-      mimeType = (body.mimeType as string) || "application/pdf";
-      const estimatedSize = Math.floor((base64.length * 3) / 4);
-      if (estimatedSize > MAX_FILE_SIZE_BYTES) {
-        return NextResponse.json(
-          { error: "File too large. Please upload a PDF under 5MB for faster processing." },
-          { status: 413 }
-        );
+      const body = (await request.json()) as {
+        base64?: string;
+        mimeType?: string;
+        storagePath?: string;
+        tool?: string;
+      };
+      if (typeof body.tool === "string") tool = body.tool.slice(0, 40);
+
+      if (body.storagePath && typeof body.storagePath === "string") {
+        // Large-file path: the file was uploaded to Supabase Storage via a
+        // signed URL from /api/upload-url (paid users only). Verify ownership
+        // by path prefix, download, and delete immediately after reading.
+        const supabase = await createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user || !body.storagePath.startsWith(`${user.id}/`)) {
+          return NextResponse.json(
+            { error: "Invalid storage path." },
+            { status: 403 }
+          );
+        }
+        const admin = getSupabase();
+        const { data: blob, error: dlError } = await admin.storage
+          .from(STORAGE_BUCKET)
+          .download(body.storagePath);
+        if (dlError || !blob) {
+          return NextResponse.json(
+            { error: "Uploaded file not found. Please upload again." },
+            { status: 404 }
+          );
+        }
+        const buffer = Buffer.from(await blob.arrayBuffer());
+        await admin.storage.from(STORAGE_BUCKET).remove([body.storagePath]);
+        byteSize = buffer.length;
+        base64 = buffer.toString("base64");
+        mimeType = blob.type && ALLOWED_TYPES.includes(blob.type) ? blob.type : "application/pdf";
+      } else {
+        if (!body.base64 || typeof body.base64 !== "string") {
+          return NextResponse.json(
+            { error: "Missing or invalid 'base64' in JSON body." },
+            { status: 400 }
+          );
+        }
+        base64 = body.base64;
+        mimeType = (body.mimeType as string) || "application/pdf";
+        byteSize = Math.floor((base64.length * 3) / 4);
       }
     } else {
       const formData = await request.formData();
       const file = formData.get("file") ?? formData.get("pdf");
+      const toolField = formData.get("tool");
+      if (typeof toolField === "string") tool = toolField.slice(0, 40);
       if (!file || !(file instanceof File)) {
         return NextResponse.json(
           { error: "Missing file. Send a PDF or image in FormData under 'file' or 'pdf'." },
@@ -128,12 +189,7 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-      if (buffer.length > MAX_FILE_SIZE_BYTES) {
-        return NextResponse.json(
-          { error: "File too large. Please upload a PDF under 5MB for faster processing." },
-          { status: 413 }
-        );
-      }
+      byteSize = buffer.length;
       base64 = buffer.toString("base64");
     }
 
@@ -142,6 +198,31 @@ export async function POST(request: Request) {
         { error: "Invalid file type. Only PDF and images (JPEG, PNG, WebP, GIF) are supported." },
         { status: 400 }
       );
+    }
+
+    // Size gate BEFORE consuming quota: free cap 5MB, paid cap 25MB.
+    if (byteSize > FREE_MAX_BYTES) {
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const paid = user ? await getPaidStatus(user.id) : { isPaid: false };
+      if (!paid.isPaid) {
+        return NextResponse.json(
+          {
+            error:
+              "Files over 5MB need a paid plan. Get a $2 Week Pass for files up to 25MB.",
+            reason: "file_too_large",
+          },
+          { status: 413 }
+        );
+      }
+      if (byteSize > PAID_MAX_BYTES) {
+        return NextResponse.json(
+          { error: "File too large. Maximum size is 25MB." },
+          { status: 413 }
+        );
+      }
     }
 
     // Server-side paywall: the ONLY authoritative quota/credit check.
@@ -154,22 +235,30 @@ export async function POST(request: Request) {
       );
     }
 
+    const isPaidExtract =
+      entitlement.source === "plan" || entitlement.source === "credits";
+    const model = isPaidExtract ? PDF_MODEL_PREMIUM : PDF_MODEL;
+    const categorize = isPaidExtract && tool.includes("bank");
+    const systemPrompt = categorize
+      ? BASE_SYSTEM_PROMPT + CATEGORIZE_APPENDIX
+      : BASE_SYSTEM_PROMPT;
+
     const client = getAnthropic();
-    console.log("[Extract API] Using model:", PDF_MODEL);
+    console.log("[Extract API] Using model:", model, "tool:", tool, "paid:", isPaidExtract);
 
     let response: Anthropic.Message;
     try {
       response = await client.messages.create({
-        model: PDF_MODEL,
+        model,
         max_tokens: 16000,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: [
           { role: "user", content: buildContent(mimeType, base64) },
         ],
       });
     } catch (err) {
       await refundExtraction(entitlement);
-      await recordExtraction(entitlement, "pdf-to-excel", "failed");
+      await recordExtraction(entitlement, tool, "failed");
       if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError) {
         console.warn("[Extract API] Anthropic transient error after retries:", err.status, err.message);
         return NextResponse.json(
@@ -184,7 +273,7 @@ export async function POST(request: Request) {
     if (!responseText.trim()) {
       console.error("[Extract] Empty response. Stop reason:", response.stop_reason);
       await refundExtraction(entitlement);
-      await recordExtraction(entitlement, "pdf-to-excel", "failed");
+      await recordExtraction(entitlement, tool, "failed");
       return NextResponse.json(
         { error: "Extraction failed. No content returned." },
         { status: 500 }
@@ -200,7 +289,7 @@ export async function POST(request: Request) {
         responseText.slice(0, 500)
       );
       await refundExtraction(entitlement);
-      await recordExtraction(entitlement, "pdf-to-excel", "failed");
+      await recordExtraction(entitlement, tool, "failed");
       return NextResponse.json(
         { error: "Extraction failed. Invalid JSON from model." },
         { status: 500 }
@@ -208,13 +297,14 @@ export async function POST(request: Request) {
     }
 
     const data = normalizeTo2DArray(parsed);
-    await recordExtraction(entitlement, "pdf-to-excel", "success");
+    await recordExtraction(entitlement, tool, "success");
     console.log("[Extract API] Success, rows:", data.length, "cols:", data[0]?.length ?? 0);
     return NextResponse.json({
       data,
       plan: entitlement.plan,
       source: entitlement.source,
       remaining: entitlement.remaining,
+      categorized: categorize,
     });
   } catch (err) {
     console.error("[Extract] Unexpected error:", err);
