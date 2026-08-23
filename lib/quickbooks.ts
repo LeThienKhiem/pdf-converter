@@ -46,24 +46,74 @@ function parseAmount(value: string): number | null {
 
 export type QuickBooksRow = { date: string; description: string; amount: number };
 
+type ColumnRoles = {
+  balance: number;
+  debit: number;
+  credit: number;
+  amount: number;
+};
+
+/** Find the header row and map column indexes to semantic roles. */
+function detectColumnRoles(grid: GridData): ColumnRoles {
+  const roles: ColumnRoles = { balance: -1, debit: -1, credit: -1, amount: -1 };
+  for (const row of grid.slice(0, 12)) {
+    let hits = 0;
+    const found: ColumnRoles = { balance: -1, debit: -1, credit: -1, amount: -1 };
+    row.forEach((cell, i) => {
+      const v = (cell ?? "").toLowerCase();
+      if (!v) return;
+      if (/balance/.test(v)) { found.balance = i; hits++; }
+      else if (/withdraw|debit|payment|charge/.test(v)) { found.debit = i; hits++; }
+      else if (/deposit|credit/.test(v)) { found.credit = i; hits++; }
+      else if (/^amount/.test(v)) { found.amount = i; hits++; }
+      else if (/date|description|detail|transaction/.test(v)) hits++;
+    });
+    // A real header names at least two known columns.
+    if (hits >= 2 && (found.balance !== -1 || found.debit !== -1 || found.credit !== -1 || found.amount !== -1)) {
+      return found;
+    }
+  }
+  return roles;
+}
+
+/** Rows like "Beginning/Ending Balance" are markers, not transactions. */
+function isBalanceMarkerRow(cells: string[]): boolean {
+  return cells.some((c) => /^(beginning|ending|opening|closing)\s+balance/i.test(c));
+}
+
 export function gridToQuickBooksRows(grid: GridData): QuickBooksRow[] {
+  const roles = detectColumnRoles(grid);
   const rows: QuickBooksRow[] = [];
+
   for (const row of grid) {
     const cells = row.map((c) => (c == null ? "" : String(c).trim()));
     const dateIdx = cells.findIndex(isDateLike);
     if (dateIdx === -1) continue;
+    if (isBalanceMarkerRow(cells)) continue;
 
-    // Rightmost parseable amount that isn't the date cell (bank statements
-    // usually end lines with amount / balance — prefer the amount column,
-    // i.e. the first parseable number from the right that isn't a bare year).
+    // Transaction amount: use semantic columns when the header told us where
+    // they are (withdrawals become negative). The running balance column is
+    // never the amount — that was the failure mode of naive rightmost-pick.
     let amount: number | null = null;
-    for (let i = cells.length - 1; i >= 0; i--) {
-      if (i === dateIdx) continue;
-      const parsed = parseAmount(cells[i]!);
-      if (parsed != null && !/^\d{4}$/.test(cells[i]!)) {
-        amount = parsed;
-        break;
+    if (roles.debit !== -1 || roles.credit !== -1 || roles.amount !== -1) {
+      const debit = roles.debit !== -1 ? parseAmount(cells[roles.debit] ?? "") : null;
+      const credit = roles.credit !== -1 ? parseAmount(cells[roles.credit] ?? "") : null;
+      const plain = roles.amount !== -1 ? parseAmount(cells[roles.amount] ?? "") : null;
+      if (debit != null) amount = -Math.abs(debit);
+      else if (credit != null) amount = Math.abs(credit);
+      else if (plain != null) amount = plain;
+    } else {
+      // No header found: collect numeric cells right-to-left (skipping the
+      // date and bare years). With 2+ numbers assume the last is a running
+      // balance and take the one before it; with 1 number take it as-is.
+      const numeric: number[] = [];
+      for (let i = cells.length - 1; i >= 0; i--) {
+        if (i === dateIdx || (roles.balance !== -1 && i === roles.balance)) continue;
+        const parsed = parseAmount(cells[i]!);
+        if (parsed != null && !/^\d{4}$/.test(cells[i]!)) numeric.push(parsed);
       }
+      if (numeric.length >= 2) amount = numeric[1]!;
+      else if (numeric.length === 1) amount = numeric[0]!;
     }
     if (amount == null) continue;
 
