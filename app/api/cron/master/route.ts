@@ -5,6 +5,7 @@ import { runBuyerIntent } from "@/app/api/cron/seo-content-2/route";
 import { runContentRefresh } from "@/app/api/cron/content-refresh/route";
 import { runEmailDrip } from "@/app/api/cron/email-drip/route";
 import { runBacklinkTasks } from "@/app/api/cron/backlink-tasks/route";
+import { runSyndicate } from "@/app/api/cron/syndicate/route";
 
 /**
  * Master cron — the ONLY entry registered in vercel.json (Vercel Hobby
@@ -104,11 +105,28 @@ export async function GET(request: Request) {
       }
     }
 
+    // Syndication, every day — this is the one backlink source that is fully
+    // automatable without asking anyone's permission, because it publishes our
+    // own content to our own accounts with a canonical URL pointing back here.
+    //
+    // Was dead code: written, never registered in vercel.json, never dispatched
+    // from here. One post per run works through a 120-post backlog that had
+    // never been syndicated, which is months of daily links from articles that
+    // already exist.
+    let syndication: unknown = null;
+    try {
+      syndication = await runSyndicate();
+    } catch (synErr) {
+      console.error("[Master Cron] Syndication failed:", synErr);
+      syndication = { error: synErr instanceof Error ? synErr.message : "failed" };
+    }
+
     return NextResponse.json({
       master: { day, task, overridden: !!validOverride },
       result,
       emailDrip,
       backlinks,
+      syndication,
     });
   } catch (err) {
     console.error("[Master Cron] Error:", err);

@@ -199,6 +199,167 @@ async function postToMedium(
   }
 }
 
+type Platform = "devto" | "hashnode" | "medium";
+
+const PLATFORMS: {
+  key: Platform;
+  label: string;
+  post: (title: string, content: string, slug: string, tags: string[]) => Promise<{ success: boolean; url?: string; error?: string }>;
+}[] = [
+  { key: "devto", label: "dev.to", post: postToDevTo },
+  { key: "hashnode", label: "Hashnode", post: postToHashnode },
+  { key: "medium", label: "Medium", post: postToMedium },
+];
+
+export type SyndicateResult =
+  | { success: true; slug: string; published: number; retried: number; remaining: number }
+  | { success: true; skipped: true; reason: string };
+
+/**
+ * Syndicate one post per run, working through the backlog.
+ *
+ * Replaces a "posts created in the last 24 hours" query that made this
+ * effectively a no-op: the real publish cadence is about one post every four
+ * days, so most runs found nothing. There are also 120 existing posts that
+ * have never been syndicated — at one a day that is months of daily backlinks
+ * from content already written, which the 24-hour window could never reach.
+ *
+ * Selection prefers posts with the most Search Console impressions. A post
+ * Google already shows is better content, so its syndicated copy is likelier
+ * to earn engagement on the destination platform — and engagement there is
+ * what makes the link worth more than a directory listing.
+ */
+export async function runSyndicate(): Promise<SyndicateResult> {
+  if (!hasSupabaseConfig) throw new Error("Missing Supabase config");
+  const supabase = getSupabase();
+
+  // Any platform not yet 'published' for a post is still outstanding —
+  // 'failed' rows are retried, 'skipped' rows retry once credentials exist.
+  const { data: doneRows } = await supabase
+    .from("blog_syndications")
+    .select("blog_slug, platform, status")
+    .eq("status", "published")
+    .limit(20000);
+
+  const publishedBySlug = new Map<string, Set<string>>();
+  for (const row of (doneRows ?? []) as { blog_slug: string; platform: string }[]) {
+    const set = publishedBySlug.get(row.blog_slug) ?? new Set<string>();
+    set.add(row.platform);
+    publishedBySlug.set(row.blog_slug, set);
+  }
+
+  const { data: posts } = await supabase
+    .from("blogs")
+    .select("id, title, slug, content, keywords, created_at")
+    .order("created_at", { ascending: false })
+    .limit(2000);
+
+  type Post = {
+    id: string;
+    title: string;
+    slug: string;
+    content: string | null;
+    keywords: string | null;
+    created_at: string;
+  };
+  const all = (posts ?? []) as Post[];
+
+  // A post is outstanding when at least one platform hasn't published it.
+  const outstanding = all.filter((p) => {
+    if (!p.content?.trim()) return false;
+    const done = publishedBySlug.get(p.slug);
+    return !done || done.size < PLATFORMS.length;
+  });
+
+  if (outstanding.length === 0) {
+    return { success: true, skipped: true, reason: "backlog empty — every post is on every platform" };
+  }
+
+  // Rank by impressions where we have them; blog_gsc_stats is optional.
+  const { data: stats } = await supabase
+    .from("blog_gsc_stats")
+    .select("slug, impressions")
+    .limit(20000);
+  const impBySlug = new Map<string, number>();
+  for (const s of (stats ?? []) as { slug: string; impressions: number }[]) {
+    impBySlug.set(s.slug, s.impressions);
+  }
+
+  outstanding.sort((a, b) => {
+    const ia = impBySlug.get(a.slug) ?? 0;
+    const ib = impBySlug.get(b.slug) ?? 0;
+    if (ib !== ia) return ib - ia;
+    // No GSC data for either: newest first.
+    return b.created_at.localeCompare(a.created_at);
+  });
+
+  const post = outstanding[0];
+  const alreadyDone = publishedBySlug.get(post.slug) ?? new Set<string>();
+  const todo = PLATFORMS.filter((p) => !alreadyDone.has(p.key));
+
+  const tags = (post.keywords ?? "invoice OCR, data extraction")
+    .split(",")
+    .map((t: string) => t.trim())
+    .filter(Boolean);
+
+  const results = await Promise.all(
+    todo.map(async (platform) => {
+      const outcome = await platform.post(post.title, post.content!, post.slug, tags);
+      const status = outcome.success
+        ? "published"
+        : outcome.error?.startsWith("Missing")
+          ? "skipped"
+          : "failed";
+
+      // Upsert on (blog_slug, platform) — this is what makes a double run
+      // idempotent instead of a double publish.
+      await supabase.from("blog_syndications").upsert(
+        {
+          blog_slug: post.slug,
+          platform: platform.key,
+          status,
+          external_url: outcome.url ?? null,
+          error: outcome.error?.slice(0, 500) ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "blog_slug,platform" }
+      );
+
+      return { label: platform.label, status, ...outcome };
+    })
+  );
+
+  const published = results.filter((r) => r.status === "published").length;
+  const impressions = impBySlug.get(post.slug) ?? 0;
+
+  const report = `📢 <b>Content Syndication</b>
+
+📝 <b>${post.title}</b>
+📊 ${impressions} GSC impressions${alreadyDone.size > 0 ? ` • ${alreadyDone.size}/${PLATFORMS.length} platform(s) already done` : ""}
+
+${results
+  .map((r) => {
+    if (r.status === "published") return `✅ <b>${r.label}</b>: <a href="${r.url}">Published</a>`;
+    if (r.status === "skipped") return `⏭️ <b>${r.label}</b>: not configured`;
+    return `❌ <b>${r.label}</b>: ${r.error?.slice(0, 120)}`;
+  })
+  .join("\n")}
+
+🔗 ${published} backlink(s) created, canonical → ${SITE_URL}/blog/${post.slug}
+📚 Backlog: ${outstanding.length - 1} post(s) still to syndicate
+${results.some((r) => r.status === "skipped") ? "\n💡 Add the missing keys to enable: DEVTO_API_KEY, HASHNODE_API_KEY, HASHNODE_PUBLICATION_ID, MEDIUM_API_TOKEN" : ""}`;
+
+  await sendTelegramMessage(report);
+
+  return {
+    success: true,
+    slug: post.slug,
+    published,
+    retried: alreadyDone.size,
+    remaining: outstanding.length - 1,
+  };
+}
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -206,70 +367,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    if (!hasSupabaseConfig) throw new Error("Missing Supabase config");
-
-    const supabase = getSupabase();
-
-    // Find the latest blog post that hasn't been syndicated yet
-    // We use a simple approach: check if we syndicated in the last 24h
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: recentPosts } = await supabase
-      .from("blogs")
-      .select("id, title, slug, content, keywords, created_at")
-      .gte("created_at", oneDayAgo)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    if (!recentPosts || recentPosts.length === 0) {
-      return NextResponse.json({ success: true, message: "No new posts to syndicate" });
-    }
-
-    const post = recentPosts[0];
-    const tags = (post.keywords ?? "invoice OCR, data extraction")
-      .split(",")
-      .map((t: string) => t.trim())
-      .filter(Boolean);
-
-    // Syndicate to all platforms in parallel
-    const [devtoResult, hashnodeResult, mediumResult] = await Promise.all([
-      postToDevTo(post.title, post.content, post.slug, tags),
-      postToHashnode(post.title, post.content, post.slug, tags),
-      postToMedium(post.title, post.content, post.slug, tags),
-    ]);
-
-    // Build Telegram report
-    const results = [
-      { name: "dev.to", ...devtoResult },
-      { name: "Hashnode", ...hashnodeResult },
-      { name: "Medium", ...mediumResult },
-    ];
-
-    const successCount = results.filter((r) => r.success).length;
-    const report = `📢 <b>Content Syndication Report</b>
-
-📝 <b>${post.title}</b>
-
-${results
-  .map((r) => {
-    if (r.success) {
-      return `✅ <b>${r.name}</b>: <a href="${r.url}">Published</a>`;
-    }
-    return `${r.error?.includes("Missing") ? "⏭️" : "❌"} <b>${r.name}</b>: ${r.error?.slice(0, 100)}`;
-  })
-  .join("\n")}
-
-🔗 ${successCount} backlink(s) created with canonical URL → ${SITE_URL}/blog/${post.slug}
-${successCount === 0 ? "\n💡 Add API keys to enable: DEVTO_API_KEY, HASHNODE_API_KEY, MEDIUM_API_TOKEN" : ""}`;
-
-    await sendTelegramMessage(report);
-
-    return NextResponse.json({
-      success: true,
-      post: post.slug,
-      devto: devtoResult,
-      hashnode: hashnodeResult,
-      medium: mediumResult,
-    });
+    return NextResponse.json(await runSyndicate());
   } catch (err) {
     console.error("[Syndicate Cron] Error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
