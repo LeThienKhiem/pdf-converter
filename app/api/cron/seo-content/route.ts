@@ -12,6 +12,8 @@ import {
   mechanicalDupeCheck,
   pickRelevantLinkTargets,
   normalizeTitle,
+  researchCurrentFacts,
+  templateNeedsResearch,
   type RecentPost,
 } from "@/lib/seoContent";
 
@@ -447,6 +449,31 @@ export async function runInformational() {
     chosenAngle = null;
   }
 
+  // ─── LAYER 0: PRE-WRITE RESEARCH ─────────────────────────────────────
+  // For templates that make claims about third parties, look up current facts
+  // before writing. The Klippa alternatives post was generated thirteen months
+  // after Klippa was acquired and three months after it was renamed, and said
+  // neither — the writer can't know what it doesn't know, so we look it up.
+  //
+  // Costs one Sonnet call plus up to 5 searches, and only on the template
+  // types that actually assert things about other companies.
+  let research: Awaited<ReturnType<typeof researchCurrentFacts>> = {
+    block: null,
+    sources: [],
+    note: "not applicable for this template",
+  };
+  if (chosenAngle && templateNeedsResearch(template.type)) {
+    research = await researchCurrentFacts({
+      subject: chosenAngle.title,
+      angle: chosenAngle.summary,
+    });
+    console.log(
+      research.block
+        ? `[SEO Content] Research OK — ${research.sources.length} source(s)${research.note ? ` (${research.note})` : ""}`
+        : `[SEO Content] Research unavailable: ${research.note ?? "unknown"} — writing without it`
+    );
+  }
+
   // Build internal links instruction
   const internalLinksInstruction = INTERNAL_LINKS.map(
     (l) => `- Link to ${l.url} with anchor text "${l.anchor}" at least once`
@@ -484,7 +511,7 @@ export async function runInformational() {
   const fullPrompt = `You are an expert SEO content writer for InvoiceToData (https://invoicetodata.com), a SaaS tool that converts invoices into structured data using AI OCR.
 
 ${angleBlock}
-
+${research.block ? `\n${research.block}\n` : ""}
 ${formatDiversityAxes(axes)}
 
 IMPORTANT RULES:
@@ -660,7 +687,7 @@ KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5]
 
   // Notify via Telegram with axis tags + critic scores so the user can
   // spot patterns over time.
-  await notifyTelegram(title, slug, template.type, keywords, axes, verdict);
+  await notifyTelegram(title, slug, template.type, keywords, axes, verdict, research);
 
   return { success: true, slug, type: template.type };
 }
@@ -671,9 +698,21 @@ async function notifyTelegram(
   type: string,
   keywords: string,
   axes: ReturnType<typeof pickDiversityAxes>,
-  verdict: Awaited<ReturnType<typeof criticReview>>
+  verdict: Awaited<ReturnType<typeof criticReview>>,
+  research: Awaited<ReturnType<typeof researchCurrentFacts>>
 ) {
   const url = `https://invoicetodata.com/blog/${slug}`;
+
+  // Surface whether competitor claims were checked against live sources.
+  // A post written without research isn't blocked, but it's worth knowing
+  // which posts carry that risk — that's how the stale-Klippa problem went
+  // unnoticed for months.
+  const researchLine = research.block
+    ? `🔍 Researched: ${research.sources.length} live source(s) consulted${research.note ? ` — ${research.note}` : ""}`
+    : templateNeedsResearch(type)
+      ? `⚠️ Research FAILED (${research.note ?? "unknown"}) — competitor facts came from model knowledge, spot-check them`
+      : `➖ Research not applicable for this template`;
+
   const msg = `✅ <b>New SEO Blog Post Published!</b>
 
 📝 <b>${title}</b>
@@ -682,6 +721,7 @@ async function notifyTelegram(
 🔑 Keywords: ${keywords}
 🔗 <a href="${url}">View Post</a>
 
+${researchLine}
 ✅ Critic passed (numbers ${verdict.scores.specificNumbers}, entities ${verdict.scores.namedEntities}, faq ${verdict.scores.faqQuality}, fit ${verdict.scores.structuralFit})
 ✅ Google sitemap ping sent`;
 

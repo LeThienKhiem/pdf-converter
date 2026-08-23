@@ -11,7 +11,7 @@
  * Sonnet write entirely instead of publishing a near-duplicate.
  */
 import Anthropic from "@anthropic-ai/sdk";
-import { getAnthropic, PDF_MODEL } from "@/lib/anthropic";
+import { getAnthropic, PDF_MODEL, SEO_MODEL } from "@/lib/anthropic";
 
 /** A candidate article angle proposed by the planner. */
 export type Candidate = {
@@ -418,6 +418,198 @@ export function mechanicalDupeCheck(
     closestTitle,
     reason: `overlap ${(worstScore * 100).toFixed(0)}% with no distinctive term the existing post lacks`,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Layer 0 — Pre-write research
+//
+// The writer generates competitor facts from model knowledge, and those facts
+// decay. Measured on the live corpus: the "Best Klippa Alternatives" post was
+// generated 2026-04-14 — thirteen months after SER Group acquired Klippa and
+// three months after the group rebranded to Doxis — and mentioned neither. It
+// recommended alternatives to a product that had not traded under that name
+// for months.
+//
+// No prompt instruction fixes that, because the model cannot know what it
+// doesn't know. The fix is to look it up before writing, and to hand the
+// writer a block of researched facts it is told to prefer over its own
+// recollection.
+//
+// Runs on SEO_MODEL (Sonnet 4.6), not the Haiku planner: the dynamic-filtering
+// web_search_20260209 variant requires Opus 4.6+ / Sonnet 4.6+, and Haiku 4.5
+// would need the older basic variant.
+// ─────────────────────────────────────────────────────────────────────────
+
+export type ResearchedFacts = {
+  /** Block to inject into the writer prompt. Null when research didn't run. */
+  block: string | null;
+  /** URLs the search actually returned, for the Telegram report. */
+  sources: string[];
+  /** Populated when research was skipped or failed, for logging. */
+  note?: string;
+};
+
+/**
+ * Template types whose output makes checkable claims about third parties.
+ *
+ * Deliberately not every template: a how-to or glossary post describes our own
+ * product and general technique, so a search adds cost without reducing the
+ * risk of a stale assertion.
+ */
+const RESEARCH_TEMPLATE_TYPES = new Set([
+  "comparison",
+  "alternative",
+  "llm-workflow",
+  "buyer-guide",
+  "pricing-comparison",
+  "llm-buying-decision",
+  "bank-buying-guide",
+]);
+
+export function templateNeedsResearch(templateType: string): boolean {
+  return RESEARCH_TEMPLATE_TYPES.has(templateType);
+}
+
+/** Bound the server-side tool loop; each pause costs another round trip. */
+const MAX_PAUSE_CONTINUATIONS = 3;
+
+/**
+ * Look up current facts about the subject before writing.
+ *
+ * Returns a prompt block, or `block: null` when nothing usable came back —
+ * callers proceed without it rather than blocking the run, because a failed
+ * search is not a reason to skip a publish.
+ */
+export async function researchCurrentFacts(opts: {
+  /** What to research — a competitor name, a product, a pricing question. */
+  subject: string;
+  /** The chosen angle, so the search targets what the article will claim. */
+  angle: string;
+  maxSearches?: number;
+  client?: Anthropic;
+}): Promise<ResearchedFacts> {
+  const client = opts.client ?? getAnthropic();
+  const maxUses = opts.maxSearches ?? 5;
+
+  const prompt = `Research current, verifiable facts for an article about: ${opts.subject}
+
+The article's angle: ${opts.angle}
+
+Search for and report ONLY what you can verify from the results:
+
+1. Current product and company status — has it been acquired, renamed, merged, discontinued, or spun out? Include dates.
+2. Current pricing, if published. Quote the actual tiers. If pricing is not public, say so.
+3. Free tier or trial terms — a perpetual free allowance and a time-limited trial are different things; be precise about which it is.
+4. Anything materially changed in the last 18 months that a buyer comparing options would need to know.
+
+RULES:
+- Report only what the search results support. Do not fill gaps from memory.
+- For each fact, name the source domain you got it from.
+- When something could not be verified, write "UNVERIFIED: <what you could not establish>". That line is useful — it tells the writer not to assert it.
+- Prefer the vendor's own site over third-party comparison sites, which are frequently out of date or wrong. If they disagree, say so and give the vendor's version.
+- Be concise. Facts and sources, no marketing prose.`;
+
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content: prompt }];
+  const sources = new Set<string>();
+  let searchFailed: string | null = null;
+
+  try {
+    let response = await client.messages.create({
+      model: SEO_MODEL,
+      max_tokens: 4096,
+      // web_search_20260209 has dynamic filtering built in — code execution
+      // runs under the hood, so do NOT also declare a code_execution tool.
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: maxUses }],
+      messages,
+    });
+
+    // Server-side tool loops stop at `pause_turn` when they hit their internal
+    // iteration cap. Resume by echoing the assistant turn back — no extra user
+    // message, the API detects the trailing server_tool_use and continues.
+    let continuations = 0;
+    while (response.stop_reason === "pause_turn" && continuations < MAX_PAUSE_CONTINUATIONS) {
+      messages.push({ role: "assistant", content: response.content });
+      response = await client.messages.create({
+        model: SEO_MODEL,
+        max_tokens: 4096,
+        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: maxUses }],
+        messages,
+      });
+      continuations++;
+    }
+
+    for (const block of response.content) {
+      if (block.type !== "web_search_tool_result") continue;
+      const content = (block as { content?: unknown }).content;
+      // Search errors arrive as HTTP 200 with an error OBJECT here instead of
+      // the usual array of results — checking the shape is the only way to
+      // tell them apart, since nothing is thrown.
+      if (!Array.isArray(content)) {
+        const code = (content as { error_code?: string } | null)?.error_code;
+        searchFailed = code ?? "unknown search error";
+        continue;
+      }
+      for (const result of content) {
+        const url = (result as { url?: string }).url;
+        if (url) sources.add(url);
+      }
+    }
+
+    const text = extractResponseText(response).trim();
+
+    if (!text) {
+      return {
+        block: null,
+        sources: [...sources],
+        note: searchFailed ? `search failed: ${searchFailed}` : "empty research response",
+      };
+    }
+
+    return {
+      block: formatResearchBlock(text, [...sources]),
+      sources: [...sources],
+      note: searchFailed ? `partial: ${searchFailed}` : undefined,
+    };
+  } catch (err) {
+    // Research is an enhancement, not a gate. Log and let the run continue.
+    return {
+      block: null,
+      sources: [...sources],
+      note: `research threw: ${err instanceof Error ? err.message : "unknown"}`,
+    };
+  }
+}
+
+function extractResponseText(message: Anthropic.Message): string {
+  return message.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+}
+
+/**
+ * Wrap the research output for the writer prompt.
+ *
+ * The framing does real work: without an explicit instruction to prefer these
+ * facts over recollection, the writer treats them as one input among many and
+ * still reaches for what it "knows" — which is the failure this whole layer
+ * exists to prevent.
+ */
+function formatResearchBlock(researchText: string, sources: string[]): string {
+  const sourceList = sources.length
+    ? `\nSources searched:\n${sources.slice(0, 12).map((s) => `- ${s}`).join("\n")}`
+    : "";
+
+  return `VERIFIED FACTS — researched just now, before you started writing:
+
+${researchText}
+${sourceList}
+
+HOW TO USE THIS BLOCK:
+- Where this block and your own knowledge disagree, THIS BLOCK WINS. Your training data has a cutoff; this was looked up minutes ago. Vendors get acquired, renamed, and repriced, and an article that describes a product under a name it no longer trades under is worse than useless to a reader comparing options.
+- A "UNVERIFIED:" line means exactly that: do not assert it. Say the vendor does not publish it, or leave it out.
+- If a fact here is genuinely newsworthy — an acquisition, a rebrand, a discontinued product — lead with it. That is often the most useful thing on the page and the reason the reader is searching in the first place.
+- Do not invent figures to fill a gap this block leaves open. A comparison table with an honest "not published" cell is worth more than one with a plausible number you made up.`;
 }
 
 /**

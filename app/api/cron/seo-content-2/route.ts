@@ -12,6 +12,8 @@ import {
   mechanicalDupeCheck,
   pickRelevantLinkTargets,
   normalizeTitle,
+  researchCurrentFacts,
+  templateNeedsResearch,
   type RecentPost,
 } from "@/lib/seoContent";
 
@@ -292,6 +294,28 @@ export async function runBuyerIntent(): Promise<RunnerResult> {
     chosenAngle = null;
   }
 
+  // ─── LAYER 0: PRE-WRITE RESEARCH ─────────────────────────────────────
+  // Buyer-intent templates quote competitor pricing, which is the fact class
+  // that goes stale fastest — and a wrong price in a comparison table is both
+  // a credibility problem and unfair to the competitor. Look it up before
+  // writing; see the note in lib/seoContent.ts for why prompting can't fix it.
+  let research: Awaited<ReturnType<typeof researchCurrentFacts>> = {
+    block: null,
+    sources: [],
+    note: "not applicable for this template",
+  };
+  if (chosenAngle && templateNeedsResearch(template.type)) {
+    research = await researchCurrentFacts({
+      subject: chosenAngle.title,
+      angle: chosenAngle.summary,
+    });
+    console.log(
+      research.block
+        ? `[SEO Content-2] Research OK — ${research.sources.length} source(s)${research.note ? ` (${research.note})` : ""}`
+        : `[SEO Content-2] Research unavailable: ${research.note ?? "unknown"} — writing without it`
+    );
+  }
+
   const internalLinksInstruction = INTERNAL_LINKS.map(
     (l) => `- Link to ${l.url} with anchor text "${l.anchor}" at least once`
   ).join("\n");
@@ -319,6 +343,9 @@ export async function runBuyerIntent(): Promise<RunnerResult> {
   const fullPrompt = `You are an expert SEO content writer for InvoiceToData (${SITE_URL}), a SaaS tool that converts invoices into structured data using AI OCR.
 
 ${angleBlock}
+${research.block ? `
+${research.block}
+` : ""}
 
 ${formatDiversityAxes(axes)}
 
