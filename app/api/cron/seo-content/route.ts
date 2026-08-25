@@ -175,10 +175,16 @@ Include pros, cons, pricing, and use-case fit for each.`,
 
   {
     type: "llm-workflow",
-    weight: 2,
+    weight: 1,
     prompt: `Write about using a general-purpose AI assistant to get data out of documents and into a spreadsheet.
 
-Why this topic: of all the themes in Search Console, this is the only one currently converting at all — 119 impressions produced 3 of the site's clicks, where the head commercial terms produced zero from 2697. That is a small sample and the click-through rate it implies is statistically fragile, so treat it as encouraging rather than proven. The durable reasons to write here are that competition is thin, the questions are ones real people are actually asking, and InvoiceToData runs on Claude — so we can speak to it with first-hand authority instead of speculation.
+Why this topic, and its two real limits — read both before writing:
+
+This is the only theme in Search Console currently converting at all (119 impressions produced 3 of the site's clicks, where the head commercial terms produced zero from 2697). Small sample, so treat it as encouraging rather than proven. Competition is thin and we can speak to Claude with first-hand authority, since the product runs on it.
+
+LIMIT 1 — the intent is DIY, not purchase. Someone searching "claude convert pdf to excel" wants to do it themselves, for free. Anthropic's own help centre ranks on that query, teaching them exactly that. Writing a sales pitch into this traffic converts badly and reads badly. Write genuinely useful DIY instructions, and be honest about where the manual approach stops scaling — the reader who hits that wall in three months is the one worth earning. Do not oversell.
+
+LIMIT 2 — this traffic is borrowed, not owned. The whole cluster hangs on Anthropic's product naming. A rename, or Claude's own file-creation features expanding, and the query disappears. So do not build the article as though this keyword is an asset: make the transferable part (the workflow, the failure modes, the volume threshold) the substance, and the specific tool a detail.
 
 Queries in this space (low volume individually, so don't lean on the numbers):
   "claude pdf to excel", "claude ai pdf to excel", "can claude convert pdf to excel",
