@@ -195,7 +195,18 @@ const PLATFORMS: {
 
 export type SyndicateResult =
   | { success: true; slug: string; published: number; retried: number; remaining: number }
-  | { success: true; skipped: true; reason: string };
+  | { success: true; skipped: true; reason: string }
+  | {
+      success: true;
+      dryRun: true;
+      slug: string;
+      title: string;
+      impressions: number;
+      wouldPostTo: string[];
+      alreadyDone: string[];
+      remaining: number;
+      queuePreview: { slug: string; impressions: number }[];
+    };
 
 /**
  * Syndicate one post per run, working through the backlog.
@@ -211,7 +222,9 @@ export type SyndicateResult =
  * to earn engagement on the destination platform — and engagement there is
  * what makes the link worth more than a directory listing.
  */
-export async function runSyndicate(): Promise<SyndicateResult> {
+export async function runSyndicate(
+  opts: { dryRun?: boolean } = {}
+): Promise<SyndicateResult> {
   if (!hasSupabaseConfig) throw new Error("Missing Supabase config");
   const supabase = getSupabase();
 
@@ -278,6 +291,26 @@ export async function runSyndicate(): Promise<SyndicateResult> {
   const post = outstanding[0];
   const alreadyDone = publishedBySlug.get(post.slug) ?? new Set<string>();
   const todo = PLATFORMS.filter((p) => !alreadyDone.has(p.key));
+
+  // Dry run exits here — after the real selection has run, before any network
+  // call or row write. Shares the code path with a live run on purpose: a
+  // preview that reimplements the query is a preview that drifts.
+  if (opts.dryRun) {
+    return {
+      success: true,
+      dryRun: true,
+      slug: post.slug,
+      title: post.title,
+      impressions: impBySlug.get(post.slug) ?? 0,
+      wouldPostTo: todo.map((p) => p.label),
+      alreadyDone: [...alreadyDone],
+      remaining: outstanding.length - 1,
+      queuePreview: outstanding.slice(1, 6).map((p) => ({
+        slug: p.slug,
+        impressions: impBySlug.get(p.slug) ?? 0,
+      })),
+    };
+  }
 
   const tags = (post.keywords ?? "invoice OCR, data extraction")
     .split(",")
@@ -349,7 +382,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    return NextResponse.json(await runSyndicate());
+    const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
+    return NextResponse.json(await runSyndicate({ dryRun }));
   } catch (err) {
     console.error("[Syndicate Cron] Error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
