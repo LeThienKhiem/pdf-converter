@@ -4,7 +4,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 
 /**
  * Vercel Cron Job — runs daily at 5:00 AM UTC
- * Auto-syndicates blog posts to dev.to and Hashnode.
+ * Auto-syndicates blog posts to dev.to and Hashnode with a canonical URL.
  * Each syndicated post uses a canonical_url pointing back to invoicetodata.com,
  * so Google knows the original source and gives SEO credit to our site.
  *
@@ -117,6 +117,7 @@ async function postToHashnode(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Accept: "application/json",
         Authorization: apiKey,
       },
       body: JSON.stringify({
@@ -136,64 +137,31 @@ async function postToHashnode(
       signal: AbortSignal.timeout(30000),
     });
 
+    // The endpoint sometimes answers a POST with the Hashnode web app's HTML
+    // instead of GraphQL JSON — seen consistently from one dev machine whose
+    // IP is also flagged by Google's bot detection, so it reads as an edge or
+    // reputation block rather than a bad request. Parsing that as JSON throws
+    // "Unexpected token '<'", which says nothing useful at 5am in a Telegram
+    // alert. Detect it and name it instead.
+    const contentType = res.headers.get("content-type") ?? "";
+    if (!contentType.includes("json")) {
+      const preview = (await res.text()).slice(0, 80).replace(/\s+/g, " ");
+      return {
+        success: false,
+        error: `Hashnode returned ${res.status} ${contentType || "no content-type"} instead of JSON (likely an edge/reputation block on the caller's IP, not a bad request). Body starts: ${preview}`,
+      };
+    }
+
     const data = await res.json();
     if (data.errors) {
       return { success: false, error: data.errors[0]?.message ?? "Unknown Hashnode error" };
     }
 
     const postUrl = data.data?.publishPost?.post?.url;
-    return { success: true, url: postUrl ?? undefined };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
-  }
-}
-
-/** Post to Medium via API */
-async function postToMedium(
-  title: string,
-  content: string,
-  slug: string,
-  tags: string[]
-): Promise<{ success: boolean; url?: string; error?: string }> {
-  const token = process.env.MEDIUM_API_TOKEN;
-  if (!token) return { success: false, error: "Missing MEDIUM_API_TOKEN" };
-
-  try {
-    // First get user ID
-    const userRes = await fetch("https://api.medium.com/v1/me", {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(15000),
-    });
-    const userData = await userRes.json();
-    const userId = userData.data?.id;
-    if (!userId) return { success: false, error: "Could not get Medium user ID" };
-
-    // Add canonical notice
-    const cleanContent = `*Originally published at [InvoiceToData Blog](${SITE_URL}/blog/${slug})*\n\n---\n\n${content}`;
-
-    const res = await fetch(`https://api.medium.com/v1/users/${userId}/posts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        title,
-        contentFormat: "markdown",
-        content: cleanContent,
-        canonicalUrl: `${SITE_URL}/blog/${slug}`,
-        tags: tags.slice(0, 5),
-        publishStatus: "public",
-      }),
-      signal: AbortSignal.timeout(30000),
-    });
-
-    const data = await res.json();
-    if (data.errors) {
-      return { success: false, error: data.errors[0]?.message ?? "Unknown Medium error" };
+    if (!postUrl) {
+      return { success: false, error: "Hashnode accepted the request but returned no post URL" };
     }
-
-    return { success: true, url: data.data?.url ?? undefined };
+    return { success: true, url: postUrl };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
@@ -201,6 +169,21 @@ async function postToMedium(
 
 type Platform = "devto" | "hashnode" | "medium";
 
+/**
+ * Platforms in the daily rotation.
+ *
+ * Medium is deliberately absent. It retired the Integration Token programme,
+ * so api.medium.com no longer issues new tokens — the code path could only
+ * ever report a failure. Left in the CHECK constraint on blog_syndications
+ * (harmlessly) in case the API returns, but out of the rotation so the daily
+ * report isn't carrying a permanent error line that trains you to ignore it.
+ *
+ * Not padding this list back to three. The remaining options with real
+ * publishing APIs are low-authority, and a burst of links from weak domains on
+ * a six-month-old site is the footprint worth avoiding — the same reason we
+ * aren't scripting directory submissions. Two good platforms beats five weak
+ * ones.
+ */
 const PLATFORMS: {
   key: Platform;
   label: string;
@@ -208,7 +191,6 @@ const PLATFORMS: {
 }[] = [
   { key: "devto", label: "dev.to", post: postToDevTo },
   { key: "hashnode", label: "Hashnode", post: postToHashnode },
-  { key: "medium", label: "Medium", post: postToMedium },
 ];
 
 export type SyndicateResult =
@@ -347,7 +329,7 @@ ${results
 
 🔗 ${published} backlink(s) created, canonical → ${SITE_URL}/blog/${post.slug}
 📚 Backlog: ${outstanding.length - 1} post(s) still to syndicate
-${results.some((r) => r.status === "skipped") ? "\n💡 Add the missing keys to enable: DEVTO_API_KEY, HASHNODE_API_KEY, HASHNODE_PUBLICATION_ID, MEDIUM_API_TOKEN" : ""}`;
+${results.some((r) => r.status === "skipped") ? "\n💡 Add the missing keys to enable: DEVTO_API_KEY, HASHNODE_API_KEY, HASHNODE_PUBLICATION_ID" : ""}`;
 
   await sendTelegramMessage(report);
 
