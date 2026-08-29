@@ -57,7 +57,7 @@ const INTERNAL_LINKS = [
  *   accounting integrations                            25 imp
  *
  * The alternative/competitor cluster carries the most weight because it is by
- * far the closest to page one — position 11.3 on 60 impressions for "klippa
+ * far the closest to page one — position 10.8 on 70 impressions for "klippa
  * alternative", against 41.6 at best for the head terms. Competitors don't
  * publish "alternatives to ourselves", so it is winnable ground; the head
  * terms mean outranking ABBYY and Rossum on their own turf.
@@ -66,18 +66,76 @@ const INTERNAL_LINKS = [
  * templates in one go silently cut the best-evidenced category from one run
  * in seven to one in twelve. Uniform rotation treats a 32-impression theme as
  * equal to a 246-impression one.
+ *
+ * ── Reweighted 2026-08-29, after the first check with real post-change data ──
+ *
+ * Impressions alone turned out to be the wrong thing to optimise. The 90-day
+ * export showed 49 pages holding an average position <= 10 and returning zero
+ * clicks between them, on 897 impressions. Ranking on page one and being
+ * clickable are different properties, and the split is search intent:
+ *
+ *   Claude cluster                    89 imp   4 clicks   4.5% CTR
+ *   vendor name alone (navigational)  45 imp   0 clicks   0.0% CTR
+ *   generic / problem                 33 imp   0 clicks   0.0% CTR
+ *   vendor + comparison               3 imp    0 clicks
+ *
+ * The "vendor name alone" row is where the comparison posts landed. A page
+ * titled "InvoiceToData vs Mindee" gets no searches for its own title — this
+ * is a six-month-old brand nobody looks up — so what it actually ranks for is
+ * "mindee invoice ocr" and "mindee invoice ocr api pricing official". Those
+ * searchers want Mindee's own site. Position 9 as an unfamiliar competitor
+ * earns nothing there, and no title rewrite changes that; the intent is
+ * wrong, not the snippet. 306 impressions on invoicetodata-vs-mindee have
+ * produced zero clicks since it was published.
+ *
+ * So `comparison` drops 3 -> 2 and its prompt now defaults to comparing two
+ * competitors against each other, where the searcher is genuinely undecided
+ * and we can appear as the third option. "klippa vs netfira" arrives 48 times
+ * a quarter with no page to meet it; "invoicetodata vs klippa" arrives never.
+ *
+ * The slots move to the three themes with evidence of clickable intent:
+ * `alternative` (3 -> 4, the site's best commercial position), `llm-workflow`
+ * (1 -> 2, the only cluster converting at all), and `direct-answer` (1 -> 2,
+ * whose conversational queries reach page one on the right intent).
+ *
+ * `llm-workflow` deliberately stops at 2 despite the best CTR on the site:
+ * the whole cluster depends on Anthropic's product naming, which is a
+ * dependency to hedge rather than concentrate into. See its prompt.
  */
 type ContentTemplate = { type: string; weight: number; prompt: string };
 
 const CONTENT_TEMPLATES: ContentTemplate[] = [
   {
     type: "comparison",
-    weight: 3,
+    weight: 2,
     prompt: `Write a detailed comparison article for the invoice OCR software market.
-Pick ONE specific competitor to compare against InvoiceToData. Choose from: Klippa, Nanonets, Rossum, Docsumo, Mindee, ABBYY, Veryfi, Tabula, Amazon Textract.
-DO NOT pick the same competitor as a previous article.
-The article should compare features, pricing, ease of use, accuracy, and integrations.
-Position InvoiceToData favorably but fairly.`,
+
+DEFAULT MODE — compare TWO COMPETITORS against each other, not against us.
+Pick two from: Klippa, Nanonets, Rossum, Docsumo, Mindee, ABBYY, Veryfi, Netfira, Amazon Textract, Hypatos, Ocrolus.
+Title it plainly as "X vs Y" — that is the phrase people actually search.
+
+Why this way round, because it is the opposite of what this template used to say:
+The earlier version asked for "X vs InvoiceToData" every time. Nobody searches
+that. This is a six-month-old brand; its name has no query volume. What those
+articles ended up ranking for instead was the competitor's own name — queries
+like "mindee invoice ocr api pricing official", where the searcher wants
+Mindee's website. We rank around position 9 on those and have never once been
+clicked. "klippa vs netfira", by contrast, arrives about 48 times a quarter
+from someone genuinely choosing between two vendors and committed to neither.
+
+Write it as an evaluation someone comparing those two would find useful:
+features, pricing, accuracy, deployment model, integrations, and who each one
+actually suits. Be even-handed — the reader can tell when a comparison has a
+thumb on the scale, and a visibly rigged one loses the reader for both names.
+
+Mention InvoiceToData ONCE, in a short closing section, as a third option
+worth knowing about for readers whose volume or budget suits neither. One
+honest paragraph, not a pitch. If it does not fit naturally, leave it out and
+let the internal links do that work.
+
+Only compare against InvoiceToData directly if the pairing genuinely has
+search demand behind it — which today it does not.
+DO NOT pick a pairing an existing article already covers.`,
   },
   {
     type: "how-to",
@@ -142,7 +200,7 @@ Make it thorough, educational, and naturally link to InvoiceToData as a solution
   },
   {
     type: "alternative",
-    weight: 3,
+    weight: 4,
     prompt: `Write a "Best Alternatives to X" article targeting users searching for alternatives to a popular tool.
 Choose ONE tool: "Best Alternatives to ABBYY", "Best Alternatives to Nanonets", "Best Alternatives to Klippa", "Best Alternatives to Rossum", "Best Alternatives to Docsumo".
 List 5-7 alternatives including InvoiceToData as the #1 recommended alternative.
@@ -175,12 +233,12 @@ Include pros, cons, pricing, and use-case fit for each.`,
 
   {
     type: "llm-workflow",
-    weight: 1,
+    weight: 2,
     prompt: `Write about using a general-purpose AI assistant to get data out of documents and into a spreadsheet.
 
 Why this topic, and its two real limits — read both before writing:
 
-This is the only theme in Search Console currently converting at all (119 impressions produced 3 of the site's clicks, where the head commercial terms produced zero from 2697). Small sample, so treat it as encouraging rather than proven. Competition is thin and we can speak to Claude with first-hand authority, since the product runs on it.
+This is the only theme in Search Console converting at all. On the latest 90-day export it took 89 impressions to 4 clicks — a 4.5% click-through rate, and a third of every click the site received — while 897 impressions across 49 blog pages ranking on page one produced zero. Still a small sample, so treat it as encouraging rather than proven; the point is not the exact rate but that this is the one place where ranking has actually turned into visits. Competition is thin and we can speak to Claude with first-hand authority, since the product runs on it.
 
 LIMIT 1 — the intent is DIY, not purchase. Someone searching "claude convert pdf to excel" wants to do it themselves, for free. Anthropic's own help centre ranks on that query, teaching them exactly that. Writing a sales pitch into this traffic converts badly and reads badly. Write genuinely useful DIY instructions, and be honest about where the manual approach stops scaling — the reader who hits that wall in three months is the one worth earning. Do not oversell.
 
@@ -253,10 +311,12 @@ Be concrete about field mapping — a table showing source field to destination 
   },
   {
     type: "direct-answer",
-    weight: 1,
+    weight: 2,
     prompt: `Write a focused article that answers ONE specific question completely and immediately.
 
-Why this topic: full-sentence, conversational queries are showing up in Search Console — the shape of query that comes from someone talking to an AI assistant rather than typing keywords. Total measured volume is small (around 54 impressions over 90 days) and some of these appeared only once or twice, so the positions attached to them mean very little. This is a bet on a shift in how people search, not a response to established volume.
+Why this topic: full-sentence, conversational queries are showing up in Search Console — the shape of query that comes from someone talking to an AI assistant rather than typing keywords. Total measured volume is still small (around 54 impressions over 90 days) and some appeared only once or twice, so the positions attached to them mean very little on their own. This remains a bet on a shift in how people search rather than a response to established volume.
+
+What raised its weight is the shape of the intent, not the size of it. These queries reach page one — "need help pulling key dates and payment terms from like 500 pdfs automatically" sits around position 8 — and unlike the competitor-name queries the site also ranks for, the person asking has a problem and no vendor in mind yet. That is a reader who can be won. Someone typing "nanonets invoice ocr" cannot be, at any position.
 
 Queries seen (treat as directional, not as scale):
   "what should i check before choosing an invoice ocr tool?"
@@ -273,29 +333,55 @@ Do not bury the answer, and do not open with "in this article we'll explore".`,
 ];
 
 /**
- * Expand the weighted templates into a flat rotation slate, interleaved so a
- * weight of 3 spreads across the cycle instead of producing three
- * consecutive runs of the same template.
+ * Expand the weighted templates into a flat rotation slate, spread so a weight
+ * of 4 lands four times across the cycle rather than four times in a row.
  *
- * Round-robin rather than naive repetition: emit one slot per template per
- * pass, skipping those whose budget is spent. With weights 3/2/1 that yields
- * A B C A B A rather than A A A B B C.
+ * This was a round-robin — emit one slot per template per pass — which is fine
+ * while the top weight is small, but degenerates at the tail: once the lighter
+ * templates are spent, only the heaviest is left, and it emits back to back.
+ * At weights 4/2/1 that put two "alternative" runs next to each other, which
+ * is exactly the clustering the rotation exists to prevent.
+ *
+ * Even spacing instead: a template with weight w claims the w positions that
+ * divide the cycle into w equal parts, so its runs sit N/w apart wherever it
+ * appears in the list.
+ *
+ * The phase offset is load-bearing, not decoration. Phasing every template at
+ * the same point in its interval makes the heaviest one hold both the first
+ * and the last slot — which reads as spaced until the slate cycles and puts
+ * those two back to back. Staggering the phase by list position pushes the
+ * ends onto different templates. It also breaks the tie between the six
+ * templates that share weight 2 and would otherwise compute identical
+ * positions and sort arbitrarily.
+ *
+ * The half-of-total guard is a genuine precondition: above it, no arrangement
+ * avoids repeats, so it fails loudly rather than quietly clustering. Below it,
+ * spacing avoids adjacency for every weight set in use here — verified for the
+ * current two — but that is an empirical claim rather than a proof, and the
+ * dedup gate remains the real backstop against near-identical output.
  */
 function buildRotationSlate(templates: ContentTemplate[]): ContentTemplate[] {
-  const remaining = templates.map((t) => ({ t, left: Math.max(1, t.weight) }));
-  const slate: ContentTemplate[] = [];
-  let anyLeft = true;
-  while (anyLeft) {
-    anyLeft = false;
-    for (const entry of remaining) {
-      if (entry.left > 0) {
-        slate.push(entry.t);
-        entry.left--;
-        if (entry.left > 0) anyLeft = true;
-      }
-    }
+  const weights = templates.map((t) => Math.max(1, t.weight));
+  const total = weights.reduce((a, b) => a + b, 0);
+
+  const heaviest = Math.max(...weights);
+  if (heaviest * 2 > total) {
+    throw new Error(
+      `Rotation weight ${heaviest} exceeds half of ${total}: no arrangement can ` +
+        `avoid consecutive repeats. Lower it or add templates.`
+    );
   }
-  return slate;
+
+  const placed: { at: number; t: ContentTemplate }[] = [];
+  templates.forEach((t, index) => {
+    const w = weights[index];
+    const phase = index / templates.length;
+    for (let k = 0; k < w; k++) {
+      placed.push({ at: ((k + phase) * total) / w, t });
+    }
+  });
+
+  return placed.sort((a, b) => a.at - b.at).map((p) => p.t);
 }
 
 const ROTATION_SLATE = buildRotationSlate(CONTENT_TEMPLATES);

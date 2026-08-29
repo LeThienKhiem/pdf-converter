@@ -45,10 +45,22 @@ const INTERNAL_LINKS = [
  *
  * `weight` mirrors the informational side: slots are allocated from measured
  * Search Console demand, not evenly. The alternative/competitor cluster is
- * the closest thing the site has to page one (position 11.3 on "klippa
+ * the closest thing the site has to page one (position 10.8 on "klippa
  * alternative"), so buyer-intent framings of it get the most room. Uniform
  * rotation would treat a 25-impression theme as equal to a 246-impression
  * one. See the note in seo-content/route.ts for the full theme breakdown.
+ *
+ * Reweighted 2026-08-29 alongside the informational side, but far less: the
+ * intent problem found there does not apply here. These templates target what
+ * a buyer types — "invoice OCR pricing comparison", "cheapest invoice OCR" —
+ * not a vendor's brand name, so they are not stranded on navigational queries
+ * the way "InvoiceToData vs X" was. pricing-comparison in particular is doing
+ * what it should: 179 impressions at position 17.9, which is page two of a
+ * commercial query and a genuine climb from there.
+ *
+ * The one change is `llm-buying-decision` 2 -> 3, for the same reason its
+ * informational counterpart went up — that cluster is the only one on the
+ * site turning impressions into clicks.
  */
 type ContentTemplate = { type: string; weight: number; prompt: string };
 
@@ -131,10 +143,10 @@ Show how InvoiceToData fits into existing workflows and saves time.`,
 
   {
     type: "llm-buying-decision",
-    weight: 2,
+    weight: 3,
     prompt: `Write for someone deciding between "just use an AI assistant" and paying for a purpose-built tool.
 
-This is a real, current buying question and the site already ranks unusually well for the neighbouring queries — "claude pdf to excel" sits at position 5 with a 13% click-through rate, roughly thirty times the site average. Search Console also shows people arriving on "what's the most affordable ai solution for converting invoices to spreadsheets?" and "is there a tool that can automatically extract data from invoices and populate excel forms using ai?".
+This is a real, current buying question and the site ranks unusually well for the neighbouring queries. Across the whole cluster, 89 impressions produced 4 clicks — about 4.5%, against a site-wide average nearer 1%, and a third of every click the site received in the period. Read that as a strong signal of intent, not as a precise rate: it rests on single-digit click counts, and the individual query positions behind it move on a handful of impressions. Search Console also shows people arriving on "what's the most affordable ai solution for converting invoices to spreadsheets?" and "is there a tool that can automatically extract data from invoices and populate excel forms using ai?".
 
 Make the honest case on both sides. An AI assistant subscription is excellent for occasional one-off documents and costs nothing extra if the reader already pays for it. It falls down on repeated work: no batch processing, per-file manual effort, output shape that drifts between runs, no direct .xlsx export, and no audit trail.
 
@@ -155,22 +167,29 @@ Reference the real published pricing at ${SITE_URL}/pricing and link to /tools/b
   },
 ];
 
-/** Interleaved weighted slate — see buildRotationSlate in seo-content/route.ts. */
+/** Evenly-spaced weighted slate — see buildRotationSlate in seo-content/route.ts. */
 function buildRotationSlate(templates: ContentTemplate[]): ContentTemplate[] {
-  const remaining = templates.map((t) => ({ t, left: Math.max(1, t.weight) }));
-  const slate: ContentTemplate[] = [];
-  let anyLeft = true;
-  while (anyLeft) {
-    anyLeft = false;
-    for (const entry of remaining) {
-      if (entry.left > 0) {
-        slate.push(entry.t);
-        entry.left--;
-        if (entry.left > 0) anyLeft = true;
-      }
-    }
+  const weights = templates.map((t) => Math.max(1, t.weight));
+  const total = weights.reduce((a, b) => a + b, 0);
+
+  const heaviest = Math.max(...weights);
+  if (heaviest * 2 > total) {
+    throw new Error(
+      `Rotation weight ${heaviest} exceeds half of ${total}: even spacing cannot ` +
+        `avoid consecutive repeats. Lower it or add templates.`
+    );
   }
-  return slate;
+
+  const placed: { at: number; t: ContentTemplate }[] = [];
+  templates.forEach((t, index) => {
+    const w = weights[index];
+    const phase = index / templates.length;
+    for (let k = 0; k < w; k++) {
+      placed.push({ at: ((k + phase) * total) / w, t });
+    }
+  });
+
+  return placed.sort((a, b) => a.at - b.at).map((p) => p.t);
 }
 
 const ROTATION_SLATE = buildRotationSlate(CONTENT_TEMPLATES);
