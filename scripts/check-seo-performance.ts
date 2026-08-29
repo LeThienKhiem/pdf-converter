@@ -391,6 +391,71 @@ async function run() {
       `\nposition or CTR. GSC also anonymises low-volume queries, so an "absent" row` +
       `\nusually means it fell below the reporting threshold, not that it lost ranking.`
     );
+
+    // ── F. Intent split of page-1 queries ───────────────────────────────
+    //
+    // Added 2026-08-29 after the first real check. Ranking on page 1 turned
+    // out not to be the same thing as being clickable: 49 pages held an
+    // average position <= 10 and returned 0 clicks between them.
+    //
+    // The reason is intent, not snippets. The comparison posts rank for
+    // queries like "nanonets invoice ocr official" — someone typing that
+    // wants Nanonets' own site, and no title rewrite makes result #8 from a
+    // competitor attractive. Those impressions are structurally unclickable,
+    // so counting them as progress overstates where the site is.
+    //
+    // Splitting page-1 impressions this way separates the impressions worth
+    // optimising from the ones worth ignoring. Watch the RIGHT-intent and
+    // Claude rows; treat growth in the navigational row as noise.
+    header("F. PAGE-1 QUERIES BY SEARCH INTENT");
+
+    const VENDORS = ["nanonets", "mindee", "klippa", "rossum", "veryfi", "abbyy",
+                     "docsumo", "netfira", "parseur", "ocrolus", "hypatos"];
+    const COMPARISON = ["alternative", "alternatives", " vs ", "versus",
+                        "competitor", "compare", "comparison", "better than", "instead of"];
+
+    function intentOf(query: string): string {
+      const q = ` ${query.toLowerCase()} `;
+      const vendor = VENDORS.some((v) => q.includes(v));
+      const compare = COMPARISON.some((c) => q.includes(c));
+      if (vendor && compare) return "vendor + comparison   RIGHT intent — grow this";
+      if (vendor) return "vendor name alone     navigational — cannot convert";
+      if (q.includes("claude")) return "Claude cluster        converts today";
+      return "generic / problem     neutral";
+    }
+
+    const buckets = new Map<string, { clicks: number; impressions: number; queries: number }>();
+    for (const [query, snap] of q) {
+      if (snap.position > 10) continue;
+      const key = intentOf(query);
+      const b = buckets.get(key) ?? { clicks: 0, impressions: 0, queries: 0 };
+      b.clicks += snap.clicks;
+      b.impressions += snap.impressions;
+      b.queries += 1;
+      buckets.set(key, b);
+    }
+
+    console.log(`${"clk".padStart(5)} ${"imp".padStart(6)} ${"CTR".padStart(7)} ${"#q".padStart(4)}  bucket`);
+    const ordered = [...buckets.entries()].sort((a, b) => b[1].impressions - a[1].impressions);
+    for (const [name, b] of ordered) {
+      const rate = b.impressions > 0 ? (b.clicks / b.impressions) * 100 : 0;
+      console.log(
+        `${String(b.clicks).padStart(5)} ${String(b.impressions).padStart(6)} ` +
+        `${rate.toFixed(1).padStart(6)}% ${String(b.queries).padStart(4)}  ${name}`
+      );
+    }
+
+    const nav = buckets.get("vendor name alone     navigational — cannot convert");
+    const total = [...buckets.values()].reduce((s, b) => s + b.impressions, 0);
+    if (nav && total > 0) {
+      const share = (nav.impressions / total) * 100;
+      console.log(
+        `\n  ${share.toFixed(0)}% of page-1 impressions are navigational vendor queries.` +
+        `\n  ${share > 30
+            ? "That is the ceiling talking, not the titles. Shift template weight away from\n  bare-vendor topics toward \"X alternative\" and problem-led queries."
+            : "Healthy — most page-1 impressions are on queries that can convert."}`
+      );
+    }
   }
 
   // ── Summary ───────────────────────────────────────────────────────────
