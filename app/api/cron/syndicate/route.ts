@@ -13,13 +13,43 @@ import { sendTelegramMessage } from "@/lib/telegram";
 
 const SITE_URL = "https://invoicetodata.com";
 
+type PlatformResult = {
+  success: boolean;
+  url?: string;
+  error?: string;
+  /** True when the article was already there — a link we have, not one we made. */
+  alreadyExisted?: boolean;
+};
+
+/**
+ * Find the dev.to URL for an article we already published, by canonical.
+ *
+ * Used when dev.to rejects a create with "canonical url has already been
+ * taken": the link exists, we just don't have its URL in hand. Best effort —
+ * on any failure we fall back to recording the canonical itself, which still
+ * marks the post done and lets the queue move on.
+ */
+async function findExistingDevToUrl(apiKey: string, canonical: string): Promise<string | null> {
+  try {
+    const res = await fetch("https://dev.to/api/articles/me/all?per_page=1000", {
+      headers: { "api-key": apiKey },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) return null;
+    const articles = (await res.json()) as { url?: string; canonical_url?: string }[];
+    return articles.find((a) => a.canonical_url === canonical)?.url ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Post article to dev.to via their API */
 async function postToDevTo(
   title: string,
   content: string,
   slug: string,
   tags: string[]
-): Promise<{ success: boolean; url?: string; error?: string }> {
+): Promise<PlatformResult> {
   const apiKey = process.env.DEVTO_API_KEY;
   if (!apiKey) return { success: false, error: "Missing DEVTO_API_KEY" };
 
@@ -59,6 +89,23 @@ async function postToDevTo(
 
     if (!res.ok) {
       const errText = await res.text();
+
+      // 422 "Canonical url has already been taken" is not a failure — it means
+      // this article is already on dev.to under that canonical, so the backlink
+      // we wanted already exists. Recording it as failed makes the cron retry
+      // the same post every day forever.
+      //
+      // Found the hard way: the account already had 34 articles published with
+      // correct canonicals before any of this ran, so the first live run tried
+      // to re-publish one and logged a failure.
+      if (res.status === 422 && /canonical url has already been taken/i.test(errText)) {
+        const existing = await findExistingDevToUrl(apiKey, `${SITE_URL}/blog/${slug}`);
+        return {
+          success: true,
+          url: existing ?? `${SITE_URL}/blog/${slug}`,
+          alreadyExisted: true,
+        };
+      }
       return { success: false, error: `dev.to ${res.status}: ${errText.slice(0, 200)}` };
     }
 
@@ -75,7 +122,7 @@ async function postToHashnode(
   content: string,
   slug: string,
   tags: string[]
-): Promise<{ success: boolean; url?: string; error?: string }> {
+): Promise<PlatformResult> {
   const apiKey = process.env.HASHNODE_API_KEY;
   const publicationId = process.env.HASHNODE_PUBLICATION_ID;
   if (!apiKey || !publicationId) return { success: false, error: "Missing HASHNODE_API_KEY or HASHNODE_PUBLICATION_ID" };
@@ -137,18 +184,26 @@ async function postToHashnode(
       signal: AbortSignal.timeout(30000),
     });
 
-    // The endpoint sometimes answers a POST with the Hashnode web app's HTML
-    // instead of GraphQL JSON — seen consistently from one dev machine whose
-    // IP is also flagged by Google's bot detection, so it reads as an edge or
-    // reputation block rather than a bad request. Parsing that as JSON throws
-    // "Unexpected token '<'", which says nothing useful at 5am in a Telegram
-    // alert. Detect it and name it instead.
+    // gql.hashnode.com answers this POST with the Hashnode web app's HTML
+    // rather than GraphQL JSON. Established so far:
+    //   - happens from the dev machine AND from Vercel, so it is not one bad IP
+    //   - happens with NO auth header at all, on a public query, so it is not
+    //     the token or the Authorization format
+    //   - Accept: application/json and a Bearer prefix change nothing
+    //   - api.hashnode.com (the discontinued endpoint) fails TLS host
+    //     validation, and apidocs.hashnode.com does not resolve from here
+    //
+    // Best current reading is edge filtering of automated/datacenter traffic,
+    // but that is a hypothesis, not a diagnosis. Left unresolved deliberately
+    // rather than guessing at a fix. Parsing the HTML as JSON threw
+    // "Unexpected token '<'", which tells nobody anything at 5am — so name
+    // what actually came back.
     const contentType = res.headers.get("content-type") ?? "";
     if (!contentType.includes("json")) {
       const preview = (await res.text()).slice(0, 80).replace(/\s+/g, " ");
       return {
         success: false,
-        error: `Hashnode returned ${res.status} ${contentType || "no content-type"} instead of JSON (likely an edge/reputation block on the caller's IP, not a bad request). Body starts: ${preview}`,
+        error: `Hashnode returned ${res.status} ${contentType || "no content-type"} instead of GraphQL JSON. Reproduces from Vercel and unauthenticated, so it is not the token — likely edge filtering. Body starts: ${preview}`,
       };
     }
 
@@ -187,7 +242,7 @@ type Platform = "devto" | "hashnode" | "medium";
 const PLATFORMS: {
   key: Platform;
   label: string;
-  post: (title: string, content: string, slug: string, tags: string[]) => Promise<{ success: boolean; url?: string; error?: string }>;
+  post: (title: string, content: string, slug: string, tags: string[]) => Promise<PlatformResult>;
 }[] = [
   { key: "devto", label: "dev.to", post: postToDevTo },
   { key: "hashnode", label: "Hashnode", post: postToHashnode },
@@ -228,19 +283,26 @@ export async function runSyndicate(
   if (!hasSupabaseConfig) throw new Error("Missing Supabase config");
   const supabase = getSupabase();
 
-  // Any platform not yet 'published' for a post is still outstanding —
-  // 'failed' rows are retried, 'skipped' rows retry once credentials exist.
-  const { data: doneRows } = await supabase
+  // Read every row, not just the published ones. Tracking what has been
+  // ATTEMPTED — separately from what succeeded — is what stops a permanently
+  // broken platform from freezing the queue.
+  const { data: allRows } = await supabase
     .from("blog_syndications")
     .select("blog_slug, platform, status")
-    .eq("status", "published")
     .limit(20000);
 
   const publishedBySlug = new Map<string, Set<string>>();
-  for (const row of (doneRows ?? []) as { blog_slug: string; platform: string }[]) {
-    const set = publishedBySlug.get(row.blog_slug) ?? new Set<string>();
-    set.add(row.platform);
-    publishedBySlug.set(row.blog_slug, set);
+  const attemptedBySlug = new Map<string, Set<string>>();
+  for (const row of (allRows ?? []) as { blog_slug: string; platform: string; status: string }[]) {
+    const attempted = attemptedBySlug.get(row.blog_slug) ?? new Set<string>();
+    attempted.add(row.platform);
+    attemptedBySlug.set(row.blog_slug, attempted);
+
+    if (row.status === "published") {
+      const done = publishedBySlug.get(row.blog_slug) ?? new Set<string>();
+      done.add(row.platform);
+      publishedBySlug.set(row.blog_slug, done);
+    }
   }
 
   const { data: posts } = await supabase
@@ -280,10 +342,29 @@ export async function runSyndicate(
     impBySlug.set(s.slug, s.impressions);
   }
 
+  // Posts with a platform we have NEVER TRIED come first; only then impressions.
+  //
+  // Without this the queue deadlocks on a broken platform. Ranking by
+  // impressions alone means the top post is re-picked every day, and if any
+  // platform can never succeed, no post ever reaches "published everywhere" —
+  // so the highest-impression post is selected forever and the backlog never
+  // advances. That is exactly what happened: Hashnode fails on every attempt,
+  // and dev.to answered 422 (already published) for the same post daily.
+  //
+  // Preferring untried work means a permanently broken platform costs one
+  // wasted call per post instead of stalling the whole queue.
+  const untriedCount = (slug: string) =>
+    PLATFORMS.filter((p) => !(attemptedBySlug.get(slug)?.has(p.key) ?? false)).length;
+
   outstanding.sort((a, b) => {
+    const ua = untriedCount(a.slug);
+    const ub = untriedCount(b.slug);
+    if (ub !== ua) return ub - ua;
+
     const ia = impBySlug.get(a.slug) ?? 0;
     const ib = impBySlug.get(b.slug) ?? 0;
     if (ib !== ia) return ib - ia;
+
     // No GSC data for either: newest first.
     return b.created_at.localeCompare(a.created_at);
   });
@@ -354,7 +435,11 @@ export async function runSyndicate(
 
 ${results
   .map((r) => {
-    if (r.status === "published") return `✅ <b>${r.label}</b>: <a href="${r.url}">Published</a>`;
+    if (r.status === "published") {
+      return r.alreadyExisted
+        ? `↩️ <b>${r.label}</b>: <a href="${r.url}">already there</a> — recorded, not re-posted`
+        : `✅ <b>${r.label}</b>: <a href="${r.url}">Published</a>`;
+    }
     if (r.status === "skipped") return `⏭️ <b>${r.label}</b>: not configured`;
     return `❌ <b>${r.label}</b>: ${r.error?.slice(0, 120)}`;
   })
