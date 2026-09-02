@@ -6,14 +6,25 @@
  * instead of just picking whatever post is oldest.
  *
  * Getting the CSV: Search Console -> Performance -> Pages tab -> Export ->
- * CSV. The download contains Pages.csv. Any date range works; 3 months is a
- * good default.
+ * CSV. The download contains Pages.csv alongside Filters.csv.
+ *
+ * USE A LONG WINDOW — 3 months. This header used to say "any date range
+ * works", which is wrong, and the mistake is invisible once made: every
+ * number in this table is a window total, so a 7-day export writes figures
+ * roughly a thirteenth the size of a 90-day one. Nothing errors. The refresh
+ * cron then reads impressions far below its thresholds and quietly stops
+ * finding candidates, and check-seo-performance compares the shrunken rows
+ * against a frozen 90-day baseline and reports every page as collapsed.
+ *
+ * So the window is read from Filters.csv and anything under 28 days is
+ * refused. Override with --force if you genuinely want a short window in
+ * there, knowing it is no longer comparable with what came before.
  *
  * Usage:
- *   npx tsx scripts/ingest-gsc-stats.ts <path-to-Pages.csv> [--dry-run]
+ *   npx tsx scripts/ingest-gsc-stats.ts <path-to-Pages.csv> [--dry-run] [--force]
  *
  * Re-running replaces existing rows for the same slugs, so importing a fresh
- * export each month keeps the table current.
+ * export each month keeps the table current — provided the window matches.
  */
 
 import * as fs from "fs";
@@ -38,15 +49,83 @@ const supabase = createClient(
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes("--dry-run");
+const FORCE = args.includes("--force");
 const csvPath = args.find((a) => !a.startsWith("--"));
 
 if (!csvPath) {
-  console.error("Usage: npx tsx scripts/ingest-gsc-stats.ts <path-to-Pages.csv> [--dry-run]");
+  console.error(
+    "Usage: npx tsx scripts/ingest-gsc-stats.ts <path-to-Pages.csv> [--dry-run] [--force]"
+  );
   process.exit(1);
 }
 if (!fs.existsSync(csvPath)) {
   console.error(`File not found: ${csvPath}`);
   process.exit(1);
+}
+
+const MIN_WINDOW_DAYS = 28;
+
+/**
+ * How many days the export covers, from the Filters.csv that ships beside it.
+ *
+ * GSC writes the range as either a preset ("Last 7 days", "Last 3 months") or
+ * an explicit "2026-05-27 - 2026-08-26". Returns null when the file is absent
+ * or the row is a shape not seen before — unknown is not the same as short,
+ * so an unreadable filter warns rather than blocks.
+ */
+function exportWindowDays(pagesCsv: string): { days: number | null; label: string } {
+  const filters = path.join(path.dirname(pagesCsv), "Filters.csv");
+  if (!fs.existsSync(filters)) {
+    return { days: null, label: "no Filters.csv beside the export" };
+  }
+
+  const row = fs
+    .readFileSync(filters, "utf-8")
+    .split(/\r?\n/)
+    .map((l) => splitCsvLine(l))
+    .find((cells) => cells[0]?.trim().toLowerCase() === "date");
+  const label = row?.[1]?.trim();
+  if (!label) return { days: null, label: "Filters.csv has no Date row" };
+
+  const explicit = label.match(/(\d{4}-\d{2}-\d{2})\s*-\s*(\d{4}-\d{2}-\d{2})/);
+  if (explicit) {
+    const from = Date.parse(explicit[1]);
+    const to = Date.parse(explicit[2]);
+    if (Number.isFinite(from) && Number.isFinite(to)) {
+      return { days: Math.round((to - from) / 86_400_000) + 1, label };
+    }
+  }
+
+  const preset = label.match(/last\s+(\d+)\s+(day|week|month)/i);
+  if (preset) {
+    const n = Number(preset[1]);
+    const perUnit = { day: 1, week: 7, month: 30 }[preset[2].toLowerCase() as "day" | "week" | "month"];
+    return { days: n * perUnit, label };
+  }
+
+  return { days: null, label };
+}
+
+const window = exportWindowDays(csvPath);
+if (window.days === null) {
+  console.warn(`Could not read the export window (${window.label}) — proceeding unchecked.\n`);
+} else {
+  console.log(`Export window: ${window.label} (~${window.days} days)`);
+  if (window.days < MIN_WINDOW_DAYS && !FORCE) {
+    console.error(
+      `\nRefusing to import a ${window.days}-day window.\n\n` +
+        `Every column in blog_gsc_stats is a window total, so this would write numbers\n` +
+        `about ${(90 / window.days).toFixed(0)}x smaller than the 90-day rows already there. The refresh cron\n` +
+        `would stop finding candidates and check-seo-performance would report every\n` +
+        `page as collapsed — both silently, because nothing about it looks like an error.\n\n` +
+        `Re-export with Date = "Last 3 months", or pass --force if you accept that the\n` +
+        `table stops being comparable with the frozen baseline.`
+    );
+    process.exit(1);
+  }
+  if (window.days < MIN_WINDOW_DAYS) {
+    console.warn(`--force given: importing a short window anyway. Comparability is now broken.\n`);
+  }
 }
 
 /**

@@ -50,6 +50,77 @@ const QUERIES_PATH = flagValue("--queries");
 
 const BASELINE_DATE = "2026-08-22";
 
+/** The baseline below is a 90-day window, so a comparison only means something
+ *  against another long window. */
+const BASELINE_WINDOW_DAYS = 90;
+const WINDOW_TOLERANCE_DAYS = 20;
+
+/**
+ * Read the export's date range from the Filters.csv that GSC ships beside the
+ * data, and refuse to compare windows of different lengths.
+ *
+ * Worth the code because the failure is entirely silent. Every figure in a GSC
+ * export is a total over its window, so handing this script a 7-day export
+ * makes each page's impressions collapse by roughly 13x against the frozen
+ * 90-day baseline. Sections A, B and D would all report catastrophic decline,
+ * in the same format they use for real findings, with nothing marking it as an
+ * artifact of the input.
+ *
+ * Returns null when the file is missing or the row is an unfamiliar shape:
+ * unknown is not the same as wrong, so that warns instead of blocking.
+ */
+function exportWindowDays(csv: string): { days: number | null; label: string } {
+  const filters = path.join(path.dirname(csv), "Filters.csv");
+  if (!fs.existsSync(filters)) return { days: null, label: "no Filters.csv beside the export" };
+
+  const row = fs
+    .readFileSync(filters, "utf-8")
+    .split(/\r?\n/)
+    .map((l) => splitCsvLine(l))
+    .find((cells) => cells[0]?.trim().toLowerCase() === "date");
+  const label = row?.[1]?.trim();
+  if (!label) return { days: null, label: "Filters.csv has no Date row" };
+
+  const explicit = label.match(/(\d{4}-\d{2}-\d{2})\s*-\s*(\d{4}-\d{2}-\d{2})/);
+  if (explicit) {
+    const from = Date.parse(explicit[1]);
+    const to = Date.parse(explicit[2]);
+    if (Number.isFinite(from) && Number.isFinite(to)) {
+      return { days: Math.round((to - from) / 86_400_000) + 1, label };
+    }
+  }
+
+  const preset = label.match(/last\s+(\d+)\s+(day|week|month)/i);
+  if (preset) {
+    const perUnit = { day: 1, week: 7, month: 30 }[preset[2].toLowerCase() as "day" | "week" | "month"];
+    return { days: Number(preset[1]) * perUnit, label };
+  }
+
+  return { days: null, label };
+}
+
+function requireComparableWindow(csv: string, what: string): void {
+  const { days, label } = exportWindowDays(csv);
+  if (days === null) {
+    console.warn(`Could not read the ${what} export window (${label}) — assuming it is comparable.`);
+    return;
+  }
+  console.log(`${what} export window: ${label} (~${days} days)`);
+  if (Math.abs(days - BASELINE_WINDOW_DAYS) <= WINDOW_TOLERANCE_DAYS) return;
+
+  console.error(
+    `\nThis export covers ~${days} days; the baseline is ${BASELINE_WINDOW_DAYS}. Those are not comparable.\n\n` +
+      `GSC figures are window totals, so every page would appear to have ` +
+      `${days < BASELINE_WINDOW_DAYS ? "collapsed" : "surged"}\nby roughly ` +
+      `${(Math.max(days, BASELINE_WINDOW_DAYS) / Math.min(days, BASELINE_WINDOW_DAYS)).toFixed(0)}x — ` +
+      `an artifact of the date range, reported in the same format as a\nreal finding.\n\n` +
+      `Re-export with Date = "Last 3 months".\n\n` +
+      `A short export is still useful, just not here: read it on its own as a ` +
+      `snapshot\nof the last few days rather than as a delta against the baseline.`
+  );
+  process.exit(1);
+}
+
 /**
  * How many impressions a row needs before a click-rate change means anything.
  * Below this, expected clicks at a normal CTR round to under one, so zero
@@ -214,6 +285,7 @@ async function loadCurrentPages(): Promise<Map<string, Snapshot> | null> {
       process.exit(1);
     }
     console.log(`Current page data: ${path.basename(CSV_PATH)}`);
+    requireComparableWindow(CSV_PATH, "Pages");
     return parseGscCsv(CSV_PATH, "pages");
   }
 
@@ -362,6 +434,7 @@ async function run() {
     console.error(`\nQueries CSV not found: ${QUERIES_PATH}`);
   } else {
     header("E. QUERY-LEVEL TRACKING");
+    requireComparableWindow(QUERIES_PATH, "Queries");
     const q = parseGscCsv(QUERIES_PATH, "queries");
     const byGroup = new Map<string, string[]>();
 
