@@ -33,12 +33,35 @@ const AVOID_LIST_SIZE = 25;
  * and pings Google to re-crawl sitemap
  */
 
-// Internal pages to link to in blog content
+/**
+ * Internal pages to link to in blog content.
+ *
+ * Ordered by what Search Console says actually earns clicks, because the blog
+ * is where the site's internal link equity comes from and this list decides
+ * where it goes. Over 90 days:
+ *
+ *   /tools/bank-statement-to-excel   795 imp   16 clicks   2.01%
+ *   /tools/pdf-to-excel              839 imp   15 clicks   1.79%
+ *   /                                323 imp   12 clicks   3.72%
+ *   /tools/pdf-to-gsheet               0 imp    0 clicks      —
+ *
+ * The bank converter is the single biggest click-earner on the site and was
+ * absent from this list entirely, so none of the 122 published posts linked to
+ * it. /tools/pdf-to-gsheet was on the list and has never recorded a single
+ * impression. It stays — it is a working tool, and a link from a relevant post
+ * is how it might start earning some — but it is no longer above the pages
+ * that do the converting.
+ *
+ * Hosts are www, matching sitemap.ts, robots.ts, layout's metadataBase and the
+ * live canonical tags. The bare host 308s, so the previous entries sent every
+ * internal link in every post through a redirect.
+ */
 const INTERNAL_LINKS = [
-  { url: "https://invoicetodata.com", anchor: "InvoiceToData" },
-  { url: "https://invoicetodata.com/tools/pdf-to-excel", anchor: "PDF to Excel converter" },
-  { url: "https://invoicetodata.com/tools/pdf-to-gsheet", anchor: "PDF to Google Sheets" },
-  { url: "https://invoicetodata.com/blog", anchor: "our blog" },
+  { url: "https://www.invoicetodata.com/tools/bank-statement-to-excel", anchor: "bank statement to Excel converter" },
+  { url: "https://www.invoicetodata.com/tools/pdf-to-excel", anchor: "PDF to Excel converter" },
+  { url: "https://www.invoicetodata.com", anchor: "InvoiceToData" },
+  { url: "https://www.invoicetodata.com/tools/pdf-to-gsheet", anchor: "PDF to Google Sheets" },
+  { url: "https://www.invoicetodata.com/blog", anchor: "our blog" },
 ];
 
 /**

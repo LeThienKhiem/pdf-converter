@@ -11,7 +11,18 @@ import { sendTelegramMessage } from "@/lib/telegram";
  * This creates FREE backlinks from high-authority domains (dev.to DA 60+, Hashnode DA 70+).
  */
 
-const SITE_URL = "https://invoicetodata.com";
+/**
+ * www, because that is what the site declares as canonical — sitemap.ts,
+ * robots.ts, layout's metadataBase and every live <link rel="canonical"> all
+ * use it, and the bare host 308s here.
+ *
+ * This said "https://invoicetodata.com" before, which meant the canonical_url
+ * broadcast to dev.to named a host that immediately redirects. The whole point
+ * of syndicating with a canonical is to tell the platform which URL owns the
+ * content; pointing it at a redirect weakens exactly the signal we are paying
+ * for. 35 existing articles were published that way.
+ */
+const SITE_URL = "https://www.invoicetodata.com";
 
 type PlatformResult = {
   success: boolean;
@@ -20,6 +31,11 @@ type PlatformResult = {
   /** True when the article was already there — a link we have, not one we made. */
   alreadyExisted?: boolean;
 };
+
+/** The `/blog/<slug>` part of a URL, ignoring host and protocol. */
+function blogPath(url: string): string | null {
+  return url.match(/\/blog\/([^/?#]+)/)?.[1] ?? null;
+}
 
 /**
  * Find the dev.to URL for an article we already published, by canonical.
@@ -37,7 +53,14 @@ async function findExistingDevToUrl(apiKey: string, canonical: string): Promise<
     });
     if (!res.ok) return null;
     const articles = (await res.json()) as { url?: string; canonical_url?: string }[];
-    return articles.find((a) => a.canonical_url === canonical)?.url ?? null;
+
+    // Match on the /blog/<slug> path, not the whole string. The 35 articles
+    // published before SITE_URL moved to www carry non-www canonicals, and an
+    // exact comparison would stop finding them the moment the host changed —
+    // silently, since the caller just falls back to the constructed URL and
+    // records our own blog address as if it were the dev.to one.
+    const path = blogPath(canonical);
+    return articles.find((a) => path && blogPath(a.canonical_url ?? "") === path)?.url ?? null;
   } catch {
     return null;
   }

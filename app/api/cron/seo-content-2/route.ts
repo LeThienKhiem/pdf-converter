@@ -30,13 +30,16 @@ const AVOID_LIST_SIZE = 25;
  * ROI, case studies.
  */
 
-const SITE_URL = "https://invoicetodata.com";
+/** www is canonical — see the note in seo-content/route.ts. The bare host 308s. */
+const SITE_URL = "https://www.invoicetodata.com";
 
+/** Ordered by measured clicks, same rationale as seo-content/route.ts. */
 const INTERNAL_LINKS = [
-  { url: SITE_URL, anchor: "InvoiceToData" },
+  { url: `${SITE_URL}/tools/bank-statement-to-excel`, anchor: "bank statement to Excel converter" },
   { url: `${SITE_URL}/tools/pdf-to-excel`, anchor: "PDF to Excel converter" },
-  { url: `${SITE_URL}/tools/pdf-to-gsheet`, anchor: "PDF to Google Sheets" },
+  { url: SITE_URL, anchor: "InvoiceToData" },
   { url: `${SITE_URL}/pricing`, anchor: "pricing" },
+  { url: `${SITE_URL}/tools/pdf-to-gsheet`, anchor: "PDF to Google Sheets" },
   { url: `${SITE_URL}/blog`, anchor: "our blog" },
 ];
 
