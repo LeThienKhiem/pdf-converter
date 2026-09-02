@@ -3,26 +3,24 @@ import Link from "next/link";
 import { ArrowRight, FileSpreadsheet, Upload, Sparkles, Download, ChevronRight } from "lucide-react";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 
-export const revalidate = 0;
+/**
+ * Cached for an hour rather than rendered per request.
+ *
+ * This was `force-dynamic` with `revalidate = 0`, so every crawl paid for two
+ * Supabase queries before a byte went out. The page lists blog posts and
+ * landing pages — content that changes a few times a day at most — on the
+ * site's largest impression pool (1,867 over 90 days), which is exactly the
+ * page least worth serving cold.
+ */
+export const revalidate = 3600;
 
-const SEO_KEYWORDS = [
-  "Accountants", "Logistics", "Real Estate", "Healthcare", "E-commerce", "Law Firms", "Construction", "Insurance",
-  "Bank Statements", "Invoices", "Purchase Orders", "Payday Stubs", "Freight Bills", "Medical Records", "Tax Returns",
-  "Utility Bills", "Credit Card Statements", "Non-Profits", "Audit Teams", "HR & Payroll",
-] as const;
-
-function slugifyKeyword(label: string): string {
-  return label
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/&/g, "and")
-    .replace(/[^\w-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-export const dynamic = "force-dynamic";
+/**
+ * How many posts to show. Previously unbounded, which meant all 122 published
+ * posts rendered here — 122 links competing with the two tool cards and the
+ * industry grid for the crawler's attention, on a page whose job is to send
+ * people to the converters.
+ */
+const LATEST_POSTS_SHOWN = 8;
 
 export const metadata: Metadata = {
   title: "Free PDF to Excel Tools: AI Invoice OCR by Industry",
@@ -58,31 +56,45 @@ export default async function ToolsPage() {
     try {
       const supabase = getSupabase();
       const [postsRes, pagesRes] = await Promise.all([
-        supabase.from("blogs").select("id, title, slug, created_at").order("created_at", { ascending: false }),
+        supabase
+          .from("blogs")
+          .select("id, title, slug, created_at")
+          .order("created_at", { ascending: false })
+          .limit(LATEST_POSTS_SHOWN),
         supabase.from("landing_pages").select("slug, industry"),
       ]);
       if (postsRes.error) console.error("Supabase Fetch Error:", postsRes.error);
       if (pagesRes.error) console.error("Supabase Fetch Error:", pagesRes.error);
       if (postsRes.data) latestPosts = postsRes.data as BlogRow[];
       if (pagesRes.data) landingPages = (pagesRes.data as LandingPageRow[]).filter((r) => r.slug?.trim());
-      console.log("Fetched Data:", landingPages);
     } catch {
       // ignore
     }
   }
 
-  const dynamicSlugs = new Set(landingPages.map((r) => r.slug));
-  const dynamicItems = landingPages.map((row) => ({
+  /**
+   * The grid is built from landing_pages and nothing else, because a row is
+   * the only thing that makes /tools/<slug> exist — app/tools/[slug]/page.tsx
+   * calls notFound() without one.
+   *
+   * There used to be a second source: a hardcoded keyword list, linked as
+   * /tools/pdf-to-excel-for-<slugified keyword>, filtered by
+   * `!dynamicSlugs.has(slugifyKeyword(kw))`. That filter compared a bare
+   * "accountants" against slugs stored as "pdf-to-excel-for-accountants", so
+   * it never matched and never dropped anything. The page rendered 40 cards
+   * for 22 destinations: 18 exact duplicate links, plus two that 404 because
+   * "E-commerce" and "HR & Payroll" slugify to "e-commerce" and
+   * "hr-and-payroll" while their rows are "ecommerce" and "hr-payroll".
+   *
+   * Every keyword on that list already has a row, so dropping the second
+   * source loses no coverage. scripts/audit-tools-links.ts holds the keyword
+   * list now, as a checklist for whether each intended industry has a page.
+   */
+  const directoryItems = landingPages.map((row) => ({
     slug: row.slug,
     label: row.industry?.trim() || row.slug,
     href: `/tools/${row.slug}`,
   }));
-  const staticItems = SEO_KEYWORDS.filter((kw) => !dynamicSlugs.has(slugifyKeyword(kw))).map((label) => ({
-    slug: slugifyKeyword(label),
-    label,
-    href: `/tools/pdf-to-excel-for-${slugifyKeyword(label)}`,
-  }));
-  const directoryItems = [...dynamicItems, ...staticItems];
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
