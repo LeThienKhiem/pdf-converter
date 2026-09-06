@@ -35,7 +35,7 @@ const SITE_URL = "https://www.invoicetodata.com";
 
 /** Ordered by measured clicks, same rationale as seo-content/route.ts. */
 const INTERNAL_LINKS = [
-  { url: `${SITE_URL}/tools/bank-statement-to-excel`, anchor: "bank statement to Excel converter" },
+  { url: `${SITE_URL}/tools/bank-statement-to-excel`, anchor: "AI bank statement converter" },
   { url: `${SITE_URL}/tools/pdf-to-excel`, anchor: "PDF to Excel converter" },
   { url: SITE_URL, anchor: "InvoiceToData" },
   { url: `${SITE_URL}/pricing`, anchor: "pricing" },
@@ -47,23 +47,24 @@ const INTERNAL_LINKS = [
  * HIGH-CONVERSION content templates — targets buyer-intent keywords.
  *
  * `weight` mirrors the informational side: slots are allocated from measured
- * Search Console demand, not evenly. The alternative/competitor cluster is
- * the closest thing the site has to page one (position 10.8 on "klippa
- * alternative"), so buyer-intent framings of it get the most room. Uniform
- * rotation would treat a 25-impression theme as equal to a 246-impression
- * one. See the note in seo-content/route.ts for the full theme breakdown.
+ * Search Console demand, not evenly. See the note in seo-content/route.ts for
+ * the full breakdown and the reasoning behind each move.
  *
- * Reweighted 2026-08-29 alongside the informational side, but far less: the
- * intent problem found there does not apply here. These templates target what
- * a buyer types — "invoice OCR pricing comparison", "cheapest invoice OCR" —
- * not a vendor's brand name, so they are not stranded on navigational queries
- * the way "InvoiceToData vs X" was. pricing-comparison in particular is doing
- * what it should: 179 impressions at position 17.9, which is page two of a
- * commercial query and a genuine climb from there.
+ * The buyer-intent side needed less correction than the informational one.
+ * These templates target what a buyer types — "invoice OCR pricing
+ * comparison", "cheapest invoice OCR" — rather than a vendor's brand name, so
+ * they were never stranded on navigational queries the way "InvoiceToData
+ * vs X" was. pricing-comparison is doing its job: 213 impressions at position
+ * 18.6, which is page two of a commercial query and a real climb from there.
  *
- * The one change is `llm-buying-decision` 2 -> 3, for the same reason its
- * informational counterpart went up — that cluster is the only one on the
- * site turning impressions into clicks.
+ * Two changes, both on clicks rather than position:
+ *   llm-buying-decision  2 -> 3   (2026-08-29) LLM cluster, 2.99% CTR
+ *   bank-buying-guide    2 -> 3   (2026-09-06) bank+"ai" cluster, 1.89% CTR
+ *
+ * Those are the only two clusters on the site converting impressions into
+ * visits. Everything else measured over the 90 days to 2026-09-04 is either
+ * too deep to click or, in the alternative/competitor case, on page one with
+ * zero clicks across 263 impressions.
  */
 type ContentTemplate = { type: string; weight: number; prompt: string };
 
@@ -158,7 +159,7 @@ Target keywords: "claude pdf to excel", "chatgpt vs invoice ocr tool", "ai invoi
   },
   {
     type: "bank-buying-guide",
-    weight: 2,
+    weight: 3,
     prompt: `Write for someone evaluating how to get bank statement data into their accounting system at a specific scale.
 
 Search Console shows commercial intent here on pages 3-6, with no strong page to serve it: "bank statement to excel software" (position 75), "bank statement converter to excel" (position 57), "software to convert bank statements into excel" (position 49), "ai bank statement converter" (position 24), "bank statement converter ai free" (position 24).

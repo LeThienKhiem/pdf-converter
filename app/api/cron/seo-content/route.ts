@@ -57,7 +57,7 @@ const AVOID_LIST_SIZE = 25;
  * internal link in every post through a redirect.
  */
 const INTERNAL_LINKS = [
-  { url: "https://www.invoicetodata.com/tools/bank-statement-to-excel", anchor: "bank statement to Excel converter" },
+  { url: "https://www.invoicetodata.com/tools/bank-statement-to-excel", anchor: "AI bank statement converter" },
   { url: "https://www.invoicetodata.com/tools/pdf-to-excel", anchor: "PDF to Excel converter" },
   { url: "https://www.invoicetodata.com", anchor: "InvoiceToData" },
   { url: "https://www.invoicetodata.com/tools/pdf-to-gsheet", anchor: "PDF to Google Sheets" },
@@ -79,51 +79,47 @@ const INTERNAL_LINKS = [
  *   non-invoice document types                         32 imp
  *   accounting integrations                            25 imp
  *
- * The alternative/competitor cluster carries the most weight because it is by
- * far the closest to page one — position 10.8 on 70 impressions for "klippa
- * alternative", against 41.6 at best for the head terms. Competitors don't
- * publish "alternatives to ourselves", so it is winnable ground; the head
- * terms mean outranking ABBYY and Rossum on their own turf.
+ * ── Reweighted 2026-09-06, on clicks rather than position ──
  *
- * Weights matter because rotation used to be uniform, and adding five
- * templates in one go silently cut the best-evidenced category from one run
- * in seven to one in twelve. Uniform rotation treats a 32-impression theme as
- * equal to a 246-impression one.
+ * The previous pass moved weight onto whichever cluster ranked shallowest and
+ * called that "clickable intent". Four weeks of data say that was still the
+ * wrong axis. Site-wide average position went from 35 to 12 and impressions
+ * grew 34%, while click-through stayed flat at 0.55% — the ranking gains
+ * arrived on queries that do not convert.
  *
- * ── Reweighted 2026-08-29, after the first check with real post-change data ──
+ * Measured over the 90 days to 2026-09-04, by cluster:
  *
- * Impressions alone turned out to be the wrong thing to optimise. The 90-day
- * export showed 49 pages holding an average position <= 10 and returning zero
- * clicks between them, on 897 impressions. Ranking on page one and being
- * clickable are different properties, and the split is search intent:
+ *   LLM (claude / gemini)          134 imp   4 clicks   2.99%
+ *   bank statement + "ai"          159 imp   3 clicks   1.89%
+ *   alternative / competitor       263 imp   0 clicks   0.00%
  *
- *   Claude cluster                    89 imp   4 clicks   4.5% CTR
- *   vendor name alone (navigational)  45 imp   0 clicks   0.0% CTR
- *   generic / problem                 33 imp   0 clicks   0.0% CTR
- *   vendor + comparison               3 imp    0 clicks
+ * `alternative` was the heaviest template at weight 4, justified last time as
+ * "the site's best commercial position". It has 263 impressions and zero
+ * clicks, including 83 at position 10.2 for "klippa alternative". At that
+ * position roughly three clicks would be expected; none arrived. Someone
+ * searching for a way off Klippa still wants a name they recognise, and an
+ * unknown brand at the foot of page one does not get that click. So it drops
+ * 4 -> 2: worth writing, not worth the largest share.
  *
- * The "vendor name alone" row is where the comparison posts landed. A page
- * titled "InvoiceToData vs Mindee" gets no searches for its own title — this
- * is a six-month-old brand nobody looks up — so what it actually ranks for is
- * "mindee invoice ocr" and "mindee invoice ocr api pricing official". Those
- * searchers want Mindee's own site. Position 9 as an unfamiliar competitor
- * earns nothing there, and no title rewrite changes that; the intent is
- * wrong, not the snippet. 306 impressions on invoicetodata-vs-mindee have
- * produced zero clicks since it was published.
+ * The weight goes to the two clusters with clicks on the board — `llm-workflow`
+ * 2 -> 3 and `bank-export` 2 -> 3. "bank statement converter ai" is also the
+ * fastest-growing live query on the site, 77 -> 121 impressions in five days
+ * while holding position 10.1.
  *
- * So `comparison` drops 3 -> 2 and its prompt now defaults to comparing two
- * competitors against each other, where the searcher is genuinely undecided
- * and we can appear as the third option. "klippa vs netfira" arrives 48 times
- * a quarter with no page to meet it; "invoicetodata vs klippa" arrives never.
+ * One caveat kept from last time: `llm-workflow` rests on Anthropic's product
+ * naming, so its traffic is borrowed. Weight 3 is a deliberate ceiling rather
+ * than an endorsement of concentrating there. See its prompt.
  *
- * The slots move to the three themes with evidence of clickable intent:
- * `alternative` (3 -> 4, the site's best commercial position), `llm-workflow`
- * (1 -> 2, the only cluster converting at all), and `direct-answer` (1 -> 2,
- * whose conversational queries reach page one on the right intent).
- *
- * `llm-workflow` deliberately stops at 2 despite the best CTR on the site:
- * the whole cluster depends on Anthropic's product naming, which is a
- * dependency to hedge rather than concentrate into. See its prompt.
+ * A separate finding that reframes the head terms: of 418 queries present in
+ * both the 08-30 and 09-04 exports, 295 were frozen — identical impressions
+ * AND identical position, meaning they stopped accruing. Those 2,399
+ * impressions average position 66.2 and produced 2 clicks. "ocr accounts
+ * payable", "accounts payable ocr" and "accounts payable ocr software" alone
+ * are 1,001 frozen impressions at position 82-87. They are history sitting
+ * inside the reporting window, not demand to chase; the same is true of the
+ * plain "bank statement to excel" variants at position 45-53. Live demand is
+ * 117 queries averaging position 50.5, and the shallow, converting part of it
+ * is the two clusters above.
  */
 type ContentTemplate = { type: string; weight: number; prompt: string };
 
@@ -223,7 +219,7 @@ Make it thorough, educational, and naturally link to InvoiceToData as a solution
   },
   {
     type: "alternative",
-    weight: 4,
+    weight: 2,
     prompt: `Write a "Best Alternatives to X" article targeting users searching for alternatives to a popular tool.
 Choose ONE tool: "Best Alternatives to ABBYY", "Best Alternatives to Nanonets", "Best Alternatives to Klippa", "Best Alternatives to Rossum", "Best Alternatives to Docsumo".
 List 5-7 alternatives including InvoiceToData as the #1 recommended alternative.
@@ -256,7 +252,7 @@ Include pros, cons, pricing, and use-case fit for each.`,
 
   {
     type: "llm-workflow",
-    weight: 2,
+    weight: 3,
     prompt: `Write about using a general-purpose AI assistant to get data out of documents and into a spreadsheet.
 
 Why this topic, and its two real limits — read both before writing:
@@ -283,7 +279,7 @@ Write for someone who has already tried pasting a PDF into a chat window.`,
   },
   {
     type: "bank-export",
-    weight: 2,
+    weight: 3,
     prompt: `Write a practical guide to getting transaction data out of a specific bank and into a spreadsheet.
 
 Why this topic: bank-statement intent is the broadest long-tail cluster the site receives — 87 distinct queries over 90 days. Individually they are tiny, but together they total 291 impressions, and the best of them still sits around position 55, so there is demand arriving with no strong page to meet it. The programmatic pages at /tools/bank/{slug} already exist to catch it.
