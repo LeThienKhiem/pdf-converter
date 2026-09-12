@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { Environment, Paddle } from "@paddle/paddle-node-sdk";
 import { getSupabase } from "@/lib/supabase";
 import { classifyPriceId, type PurchaseKind } from "@/lib/paddlePrices";
+import { alertCancellation, alertPayment, emailForUser } from "@/lib/salesAlerts";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 /**
  * Paddle Billing webhook.
@@ -126,8 +128,10 @@ async function handleTransactionCompleted(data: PaddleEventData) {
       .update({ credits: current + CREDITS_PACK_AMOUNT })
       .eq("id", userId);
     if (updateError) {
+      await alertApplyFailed(userId, kind, amountUsd, updateError.message);
       return NextResponse.json({ error: "Database update failed" }, { status: 500 });
     }
+    await alertPayment({ kind, amountUsd, userId, email: await emailForUser(userId) });
     return NextResponse.json({ message: "Credits added" }, { status: 200 });
   }
 
@@ -143,13 +147,46 @@ async function handleTransactionCompleted(data: PaddleEventData) {
       })
       .eq("id", userId);
     if (updateError) {
+      await alertApplyFailed(userId, kind, amountUsd, updateError.message);
       return NextResponse.json({ error: "Database update failed" }, { status: 500 });
     }
+    await alertPayment({ kind, amountUsd, userId, email: await emailForUser(userId) });
     return NextResponse.json({ message: "Week pass activated" }, { status: 200 });
   }
 
-  // Subscription payment — plan state is handled by subscription.* events.
+  // Subscription payment — plan state is handled by subscription.* events,
+  // but the money arrived here, so this is where the alert belongs.
+  await alertPayment({ kind, amountUsd, userId, email: await emailForUser(userId) });
   return NextResponse.json({ message: "Subscription payment recorded" }, { status: 200 });
+}
+
+/**
+ * Paid, but the plan/credits could not be applied. Paddle's retry will see the
+ * transaction row as a duplicate and skip it, so this needs a human — alert
+ * loudly rather than letting a paying customer get nothing in silence.
+ */
+async function alertApplyFailed(
+  userId: string,
+  kind: PurchaseKind,
+  amountUsd: number | null,
+  detail: string
+) {
+  try {
+    await sendTelegramMessage(
+      [
+        "🚨 <b>PAYMENT RECEIVED BUT NOT APPLIED</b>",
+        "",
+        `Kind: ${kind}`,
+        `Amount: ${amountUsd != null ? `$${amountUsd.toFixed(2)}` : "—"}`,
+        `User: ${userId}`,
+        `Error: ${detail.replace(/[<>&]/g, "")}`,
+        "",
+        "Apply the plan manually in Supabase — the webhook retry will be treated as a duplicate.",
+      ].join("\n")
+    );
+  } catch (err) {
+    console.error("[Paddle] apply-failed alert failed:", err);
+  }
 }
 
 async function handleSubscriptionActive(data: PaddleEventData) {
@@ -189,7 +226,7 @@ async function handleSubscriptionActive(data: PaddleEventData) {
   return NextResponse.json({ message: `Plan set to ${plan}` }, { status: 200 });
 }
 
-async function handleSubscriptionEnded(data: PaddleEventData) {
+async function handleSubscriptionEnded(data: PaddleEventData, eventType = "subscription ended") {
   const userId = getUserId(data);
   const supabase = getSupabase();
 
@@ -204,6 +241,11 @@ async function handleSubscriptionEnded(data: PaddleEventData) {
   if (error) {
     return NextResponse.json({ error: "Database update failed" }, { status: 500 });
   }
+  await alertCancellation({
+    userId,
+    email: userId ? await emailForUser(userId) : null,
+    eventType,
+  });
   return NextResponse.json({ message: "Downgraded to free" }, { status: 200 });
 }
 
@@ -251,7 +293,7 @@ export async function POST(req: Request) {
       case "subscription.canceled":
       case "subscription.paused":
       case "subscription.past_due":
-        return await handleSubscriptionEnded(eventData.data);
+        return await handleSubscriptionEnded(eventData.data, eventData.eventType);
       default:
         return NextResponse.json({ message: "Ignored" }, { status: 200 });
     }

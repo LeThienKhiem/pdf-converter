@@ -5,6 +5,7 @@ import { runBuyerIntent } from "@/app/api/cron/seo-content-2/route";
 import { runContentRefresh } from "@/app/api/cron/content-refresh/route";
 import { runEmailDrip } from "@/app/api/cron/email-drip/route";
 import { runGscDaily } from "@/app/api/cron/gsc-daily/route";
+import { alertDailyHealth } from "@/lib/salesAlerts";
 import { runBacklinkTasks } from "@/app/api/cron/backlink-tasks/route";
 import { runSyndicate } from "@/app/api/cron/syndicate/route";
 
@@ -95,6 +96,15 @@ export async function GET(request: Request) {
       gsc = { error: gscErr instanceof Error ? gscErr.message : "failed" };
     }
 
+    // Daily health line to Telegram — silent on a day with no activity.
+    let health: unknown = null;
+    try {
+      health = await alertDailyHealth();
+    } catch (hErr) {
+      console.error("[Master Cron] Health alert failed:", hErr);
+      health = { error: hErr instanceof Error ? hErr.message : "failed" };
+    }
+
     // Backlink reminders, Mondays only.
     //
     // /api/cron/backlink-tasks was never registered in vercel.json and never
@@ -137,6 +147,7 @@ export async function GET(request: Request) {
       result,
       emailDrip,
       gsc,
+      health,
       backlinks,
       syndication,
     });
