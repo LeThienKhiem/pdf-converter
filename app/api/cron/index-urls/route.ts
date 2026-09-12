@@ -3,12 +3,29 @@ import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 
 /**
- * Vercel Cron Job — runs every 6 hours
- * Auto-submits new blog URLs to Google Indexing API and pings Bing
- * for faster indexing of new content.
+ * DEAD — do not wire this into vercel.json expecting it to work.
  *
- * Uses Google Custom Search API to check if URL is already indexed,
- * then submits unindexed URLs via Google's indexing ping + Bing Webmaster.
+ * Both mechanisms it is built on were switched off by their owners:
+ *
+ *   google.com/ping?sitemap=   Google announced the sitemaps ping endpoint was
+ *                              going away in June 2023 and removed it. Requests
+ *                              are not processed.
+ *   bing.com/ping?sitemap=     Bing retired its equivalent over the same period.
+ *
+ * So the cron can report success — a 200 or a redirect still comes back — while
+ * submitting nothing. Nothing here is registered in vercel.json today, which is
+ * the only reason it has not been quietly producing green reports.
+ *
+ * There is no automated replacement for this site. Google's Indexing API is
+ * limited to JobPosting and BroadcastEvent pages and would be a policy
+ * violation here. Requesting a recrawl means Search Console's URL Inspection
+ * tool, by hand, one URL at a time — which is fine, because the moments it
+ * matters are rare: a canonical or redirect change on a high-value page, not
+ * routine publishing. New posts get picked up from sitemap.xml on Google's own
+ * schedule.
+ *
+ * Kept rather than deleted because the Custom Search index-checking helper
+ * below is still sound if anyone wants an "is this indexed?" report.
  */
 
 const SITE_URL = "https://invoicetodata.com";
