@@ -44,9 +44,25 @@ export const metadata: Metadata = {
     "AI OCR",
   ],
   metadataBase: new URL(siteUrl),
-  alternates: {
-    canonical: siteUrl,
-  },
+  /**
+   * No `alternates.canonical` here, deliberately.
+   *
+   * Metadata set in this layout is inherited by every page that does not
+   * override it, so `canonical: siteUrl` made /tools, /blog,
+   * /tools/bank-statement-to-excel, /tools/pdf-to-excel and /tools/pdf-to-gsheet
+   * all declare the homepage as their canonical URL — telling Google they are
+   * duplicates of "/" and that "/" is the one worth indexing. Those five pages
+   * carry roughly 4,500 impressions a quarter between them, including the two
+   * that earn more clicks than the rest of the site combined.
+   *
+   * A relative value does not fix it: per the Next.js metadata docs, both "/"
+   * and "./" resolve against metadataBase to the site root, not to the current
+   * route. There is no inherited self-referencing form, so each page declares
+   * its own.
+   *
+   * Omitting the tag is the safe default — a page with no canonical is
+   * self-canonical — which is why the homepage needs nothing here.
+   */
   openGraph: {
     title: "PDF to Excel Free: AI Invoice OCR",
     description:

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/tools/pdf-to-gsheet" },
   title: "PDF to Google Sheets Free: AI Extraction in 1 Click",
   description:
     "Convert PDFs and invoices to Google Sheets free with AI. Paste your Sheet URL and sync in one click — no downloads, no reformatting, ready in seconds.",

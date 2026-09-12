@@ -7,6 +7,7 @@ import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/blog" },
   title: "Blog | Convert PDF to Excel & Bank Statements with AI",
   description:
     "Guides on converting PDF to Excel without losing format, and the fastest way to convert PDF bank statements to CSV or Excel. AI-powered extraction tips.",

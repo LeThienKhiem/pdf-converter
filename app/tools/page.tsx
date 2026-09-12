@@ -23,6 +23,7 @@ export const revalidate = 3600;
 const LATEST_POSTS_SHOWN = 8;
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/tools" },
   title: "Free PDF to Excel Tools: AI Invoice OCR by Industry",
   description:
     "Free AI tools to convert PDF invoices, bank statements, and industry docs to Excel or Google Sheets. Discover your converter — start free today.",

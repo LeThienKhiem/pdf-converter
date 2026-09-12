@@ -31,6 +31,7 @@ import type { Metadata } from "next";
  * "Invoice", which the ranking title carried; put back.
  */
 export const metadata: Metadata = {
+  alternates: { canonical: "/tools/pdf-to-excel" },
   title: "Free PDF Invoice to Excel Converter — Powered by Claude AI",
   description:
     "Convert PDF invoices to Excel free, powered by Claude AI. Extract tables, line items, and totals in seconds — no signup for your first file. Try it today.",
