@@ -240,6 +240,7 @@ export async function POST(request: Request) {
       );
     }
 
+    const startedAt = Date.now();
     const isPaidExtract =
       entitlement.source === "plan" || entitlement.source === "credits";
     const model = isPaidExtract ? PDF_MODEL_PREMIUM : PDF_MODEL;
@@ -286,7 +287,13 @@ export async function POST(request: Request) {
         .finalMessage();
     } catch (err) {
       await refundExtraction(entitlement);
-      await recordExtraction(entitlement, tool, "failed");
+      await recordExtraction(entitlement, tool, "failed", {
+        errorCode: "ai_error",
+        durationMs: Date.now() - startedAt,
+        pagesTotal,
+        pagesExtracted,
+        model,
+      });
       if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError) {
         console.warn("[Extract API] Anthropic transient error after retries:", err.status, err.message);
         return NextResponse.json(
@@ -301,7 +308,15 @@ export async function POST(request: Request) {
     if (!responseText.trim()) {
       console.error("[Extract] Empty response. Stop reason:", response.stop_reason);
       await refundExtraction(entitlement);
-      await recordExtraction(entitlement, tool, "failed");
+      await recordExtraction(entitlement, tool, "failed", {
+        errorCode: "empty_response",
+        durationMs: Date.now() - startedAt,
+        pagesTotal,
+        pagesExtracted,
+        model,
+        inputTokens: response.usage?.input_tokens ?? null,
+        outputTokens: response.usage?.output_tokens ?? null,
+      });
       return NextResponse.json(
         { error: "Extraction failed. No content returned." },
         { status: 500 }
@@ -317,7 +332,15 @@ export async function POST(request: Request) {
         responseText.slice(0, 500)
       );
       await refundExtraction(entitlement);
-      await recordExtraction(entitlement, tool, "failed");
+      await recordExtraction(entitlement, tool, "failed", {
+        errorCode: response.stop_reason === "max_tokens" ? "truncated" : "parse_failed",
+        durationMs: Date.now() - startedAt,
+        pagesTotal,
+        pagesExtracted,
+        model,
+        inputTokens: response.usage?.input_tokens ?? null,
+        outputTokens: response.usage?.output_tokens ?? null,
+      });
       return NextResponse.json(
         { error: "Extraction failed. Invalid JSON from model." },
         { status: 500 }
@@ -326,7 +349,16 @@ export async function POST(request: Request) {
 
     const data = normalizeTo2DArray(parsed);
     const truncated = response.stop_reason === "max_tokens";
-    await recordExtraction(entitlement, tool, "success");
+    await recordExtraction(entitlement, tool, "success", {
+      errorCode: truncated ? "truncated_salvaged" : null,
+      durationMs: Date.now() - startedAt,
+      pagesTotal,
+      pagesExtracted,
+      model,
+      inputTokens: response.usage?.input_tokens ?? null,
+      outputTokens: response.usage?.output_tokens ?? null,
+      rowsOut: data.length,
+    });
     console.log(
       "[Extract API] Success, rows:", data.length,
       "cols:", data[0]?.length ?? 0,

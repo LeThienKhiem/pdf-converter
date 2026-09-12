@@ -4,6 +4,7 @@ import { runInformational } from "@/app/api/cron/seo-content/route";
 import { runBuyerIntent } from "@/app/api/cron/seo-content-2/route";
 import { runContentRefresh } from "@/app/api/cron/content-refresh/route";
 import { runEmailDrip } from "@/app/api/cron/email-drip/route";
+import { runGscDaily } from "@/app/api/cron/gsc-daily/route";
 import { runBacklinkTasks } from "@/app/api/cron/backlink-tasks/route";
 import { runSyndicate } from "@/app/api/cron/syndicate/route";
 
@@ -84,6 +85,16 @@ export async function GET(request: Request) {
       emailDrip = { error: dripErr instanceof Error ? dripErr.message : "failed" };
     }
 
+    // Search Console daily rollup for the /admin dashboard. No-ops until the
+    // GSC service account is configured.
+    let gsc: unknown = null;
+    try {
+      gsc = await runGscDaily();
+    } catch (gscErr) {
+      console.error("[Master Cron] GSC daily failed:", gscErr);
+      gsc = { error: gscErr instanceof Error ? gscErr.message : "failed" };
+    }
+
     // Backlink reminders, Mondays only.
     //
     // /api/cron/backlink-tasks was never registered in vercel.json and never
@@ -125,6 +136,7 @@ export async function GET(request: Request) {
       master: { day, task, overridden: !!validOverride },
       result,
       emailDrip,
+      gsc,
       backlinks,
       syndication,
     });

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isAdminRequest } from "@/lib/adminAuth";
 
 // Supabase: set these in .env.local
 // NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
@@ -17,6 +18,12 @@ type BlogPayload = {
 
 export async function POST(request: Request) {
   try {
+    // This endpoint publishes to the live site. It was previously open to the
+    // internet — the only gate was a hardcoded key in client-side code.
+    if (!(await isAdminRequest())) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json(
         { error: "Server missing Supabase configuration (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)." },

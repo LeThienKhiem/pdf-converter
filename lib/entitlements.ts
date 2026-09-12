@@ -200,10 +200,23 @@ export async function checkAndConsume(): Promise<Entitlement> {
 }
 
 /** Log the extraction outcome (usage analytics + guest/IP limits). */
+export type ExtractionTelemetry = {
+  /** Why it failed: truncated | parse_failed | ai_error | empty_response | no_data */
+  errorCode?: string | null;
+  durationMs?: number | null;
+  pagesTotal?: number | null;
+  pagesExtracted?: number | null;
+  model?: string | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  rowsOut?: number | null;
+};
+
 export async function recordExtraction(
   ent: EntitlementGranted,
   tool: string,
-  status: "success" | "failed"
+  status: "success" | "failed",
+  telemetry: ExtractionTelemetry = {}
 ): Promise<void> {
   try {
     const admin = getSupabase();
@@ -214,6 +227,14 @@ export async function recordExtraction(
       tool,
       status,
       plan: ent.plan,
+      error_code: telemetry.errorCode ?? null,
+      duration_ms: telemetry.durationMs ?? null,
+      pages_total: telemetry.pagesTotal ?? null,
+      pages_extracted: telemetry.pagesExtracted ?? null,
+      model: telemetry.model ?? null,
+      input_tokens: telemetry.inputTokens ?? null,
+      output_tokens: telemetry.outputTokens ?? null,
+      rows_out: telemetry.rowsOut ?? null,
     });
   } catch (err) {
     console.error("[Entitlements] recordExtraction failed:", err);
