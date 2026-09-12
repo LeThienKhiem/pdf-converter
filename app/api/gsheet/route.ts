@@ -27,6 +27,8 @@ const SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as
 - No commentary, summary, or trailing explanation after the array.
 - Do not merge or summarize. Act only as a Visual-to-Excel copier.`;
 
+export const maxDuration = 300; // long documents stream for minutes
+
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const NEW_SPREADSHEET_TITLE = "Extracted Data - InvoiceToData";
 
@@ -146,9 +148,9 @@ export async function POST(request: Request) {
     const client = getAnthropic();
     let aiResponse: Anthropic.Message;
     try {
-      aiResponse = await client.messages.create({
+      aiResponse = await client.messages.stream({
         model: isPaidExtract ? PDF_MODEL_PREMIUM : PDF_MODEL,
-        max_tokens: 16000,
+        max_tokens: 64000,
         system: SYSTEM_PROMPT,
         messages: [
           {
@@ -161,7 +163,7 @@ export async function POST(request: Request) {
             ],
           },
         ],
-      });
+      }).finalMessage();
     } catch (err) {
       await refundExtraction(entitlement);
       await recordExtraction(entitlement, "pdf-to-gsheet", "failed");

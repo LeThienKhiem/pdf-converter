@@ -278,6 +278,11 @@ export default function BankStatementToExcelPage() {
         if (!session) incrementGuestUsage();
         paidSeen = outcome.source === "plan" || outcome.source === "credits";
         results.push({ name: items[i]!.file.name, grid: outcome.grid });
+        if (outcome.truncated) {
+          setToastMessage(
+            `${items[i]!.file.name}: very long — extracted the first ${outcome.grid.length} rows.`
+          );
+        }
         setBatch((prev) =>
           prev.map((b, j) => (j === i ? { ...b, status: "done" as FileStatus, rows: outcome.grid.length } : b))
         );

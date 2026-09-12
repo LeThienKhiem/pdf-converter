@@ -57,6 +57,9 @@ const ALLOWED_TYPES = [
   "image/gif",
 ];
 
+// Long multi-page statements stream for minutes — give the function room.
+export const maxDuration = 300;
+
 const FREE_MAX_BYTES = 5 * 1024 * 1024; // 5MB — also the practical serverless body limit
 const PAID_MAX_BYTES = 25 * 1024 * 1024; // 25MB — delivered via storage upload path
 const STORAGE_BUCKET = "uploads";
@@ -248,14 +251,19 @@ export async function POST(request: Request) {
 
     let response: Anthropic.Message;
     try {
-      response = await client.messages.create({
-        model,
-        max_tokens: 16000,
-        system: systemPrompt,
-        messages: [
-          { role: "user", content: buildContent(mimeType, base64) },
-        ],
-      });
+      // Streaming with a 64K output cap: real bank statements run 5-10 pages
+      // and were blowing past the old 16K cap, truncating the JSON mid-array —
+      // the #1 cause of failed extractions in production.
+      response = await client.messages
+        .stream({
+          model,
+          max_tokens: 64000,
+          system: systemPrompt,
+          messages: [
+            { role: "user", content: buildContent(mimeType, base64) },
+          ],
+        })
+        .finalMessage();
     } catch (err) {
       await refundExtraction(entitlement);
       await recordExtraction(entitlement, tool, "failed");
@@ -297,14 +305,20 @@ export async function POST(request: Request) {
     }
 
     const data = normalizeTo2DArray(parsed);
+    const truncated = response.stop_reason === "max_tokens";
     await recordExtraction(entitlement, tool, "success");
-    console.log("[Extract API] Success, rows:", data.length, "cols:", data[0]?.length ?? 0);
+    console.log(
+      "[Extract API] Success, rows:", data.length,
+      "cols:", data[0]?.length ?? 0,
+      truncated ? "(TRUNCATED at max_tokens — salvaged partial)" : ""
+    );
     return NextResponse.json({
       data,
       plan: entitlement.plan,
       source: entitlement.source,
       remaining: entitlement.remaining,
       categorized: categorize,
+      truncated,
     });
   } catch (err) {
     console.error("[Extract] Unexpected error:", err);

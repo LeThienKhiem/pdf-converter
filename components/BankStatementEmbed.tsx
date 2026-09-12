@@ -63,6 +63,11 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
       if (!session) incrementGuestUsage();
       setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
       setGrid(outcome.grid);
+      if (outcome.truncated) {
+        setError(
+          `Very long document — extracted the first ${outcome.grid.length} rows. Split the PDF to convert the rest.`
+        );
+      }
     } else if (outcome.status === 402 || outcome.status === 413 || outcome.status === 401) {
       setModalVariant(
         outcome.reason === "guest_limit"

@@ -44,10 +44,31 @@ export function parseJsonArrayLoose(text: string): unknown | null {
   // Walk to the first '[' and last ']' so any wrapping prose is dropped.
   const firstBracket = cleaned.indexOf("[");
   const lastBracket = cleaned.lastIndexOf("]");
-  if (firstBracket === -1 || lastBracket <= firstBracket) return null;
+  if (firstBracket === -1 || lastBracket <= firstBracket) {
+    return salvageTruncatedArray(cleaned);
+  }
   const slice = cleaned.slice(firstBracket, lastBracket + 1);
   try {
     return JSON.parse(slice);
+  } catch {
+    return salvageTruncatedArray(cleaned);
+  }
+}
+
+/**
+ * Recover complete rows from a response cut off mid-array (max_tokens hit
+ * on long documents). Drops the trailing partial row and closes the outer
+ * array — a partial result beats an error for a 10-page statement.
+ */
+function salvageTruncatedArray(cleaned: string): unknown | null {
+  const firstBracket = cleaned.indexOf("[");
+  if (firstBracket === -1) return null;
+  const body = cleaned.slice(firstBracket);
+  const lastRowEnd = body.lastIndexOf("],");
+  if (lastRowEnd <= 0) return null;
+  try {
+    const parsed = JSON.parse(body.slice(0, lastRowEnd + 1) + "]");
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
   } catch {
     return null;
   }

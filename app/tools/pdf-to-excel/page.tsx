@@ -237,6 +237,11 @@ export default function PdfToExcelPage() {
           setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
           setExtractionResult(outcome.grid);
           setExtractedFileName(nameForResult);
+          if (outcome.truncated) {
+            setToastMessage(
+              `Very long document — extracted the first ${outcome.grid.length} rows. Split the PDF to convert the rest.`
+            );
+          }
         } else if (outcome.status === 402 || outcome.status === 413 || outcome.status === 401) {
           setQuotaModalVariant(reasonToVariant(outcome.reason));
           setShowQuotaModal(true);
