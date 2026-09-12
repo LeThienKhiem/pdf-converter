@@ -26,7 +26,7 @@ import { canGuestConvert, incrementGuestUsage } from "@/lib/pdfUsage";
 import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimitModal";
 import { createClient } from "@/lib/supabase/client";
 import { downloadQuickBooksCsv } from "@/lib/quickbooks";
-import { extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
+import { countPdfPagesClient, estimateExtractMs, extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 
 const PENDING_KEY = "itd_pending_pdf";
@@ -40,7 +40,6 @@ function reasonToVariant(reason: string | undefined): QuotaLimitVariant {
 }
 
 const ACCEPT = ".pdf,image/*";
-const PROGRESS_DURATION_MS = 15000;
 const PROGRESS_TICK_MS = 100;
 
 function isValidFileType(file: File): boolean {
@@ -228,18 +227,23 @@ export default function PdfToExcelPage() {
     setProgress(0);
     const nameForResult = selectedFile.name;
 
+    // Page-aware progress: the ramp duration scales with the document size,
+    // so a 12-page statement doesn't sit at 90% for a minute.
+    const pageCount = await countPdfPagesClient(selectedFile);
+    const durationMs = estimateExtractMs(pageCount);
+
     const startTime = Date.now();
     progressIntervalRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
-      if (elapsed >= PROGRESS_DURATION_MS) {
+      if (elapsed >= durationMs) {
         if (progressIntervalRef.current) {
           clearInterval(progressIntervalRef.current);
           progressIntervalRef.current = null;
         }
-        setProgress((p) => (p < 90 ? 90 : p));
+        setProgress((p) => (p < 95 ? 95 : p));
         return;
       }
-      setProgress((p) => Math.min(90, (elapsed / PROGRESS_DURATION_MS) * 90));
+      setProgress((p) => Math.min(95, (elapsed / durationMs) * 95));
     }, PROGRESS_TICK_MS);
 
     extractFileClient(selectedFile, "pdf-to-excel", supabase)

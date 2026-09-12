@@ -30,7 +30,7 @@ import { canGuestConvert, incrementGuestUsage } from "@/lib/pdfUsage";
 import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimitModal";
 import { createClient } from "@/lib/supabase/client";
 import { gridToQuickBooksRows, quickBooksCsv } from "@/lib/quickbooks";
-import { extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
+import { countPdfPagesClient, estimateExtractMs, extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 
 const PENDING_KEY = "itd_pending_bank";
@@ -59,7 +59,6 @@ type FileStatus = "pending" | "processing" | "done" | "error";
 type BatchItem = { file: File; status: FileStatus; rows: number; error?: string };
 
 const ACCEPT = ".pdf,image/*";
-const PROGRESS_DURATION_MS = 15000;
 const PROGRESS_TICK_MS = 100;
 
 function isValidFileType(file: File): boolean {
@@ -277,13 +276,16 @@ export default function BankStatementToExcelPage() {
     for (let i = 0; i < items.length; i++) {
       setBatch((prev) => prev.map((b, j) => (j === i ? { ...b, status: "processing" as FileStatus } : b)));
 
-      // Smooth per-file progress ramp within this file's share of the bar.
+      // Page-aware per-file progress ramp within this file's share of the bar —
+      // a 12-page statement ramps over ~80s instead of stalling at its ceiling.
+      const pageCount = await countPdfPagesClient(items[i]!.file);
+      const durationMs = estimateExtractMs(pageCount);
       const startTime = Date.now();
       const base = (i / items.length) * 100;
       const span = 95 / items.length;
       progressIntervalRef.current = setInterval(() => {
-        const elapsed = Math.min(Date.now() - startTime, PROGRESS_DURATION_MS);
-        setProgress(base + (elapsed / PROGRESS_DURATION_MS) * span);
+        const elapsed = Math.min(Date.now() - startTime, durationMs);
+        setProgress(base + (elapsed / durationMs) * span);
       }, PROGRESS_TICK_MS);
 
       const outcome = await extractFileClient(items[i]!.file, "bank-statement-to-excel", supabase);

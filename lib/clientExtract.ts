@@ -14,6 +14,31 @@ export const PAID_MAX_BYTES = 25 * 1024 * 1024;
 
 export type GridData = (string | null)[][];
 
+/**
+ * Count a PDF's pages in the browser (lazy-loads pdf-lib only when needed).
+ * Returns null for images, encrypted, or unparseable files.
+ */
+export async function countPdfPagesClient(file: File): Promise<number | null> {
+  if (file.type !== "application/pdf") return null;
+  try {
+    const { PDFDocument } = await import("pdf-lib");
+    const doc = await PDFDocument.load(await file.arrayBuffer(), { ignoreEncryption: true });
+    return doc.getPageCount();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Progress-bar duration estimate, calibrated on production timings
+ * (1 page ≈ 12s, 12 pages ≈ 68s). Slight overestimates are fine — the bar
+ * jumps to 100% when the response lands, which reads as "faster than expected".
+ */
+export function estimateExtractMs(pages: number | null): number {
+  if (!pages || pages < 1) return 15000;
+  return Math.min(8000 + pages * 6000, 280000);
+}
+
 export type ExtractOutcome =
   | {
       ok: true;
