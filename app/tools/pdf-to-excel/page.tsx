@@ -27,6 +27,9 @@ import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimit
 import { createClient } from "@/lib/supabase/client";
 import { downloadQuickBooksCsv } from "@/lib/quickbooks";
 import { extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
+import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
+
+const PENDING_KEY = "itd_pending_pdf";
 
 const WATERMARK_TEXT = "Converted free at invoicetodata.com — upgrade to remove this line";
 
@@ -121,8 +124,23 @@ export default function PdfToExcelPage() {
   const [showQuotaModal, setShowQuotaModal] = useState(false);
   const [quotaModalVariant, setQuotaModalVariant] = useState<QuotaLimitVariant>("guest");
   const [isPaidExtract, setIsPaidExtract] = useState(false);
+  const [pageNotice, setPageNotice] = useState<{ extracted: number; total: number } | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const supabase = useMemo(() => createClient(), []);
+
+  // Restore a result stashed before the sign-in redirect (download wall).
+  useEffect(() => {
+    const grids = takePendingResult(PENDING_KEY);
+    if (grids && grids[0]) {
+      queueMicrotask(() => {
+        setExtractionResult(grids[0]!.grid);
+        setExtractedFileName(grids[0]!.name);
+      });
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) setToastMessage("Signed in! Your result is ready — click Download.");
+      });
+    }
+  }, [supabase]);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -237,6 +255,17 @@ export default function PdfToExcelPage() {
           setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
           setExtractionResult(outcome.grid);
           setExtractedFileName(nameForResult);
+          if (
+            outcome.pagesTotal != null &&
+            outcome.pagesExtracted != null &&
+            outcome.pagesExtracted < outcome.pagesTotal
+          ) {
+            setPageNotice({ extracted: outcome.pagesExtracted, total: outcome.pagesTotal });
+            setQuotaModalVariant("pages_limit");
+            setShowQuotaModal(true);
+          } else {
+            setPageNotice(null);
+          }
           if (outcome.truncated) {
             setToastMessage(
               `Very long document — extracted the first ${outcome.grid.length} rows. Split the PDF to convert the rest.`
@@ -255,8 +284,16 @@ export default function PdfToExcelPage() {
       });
   }, [selectedFile, supabase]);
 
-  const handleExportExcel = useCallback(() => {
+  const handleExportExcel = useCallback(async () => {
     if (extractionResult.length === 0) return;
+    // Download wall: viewing is free, downloading needs a (free) account.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      savePendingResult(PENDING_KEY, [{ name: extractedFileName || "document", grid: extractionResult }]);
+      setQuotaModalVariant("download_signin");
+      setShowQuotaModal(true);
+      return;
+    }
     const exportRows = isPaidExtract
       ? extractionResult
       : [...extractionResult, [], [WATERMARK_TEXT]];
@@ -269,7 +306,7 @@ export default function PdfToExcelPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
     XLSX.writeFile(wb, "extracted-data.xlsx");
-  }, [extractionResult, isPaidExtract]);
+  }, [extractionResult, isPaidExtract, extractedFileName, supabase]);
 
   const handleExportQuickBooks = useCallback(() => {
     if (extractionResult.length === 0) return;
@@ -370,6 +407,21 @@ export default function PdfToExcelPage() {
 
         {showResult && (
           <>
+            {pageNotice && (
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
+                <p className="text-sm text-amber-900">
+                  <strong>Extracted the first {pageNotice.extracted} of {pageNotice.total} pages.</strong>{" "}
+                  Paid plans extract the whole document.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setQuotaModalVariant("pages_limit"); setShowQuotaModal(true); }}
+                  className="rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
+                >
+                  Unlock all {pageNotice.total} pages — $2
+                </button>
+              </div>
+            )}
             <section className="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="extracted-table-heading">
               <h2 id="extracted-table-heading" className="sr-only">Table of Content</h2>
               <button

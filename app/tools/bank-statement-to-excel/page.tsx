@@ -31,6 +31,9 @@ import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimit
 import { createClient } from "@/lib/supabase/client";
 import { gridToQuickBooksRows, quickBooksCsv } from "@/lib/quickbooks";
 import { extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
+import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
+
+const PENDING_KEY = "itd_pending_bank";
 
 const WATERMARK_TEXT = "Converted free at invoicetodata.com — upgrade to remove this line";
 const MAX_BATCH_FILES = 20;
@@ -141,8 +144,24 @@ export default function BankStatementToExcelPage() {
   const [showQuotaModal, setShowQuotaModal] = useState(false);
   const [quotaModalVariant, setQuotaModalVariant] = useState<QuotaLimitVariant>("guest");
   const [isPaidExtract, setIsPaidExtract] = useState(false);
+  const [pageNotice, setPageNotice] = useState<{ extracted: number; total: number } | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const supabase = useMemo(() => createClient(), []);
+
+  // Restore results stashed before the sign-in redirect (download wall).
+  useEffect(() => {
+    const grids = takePendingResult(PENDING_KEY);
+    if (grids && grids.length > 0) {
+      queueMicrotask(() => {
+        setBatchResults(grids);
+        setExtractionResult(grids[0]!.grid);
+        setExtractedFileName(grids.length > 1 ? `${grids.length} statements` : grids[0]!.name);
+      });
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) setToastMessage("Signed in! Your result is ready — click Download.");
+      });
+    }
+  }, [supabase]);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -253,6 +272,7 @@ export default function BankStatementToExcelPage() {
     const results: { name: string; grid: GridData }[] = [];
     let paidSeen = false;
     let hitPaywall = false;
+    let pagesLimited: { extracted: number; total: number } | null = null;
 
     for (let i = 0; i < items.length; i++) {
       setBatch((prev) => prev.map((b, j) => (j === i ? { ...b, status: "processing" as FileStatus } : b)));
@@ -283,6 +303,13 @@ export default function BankStatementToExcelPage() {
             `${items[i]!.file.name}: very long — extracted the first ${outcome.grid.length} rows.`
           );
         }
+        if (
+          outcome.pagesTotal != null &&
+          outcome.pagesExtracted != null &&
+          outcome.pagesExtracted < outcome.pagesTotal
+        ) {
+          pagesLimited = { extracted: outcome.pagesExtracted, total: outcome.pagesTotal };
+        }
         setBatch((prev) =>
           prev.map((b, j) => (j === i ? { ...b, status: "done" as FileStatus, rows: outcome.grid.length } : b))
         );
@@ -303,6 +330,11 @@ export default function BankStatementToExcelPage() {
 
     setIsPaidExtract(paidSeen);
     setBatchResults(results);
+    setPageNotice(pagesLimited);
+    if (pagesLimited && !hitPaywall) {
+      setQuotaModalVariant("pages_limit");
+      setShowQuotaModal(true);
+    }
     if (results.length > 0) {
       setExtractionResult(results[0]!.grid);
       setExtractedFileName(
@@ -315,8 +347,16 @@ export default function BankStatementToExcelPage() {
     setIsExtracting(false);
   }, [batch, isExtracting, supabase]);
 
-  const handleExportExcel = useCallback(() => {
+  const handleExportExcel = useCallback(async () => {
     if (batchResults.length === 0) return;
+    // Download wall: viewing is free, downloading needs a (free) account.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      savePendingResult(PENDING_KEY, batchResults);
+      setQuotaModalVariant("download_signin");
+      setShowQuotaModal(true);
+      return;
+    }
     const wb = XLSX.utils.book_new();
     const used = new Set<string>();
     batchResults.forEach((r, i) => {
@@ -330,7 +370,7 @@ export default function BankStatementToExcelPage() {
       XLSX.utils.book_append_sheet(wb, ws, sheetNameFor(r.name, i, used));
     });
     XLSX.writeFile(wb, batchResults.length > 1 ? "bank-statements.xlsx" : "extracted-data.xlsx");
-  }, [batchResults, isPaidExtract]);
+  }, [batchResults, isPaidExtract, supabase]);
 
   const handleExportQuickBooks = useCallback(() => {
     if (batchResults.length === 0) return;
@@ -481,6 +521,21 @@ export default function BankStatementToExcelPage() {
 
         {showResult && (
           <>
+            {pageNotice && (
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
+                <p className="text-sm text-amber-900">
+                  <strong>Extracted the first {pageNotice.extracted} of {pageNotice.total} pages.</strong>{" "}
+                  Paid plans extract the whole statement.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setQuotaModalVariant("pages_limit"); setShowQuotaModal(true); }}
+                  className="rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
+                >
+                  Unlock all {pageNotice.total} pages — $2
+                </button>
+              </div>
+            )}
             <section className="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="extracted-table-heading">
               <h2 id="extracted-table-heading" className="sr-only">Table of Content</h2>
               <button

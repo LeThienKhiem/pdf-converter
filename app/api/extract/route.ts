@@ -15,6 +15,7 @@ import {
 } from "@/lib/entitlements";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase";
+import { analyzePdfPages } from "@/lib/pdfPages";
 
 const BASE_SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as a visual grid and reproduce its exact layout.
 
@@ -62,6 +63,7 @@ export const maxDuration = 300;
 
 const FREE_MAX_BYTES = 5 * 1024 * 1024; // 5MB — also the practical serverless body limit
 const PAID_MAX_BYTES = 25 * 1024 * 1024; // 25MB — delivered via storage upload path
+const FREE_MAX_PAGES = 10; // free tier extracts the first 10 pages, then upsells the rest
 const STORAGE_BUCKET = "uploads";
 
 function toCell(value: unknown): string | null {
@@ -246,6 +248,23 @@ export async function POST(request: Request) {
       ? BASE_SYSTEM_PROMPT + CATEGORIZE_APPENDIX
       : BASE_SYSTEM_PROMPT;
 
+    // Free-tier page gating: extract the first 10 pages of longer PDFs and
+    // tell the client how much is left — value first, then the upsell.
+    let pagesTotal: number | null = null;
+    let pagesExtracted: number | null = null;
+    if (!isPaidExtract && mimeType === "application/pdf") {
+      const analysis = await analyzePdfPages(Buffer.from(base64, "base64"), FREE_MAX_PAGES);
+      if (analysis) {
+        pagesTotal = analysis.pageCount;
+        if (analysis.slicedBase64) {
+          base64 = analysis.slicedBase64;
+          pagesExtracted = FREE_MAX_PAGES;
+        } else {
+          pagesExtracted = analysis.pageCount;
+        }
+      }
+    }
+
     const client = getAnthropic();
     console.log("[Extract API] Using model:", model, "tool:", tool, "paid:", isPaidExtract);
 
@@ -257,7 +276,8 @@ export async function POST(request: Request) {
       response = await client.messages
         .stream({
           model,
-          max_tokens: 64000,
+          // Highest cap each model supports — long documents must not truncate.
+          max_tokens: isPaidExtract ? 128000 : 64000,
           system: systemPrompt,
           messages: [
             { role: "user", content: buildContent(mimeType, base64) },
@@ -319,6 +339,8 @@ export async function POST(request: Request) {
       remaining: entitlement.remaining,
       categorized: categorize,
       truncated,
+      pagesTotal,
+      pagesExtracted,
     });
   } catch (err) {
     console.error("[Extract] Unexpected error:", err);

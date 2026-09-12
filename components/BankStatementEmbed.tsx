@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileDown, FileUp, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx-js-style";
 import { canGuestConvert, incrementGuestUsage } from "@/lib/pdfUsage";
@@ -8,6 +8,9 @@ import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimit
 import { createClient } from "@/lib/supabase/client";
 import { extractFileClient, PAID_MAX_BYTES, type GridData } from "@/lib/clientExtract";
 import { downloadQuickBooksCsv } from "@/lib/quickbooks";
+import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
+
+const PENDING_KEY = "itd_pending_embed";
 
 const WATERMARK_TEXT = "Converted free at invoicetodata.com — upgrade to remove this line";
 
@@ -26,7 +29,16 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [modalVariant, setModalVariant] = useState<QuotaLimitVariant>("guest");
+  const [pageNotice, setPageNotice] = useState<{ extracted: number; total: number } | null>(null);
   const supabase = useMemo(() => createClient(), []);
+
+  // Restore a result stashed before the sign-in redirect (download wall).
+  useEffect(() => {
+    const grids = takePendingResult(PENDING_KEY);
+    if (grids && grids[0]) {
+      queueMicrotask(() => setGrid(grids[0]!.grid));
+    }
+  }, []);
 
   const acceptFile = useCallback((f: File | undefined | null) => {
     if (!f) return;
@@ -63,6 +75,15 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
       if (!session) incrementGuestUsage();
       setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
       setGrid(outcome.grid);
+      if (
+        outcome.pagesTotal != null &&
+        outcome.pagesExtracted != null &&
+        outcome.pagesExtracted < outcome.pagesTotal
+      ) {
+        setPageNotice({ extracted: outcome.pagesExtracted, total: outcome.pagesTotal });
+      } else {
+        setPageNotice(null);
+      }
       if (outcome.truncated) {
         setError(
           `Very long document — extracted the first ${outcome.grid.length} rows. Split the PDF to convert the rest.`
@@ -83,14 +104,22 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
     setIsExtracting(false);
   }, [file, isExtracting, supabase]);
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (grid.length === 0) return;
+    // Download wall: viewing is free, downloading needs a (free) account.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      savePendingResult(PENDING_KEY, [{ name: "bank-statement", grid }]);
+      setModalVariant("download_signin");
+      setShowModal(true);
+      return;
+    }
     const rows = isPaidExtract ? grid : [...grid, [], [WATERMARK_TEXT]];
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Statement");
     XLSX.writeFile(wb, "bank-statement.xlsx");
-  }, [grid, isPaidExtract]);
+  }, [grid, isPaidExtract, supabase]);
 
   const handleQuickBooks = useCallback(() => {
     if (grid.length === 0) return;
@@ -159,6 +188,16 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
             ✓ Extracted {grid.length} rows from your statement
           </p>
+          {pageNotice && (
+            <button
+              type="button"
+              onClick={() => { setModalVariant("pages_limit"); setShowModal(true); }}
+              className="block w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-left text-sm text-amber-900 transition-colors hover:bg-amber-100"
+            >
+              <strong>First {pageNotice.extracted} of {pageNotice.total} pages extracted.</strong>{" "}
+              Unlock the full statement — $2 →
+            </button>
+          )}
           <div className="flex flex-wrap gap-3">
             <button
               type="button"

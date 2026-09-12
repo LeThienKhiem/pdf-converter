@@ -150,7 +150,7 @@ export async function POST(request: Request) {
     try {
       aiResponse = await client.messages.stream({
         model: isPaidExtract ? PDF_MODEL_PREMIUM : PDF_MODEL,
-        max_tokens: 64000,
+        max_tokens: isPaidExtract ? 128000 : 64000,
         system: SYSTEM_PROMPT,
         messages: [
           {

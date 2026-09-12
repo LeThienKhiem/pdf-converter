@@ -15,7 +15,16 @@ export const PAID_MAX_BYTES = 25 * 1024 * 1024;
 export type GridData = (string | null)[][];
 
 export type ExtractOutcome =
-  | { ok: true; grid: GridData; source?: string; plan?: string; categorized?: boolean; truncated?: boolean }
+  | {
+      ok: true;
+      grid: GridData;
+      source?: string;
+      plan?: string;
+      categorized?: boolean;
+      truncated?: boolean;
+      pagesTotal?: number | null;
+      pagesExtracted?: number | null;
+    }
   | { ok: false; status: number; reason?: string; error: string };
 
 export async function extractFileClient(
@@ -57,7 +66,7 @@ export async function extractFileClient(
       });
       const json = await res.json();
       if (res.ok && Array.isArray(json.data)) {
-        return { ok: true, grid: json.data, source: json.source, plan: json.plan, categorized: json.categorized, truncated: json.truncated };
+        return { ok: true, grid: json.data, source: json.source, plan: json.plan, categorized: json.categorized, truncated: json.truncated, pagesTotal: json.pagesTotal, pagesExtracted: json.pagesExtracted };
       }
       return { ok: false, status: res.status, reason: json?.reason, error: json?.error ?? "Extraction failed." };
     }
@@ -68,7 +77,7 @@ export async function extractFileClient(
     const res = await fetch("/api/extract", { method: "POST", body: formData });
     const json = await res.json();
     if (res.ok && Array.isArray(json.data) && json.data.every((r: unknown) => Array.isArray(r))) {
-      return { ok: true, grid: json.data, source: json.source, plan: json.plan, categorized: json.categorized, truncated: json.truncated };
+      return { ok: true, grid: json.data, source: json.source, plan: json.plan, categorized: json.categorized, truncated: json.truncated, pagesTotal: json.pagesTotal, pagesExtracted: json.pagesExtracted };
     }
     return { ok: false, status: res.status, reason: json?.reason, error: json?.error ?? "Extraction failed." };
   } catch (err) {
