@@ -62,7 +62,20 @@ const ALLOWED_TYPES = [
 export const maxDuration = 300;
 
 const FREE_MAX_BYTES = 5 * 1024 * 1024; // 5MB — also the practical serverless body limit
-const PAID_MAX_BYTES = 25 * 1024 * 1024; // 25MB — delivered via storage upload path
+/**
+ * 23MB, not 25MB.
+ *
+ * The PDF goes to Claude as base64 inside the request body, and base64 inflates
+ * by 4/3. Anthropic caps a request at 32MB, so the real ceiling on the original
+ * file is 32 / 1.333 = 24MB — and that is before the JSON envelope and system
+ * prompt. A 25MB upload became 33.3MB on the wire and was rejected by Anthropic,
+ * after our own check had passed it and after the error message had promised
+ * "files up to 25MB".
+ *
+ * 23MB leaves room for the envelope. Raising this means moving off base64 to the
+ * Files API, not editing the number.
+ */
+const PAID_MAX_BYTES = 23 * 1024 * 1024;
 const FREE_MAX_PAGES = 10; // free tier extracts the first 10 pages, then upsells the rest
 const STORAGE_BUCKET = "uploads";
 
@@ -205,7 +218,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Size gate BEFORE consuming quota: free cap 5MB, paid cap 25MB.
+    // Size gate BEFORE consuming quota: free cap 5MB, paid cap 23MB.
     if (byteSize > FREE_MAX_BYTES) {
       const supabase = await createClient();
       const {
@@ -216,7 +229,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             error:
-              "Files over 5MB need a paid plan. Get a $2 Week Pass for files up to 25MB.",
+              "Files over 5MB need a paid plan. Get a $2 Week Pass for files up to 23MB.",
             reason: "file_too_large",
           },
           { status: 413 }
@@ -224,7 +237,7 @@ export async function POST(request: Request) {
       }
       if (byteSize > PAID_MAX_BYTES) {
         return NextResponse.json(
-          { error: "File too large. Maximum size is 25MB." },
+          { error: "File too large. Maximum size is 23MB." },
           { status: 413 }
         );
       }

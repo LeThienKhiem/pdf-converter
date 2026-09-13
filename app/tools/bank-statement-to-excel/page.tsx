@@ -195,7 +195,7 @@ export default function BankStatementToExcelPage() {
         continue;
       }
       if (file.size > PAID_MAX_BYTES) {
-        setToastMessage(`${file.name}: over the 25MB limit.`);
+        setToastMessage(`${file.name}: over the 23MB limit.`);
         continue;
       }
       valid.push({ file, status: "pending", rows: 0 });
@@ -442,7 +442,7 @@ export default function BankStatementToExcelPage() {
                 : `${batch.length} statements selected`}
           </span>
           <span className="mt-1 text-sm text-slate-500">
-            PDF and images — 5MB free, up to 25MB &amp; batch on paid plans
+            PDF and images — 5MB free, up to 23MB &amp; batch on paid plans
           </span>
         </div>
 

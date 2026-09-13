@@ -175,7 +175,7 @@ export default function PdfToExcelPage() {
       return;
     }
     if (file.size > PAID_MAX_BYTES) {
-      setToastMessage("File too large. Maximum size is 25MB (paid) / 5MB (free).");
+      setToastMessage("File too large. Maximum size is 23MB (paid) / 5MB (free).");
       return;
     }
     setSelectedFile(file);
@@ -363,7 +363,7 @@ export default function PdfToExcelPage() {
           <span className="mt-3 font-medium text-slate-700">
             {selectedFile ? selectedFile.name : "Drop a file here or click to browse"}
           </span>
-          <span className="mt-1 text-sm text-slate-500">PDF and images — 5MB free, up to 25MB on paid plans</span>
+          <span className="mt-1 text-sm text-slate-500">PDF and images — 5MB free, up to 23MB on paid plans</span>
         </div>
         <p className="mt-3 text-center text-xs font-medium text-slate-500">
           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-2.5 py-1 text-slate-600 shadow-sm">
@@ -531,7 +531,7 @@ export default function PdfToExcelPage() {
                 <p className="mt-4 font-mono text-sm font-medium text-blue-600">Step 1</p>
                 <h3 className="mt-1 font-semibold text-slate-900">Upload Document</h3>
                 <p className="mt-2 text-sm text-slate-600">
-                  Drag and drop your PDF or image (5MB free, 25MB on paid plans), or click to browse. We accept invoices, forms, and scanned documents.
+                  Drag and drop your PDF or image (5MB free, 23MB on paid plans), or click to browse. We accept invoices, forms, and scanned documents.
                 </p>
               </div>
               <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">

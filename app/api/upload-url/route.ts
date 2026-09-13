@@ -4,7 +4,7 @@ import { getSupabase } from "@/lib/supabase";
 import { getPaidStatus } from "@/lib/entitlements";
 
 /**
- * Signed upload URL for large files (5–25MB), which exceed the serverless
+ * Signed upload URL for large files (5–23MB), which exceed the serverless
  * request-body limit. Paid users only — this IS the large-file paywall.
  * The client uploads directly to Supabase Storage, then calls /api/extract
  * with { storagePath }; extract downloads, processes, and deletes the file.
