@@ -44,3 +44,7 @@ next-env.d.ts
 # Pre-change content dumps from scripts/backfill-internal-links.ts.
 # Full post bodies — keep them locally as an undo, never in the repo.
 backup-blogs-*.json
+
+# pdf.js font/cmap data, copied from node_modules by scripts/copy-pdfjs-assets.mjs
+# on every build. Never edit or commit — it must match the installed version.
+public/pdfjs/

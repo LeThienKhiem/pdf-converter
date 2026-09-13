@@ -54,6 +54,23 @@ async function loadPdfJs() {
 }
 
 /**
+ * Font and character-map data pdf.js fetches at render time.
+ *
+ * Not optional. A statement using one of the 14 standard fonts without
+ * embedding it — common — renders with no text at all when standardFontDataUrl
+ * is absent, and pdf.js reports it as a console warning rather than an error.
+ * The unlock would appear to work and the user would get an empty sheet.
+ *
+ * scripts/copy-pdfjs-assets.mjs puts these in public/ before every build and
+ * fails the build if the source is gone.
+ */
+const PDFJS_ASSETS = {
+  standardFontDataUrl: "/pdfjs/standard_fonts/",
+  cMapUrl: "/pdfjs/cmaps/",
+  cMapPacked: true,
+}
+
+/**
  * Render at roughly 150 dpi (pdf.js scale 1 is 72 dpi).
  *
  * Chosen against the size cap rather than for maximum fidelity: statements are
@@ -122,7 +139,7 @@ export async function unlockPdf(file: File, password: string): Promise<UnlockRes
 
   // destroy() lives on the loading task in pdf.js v6, not on the document
   // proxy, so the task has to stay in scope for cleanup.
-  const task = pdfjs.getDocument({ data: bytes, password });
+  const task = pdfjs.getDocument({ data: bytes, password, ...PDFJS_ASSETS });
   let doc: Awaited<typeof task.promise>;
   try {
     doc = await task.promise;
