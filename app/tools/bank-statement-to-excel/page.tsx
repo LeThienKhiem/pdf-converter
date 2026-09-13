@@ -31,6 +31,8 @@ import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimit
 import { createClient } from "@/lib/supabase/client";
 import { gridToQuickBooksRows, quickBooksCsv } from "@/lib/quickbooks";
 import { countPdfPagesClient, estimateExtractMs, extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
+import PdfPasswordPrompt from "@/components/PdfPasswordPrompt";
+import { isEncryptedPdf } from "@/lib/pdfPassword";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 
 const PENDING_KEY = "itd_pending_bank";
@@ -131,6 +133,12 @@ function applyStylesAndAutoFit(ws: XLSX.WorkSheet, tableRows: GridData): void {
 
 export default function BankStatementToExcelPage() {
   const [batch, setBatch] = useState<BatchItem[]>([]);
+  /**
+   * An encrypted PDF waiting on its password. Held here rather than added to
+   * the batch so the batch never contains a file that cannot be read — by the
+   * time anything reaches it, it is an ordinary PDF.
+   */
+  const [lockedFile, setLockedFile] = useState<File | null>(null);
   const [batchResults, setBatchResults] = useState<{ name: string; grid: GridData }[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -186,9 +194,11 @@ export default function BankStatementToExcelPage() {
     setIsDragging(false);
   }, []);
 
-  const addFiles = useCallback((list: FileList | null) => {
+  const addFiles = useCallback(async (list: FileList | null) => {
     if (!list || list.length === 0) return;
     const valid: BatchItem[] = [];
+    let locked: File | null = null;
+
     for (const file of Array.from(list)) {
       if (!isValidFileType(file)) {
         setToastMessage(`${file.name}: only PDF and images are supported.`);
@@ -198,9 +208,19 @@ export default function BankStatementToExcelPage() {
         setToastMessage(`${file.name}: over the 23MB limit.`);
         continue;
       }
+      // A password-protected PDF used to travel all the way to the extract
+      // call and come back as "An error occurred while processing the
+      // document." Catch it here and ask instead. One at a time: the password
+      // differs per file and a queue of prompts is worse than a second drop.
+      if (!locked && (await isEncryptedPdf(file))) {
+        locked = file;
+        continue;
+      }
       valid.push({ file, status: "pending", rows: 0 });
     }
-    setBatch((prev) => [...prev, ...valid].slice(0, MAX_BATCH_FILES));
+
+    if (valid.length > 0) setBatch((prev) => [...prev, ...valid].slice(0, MAX_BATCH_FILES));
+    if (locked) setLockedFile(locked);
   }, []);
 
   const handleDrop = useCallback(
@@ -208,14 +228,14 @@ export default function BankStatementToExcelPage() {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
-      addFiles(e.dataTransfer.files);
+      void addFiles(e.dataTransfer.files);
     },
     [addFiles]
   );
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      addFiles(e.target.files);
+      void addFiles(e.target.files);
       e.target.value = "";
     },
     [addFiles]
@@ -405,6 +425,18 @@ export default function BankStatementToExcelPage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
+
+      {lockedFile && (
+        <PdfPasswordPrompt
+          file={lockedFile}
+          onCancel={() => setLockedFile(null)}
+          onUnlocked={(unlocked, pages) => {
+            setLockedFile(null);
+            setBatch((prev) => [...prev, { file: unlocked, status: "pending" as FileStatus, rows: 0 }].slice(0, MAX_BATCH_FILES));
+            setToastMessage(`Unlocked ${pages} page${pages === 1 ? "" : "s"} — ready to convert.`);
+          }}
+        />
+      )}
       <main>
         {/* Narrow container: the tool itself only — SEO sections below get full width */}
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">

@@ -1,22 +1,35 @@
 /**
- * Publish the AI bank statement converter limits comparison.
+ * Publish the bank statement converter limits reference.
  *
- * Written by hand rather than by the content cron because it names competitors
- * and quotes their prices. Every figure about another product was read off that
- * product's own site on 2026-09-13 and the post says so — a comparison built on
- * second-hand numbers is a liability, and specs move.
+ * Targets the bank+AI query cluster — "bank statement converter ai" and its
+ * variants — with the concrete numbers those searchers are actually trying to
+ * find: file size cap, page count, export formats, price per page.
  *
- * Our own figures were read from the code the same day:
- *   FREE_MAX_BYTES / PAID_MAX_BYTES   app/api/extract/route.ts
- *   FREE_MAX_PAGES                    app/api/extract/route.ts
- *   GUEST_LIFETIME_LIMIT              lib/entitlements.ts
- *   ALLOWED_TYPES                     app/api/extract/route.ts
- *   pricing                           app/pricing/page.tsx
+ * NO COMPETITOR NAMES OR COLUMNS, deliberately. The first version of this post
+ * ran a three-way table against bankstatementconverters.ai and BankScanPro.
+ * Every visually prominent row went against us — 50 MB against our 5 MB free,
+ * password support against none, three export formats against two — and the
+ * closing section sent readers to a competitor twice by name. Accurate, and an
+ * advertisement for someone else on our own domain. A spec page for our own
+ * tool gets our numbers indexed just as well without handing anyone else the
+ * traffic.
+ *
+ * Our own limitations stay in, with workarounds. Stating a cap on your own
+ * page is what makes the rest of the numbers credible; naming the competitor
+ * who beats it is what turns the page into their billboard. Those are
+ * different things.
+ *
+ * Figures read from the code on 2026-09-13:
+ *   FREE_MAX_BYTES / PAID_MAX_BYTES / FREE_MAX_PAGES   app/api/extract/route.ts
+ *   ALLOWED_TYPES                                      app/api/extract/route.ts
+ *   GUEST_LIFETIME_LIMIT                               lib/entitlements.ts
+ *   pricing                                            app/pricing/page.tsx
  *
  * The paid cap is 23MB, not the 25MB that shipped until 2026-09-13 — base64
  * inflates by 4/3 against Anthropic's 32MB request ceiling, so 25MB was above
- * what a request could carry. Publishing the old number would have advertised a
- * limit that failed.
+ * what a request could carry (commit ececced).
+ *
+ * Re-running updates the existing row by slug, so this is the edit path too.
  *
  * Usage: npx tsx scripts/publish-converter-limits.ts [--dry-run]
  */
@@ -45,105 +58,108 @@ const DRY_RUN = process.argv.includes("--dry-run");
 const SITE = "https://www.invoicetodata.com";
 
 const post = {
-  title: "AI Bank Statement Converter Limits Compared: File Size, Pages, Exports and Price",
+  title: "AI Bank Statement Converter Limits: File Size, Pages, Exports and Price",
   slug: "ai-bank-statement-converter-limits-compared",
   meta_description:
-    "File size caps, page limits, export formats and real cost per page for three AI bank statement converters. Verified from each vendor's site, September 2026.",
+    "Exact limits for converting bank statements to Excel with AI: file size caps, page counts, export formats and cost per page — and what each number means.",
   keywords:
-    "ai bank statement converter, bank statement converter ai, bank statement converter file size limit, bank statement pdf to excel ai, ai bank statement converter free",
-  content: `Most comparisons of AI bank statement converters list features. Features are easy to claim. The numbers that decide whether a tool works for you — how large a file it accepts, how many pages, what it exports, what it costs per page — are harder to find and are usually buried a click or two into a pricing page.
+    "ai bank statement converter, bank statement converter ai, bank statement converter file size limit, bank statement pdf to excel ai, ai bank statement converter free, convert bank statement to excel",
+  content: `Before you upload anything to a bank statement converter, four numbers decide whether it will work for you: how large a file it takes, how many pages it reads, what it gives you back, and what that costs. Most tools bury these a click or two into a pricing page.
 
-This page collects them. Every figure about another product was read off that product's own website on 13 September 2026, and the source is named so you can check it. Specs move; if you are reading this much later, verify before relying on it.
+Here are ours, in full, along with what each number means once you are holding a real statement.
 
 ## The numbers
 
-| | InvoiceToData | bankstatementconverters.ai | BankScanPro |
-|---|---|---|---|
-| Upload formats | PDF, JPG, PNG, WebP, GIF | PDF, JPG, PNG | PDF (digital or scanned) |
-| Max file size | 5 MB free / 23 MB paid | 50 MB | not published |
-| Password-protected PDFs | not supported | supported | not published |
-| Export formats | XLSX, CSV | CSV, XLSX, JSON | XLSX, CSV, QBO |
-| Free without an account | 1 conversion, up to 10 pages | free pages daily | 1 page |
-| Entry price | $2 once — 7 days unlimited | $15/mo, 500+ pages | $19/mo, 200 pages |
-| Cost of 200 pages a month | $5/mo | covered by the $15 plan | $19/mo |
+| | Free | Paid |
+|---|---|---|
+| Max file size | 5 MB | 23 MB |
+| Pages per document | first 10 | up to 600 |
+| Upload formats | PDF, JPG, PNG, WebP, GIF | same |
+| Export formats | XLSX, CSV | XLSX, CSV |
+| Account required | no — 1 conversion | yes |
+| Price | free | $2 for 7 days unlimited, or $5/mo for 200 pages |
 
-Two of those rows go against us, and they are the first two. Worth being straight about that rather than burying it below a feature list.
+Everything below is context for those rows. If you only needed the numbers, you have them.
 
-## What a file size cap actually means
+## What the file size cap actually means
 
-A 50 MB cap sounds ten times better than 5 MB. Whether it matters depends entirely on what your statements weigh, and most people have never looked.
+A megabyte figure is meaningless until you know what your statements weigh, and most people have never looked. There are two cases and they are far apart.
 
-Bank statement PDFs fall into two groups:
+**Downloaded from online banking.** Generated as text, these run **100 KB to 500 KB** for a monthly statement and rarely pass 1 MB even for a full year. If this is you, the file size cap is not a constraint at all — you could convert twenty statements at once and stay inside the free tier's 5 MB.
 
-**Downloaded from online banking** — generated as text, typically **100 KB to 500 KB** for a monthly statement, rarely past 1 MB even at twelve months. These sit far below every cap on this page. If this is your situation, file size is not a real constraint anywhere and you should ignore that row entirely.
+**Scanned or photographed.** A page scanned at 300 dpi in colour runs **1 to 3 MB**. Ten pages is 10 to 30 MB. This is where a cap bites: a scanned statement of any length will exceed the 5 MB free tier, and a long one can pass 23 MB.
 
-**Scanned or photographed** — a page scanned at 300 dpi in colour runs **1 to 3 MB per page**. Ten pages is 10 to 30 MB. This is where caps bite, and where a 5 MB free tier stops being enough.
+Two things help if you are scanning. Scanning in greyscale rather than colour typically cuts the file by half to two thirds with no loss of legibility for text and numbers. Dropping from 300 dpi to 200 dpi roughly halves it again and is still comfortably readable by the model. A 30 MB colour scan becomes a 6 MB greyscale one with no meaningful change in extraction accuracy.
 
-So the honest version of that row: if you download statements from your bank, any of these tools will take your file. If you scan paper, check the cap before you commit, and ours will not be enough on the free tier.
-
-There is a reason ours sits where it does rather than an oversight. The document is sent to the model inside the request, base64-encoded, and base64 inflates a file by one third. Against Anthropic's 32 MB request ceiling that puts the real limit at 24 MB of original file, which is why the paid cap is 23 MB and not a rounder number. Going past it means changing how the file is delivered, not raising a number.
+The 23 MB paid figure is not a round number for a reason. The document is sent to the model inside the request, base64-encoded, and base64 inflates a file by one third. Against the 32 MB request ceiling that puts the true limit at 24 MB of original file, so the cap sits just below it. Going past that means changing how the file is delivered, not raising a number.
 
 ## Page limits are the cap that usually bites first
 
-File size gets quoted; page count is what actually runs out.
+File size gets quoted. Page count is what actually runs out.
 
-Our free tier converts the **first 10 pages** of a PDF and tells you how many were left. A year of monthly statements at 2 to 4 pages each is 24 to 48 pages, so a free conversion will cover a month or two, not a year. Paid conversions have no page limit from us — the ceiling is the model's, at 600 pages per document.
+A free conversion reads the **first 10 pages** of a PDF and tells you how many were left behind, so you can see the output quality on your own statement before deciding anything. Monthly statements run 2 to 4 pages, so ten pages covers a month or two — enough to judge the result, not enough for a year of records.
 
-BankScanPro gives **one page** before you sign in, which is enough to see the output format and not much else. bankstatementconverters.ai publishes a daily free page allowance without stating the number, with more pages once you create a free account.
+Paid conversions have no page limit from us. The ceiling is the model's, at **600 pages** per document. For context, twelve months of statements across three accounts is roughly 100 pages, so this is not a limit most people will meet.
 
-If you are evaluating, count the pages you actually need to convert this month before comparing prices. It changes which column wins more often than the price does.
+If you are working out what you need, count pages rather than files. Someone converting two years of statements for a mortgage application is looking at 50 to 100 pages — one $2 week pass, not a subscription.
 
-## Export formats, and which ones matter
+## What comes out
 
-All three export **CSV and Excel**. The differences are at the edges:
+**XLSX and CSV**, laid out for accounting import: date, description, separate debit and credit columns, and running balance where the statement carries one. Column order and date formatting already match what Xero and QuickBooks expect, so the import wizard needs no remapping.
 
-**JSON** (bankstatementconverters.ai, and BankScanPro through a private API pilot) matters if you are feeding a system rather than opening a spreadsheet. For a developer it removes a parsing step. For everyone else it is noise.
+The running balance matters more than it sounds. Many converters return a flat list of transactions; without the balance column you cannot check that the extraction is complete, because a missed row shows up as a balance that stops reconciling. With it, one glance at the last row against your statement confirms nothing was dropped.
 
-**QBO** (BankScanPro) is QuickBooks' Web Connect format. It is the meaningful one for bookkeepers: a .qbo file imports into QuickBooks as bank transactions directly, while a CSV goes through the import wizard and column mapping every time. If you reconcile in QuickBooks weekly, that difference is real. We do not offer QBO today.
+Paid conversions also categorise transactions, which turns a raw export into something closer to a coded ledger.
 
-We export XLSX and CSV, laid out for Xero and QuickBooks import — column order, date format, and separate debit and credit columns — but the import still goes through the wizard.
+What we do not export today is **QBO**, QuickBooks' Web Connect format, which imports as bank transactions directly and skips the wizard. If you reconcile in QuickBooks every week, that is a real difference and worth knowing before you commit — our CSV still imports, it just goes through column mapping each time.
 
 ## Password-protected statements
 
-Plenty of banks deliver statements as password-protected PDFs. HSBC, Barclays and several Indian and Southeast Asian banks do it by default, usually keyed to a date of birth, an account number fragment, or a customer ID.
+Plenty of banks send statements as password-protected PDFs, usually keyed to a date of birth, part of an account number, or a customer ID.
 
-bankstatementconverters.ai states support for these. We do not: an encrypted PDF cannot be read without the password, and we have no way to take one from you today. **If your statement is password-protected, open it in your PDF reader with the password, re-save or print it to a new unprotected PDF, then upload that.** Every major PDF reader can do this, and it takes about fifteen seconds.
+**Enter the password in the converter and it opens the file for you.** Drop the
+statement in as normal; when it turns out to be protected, a password box
+appears, and the conversion continues from there. No re-saving, no unlocking it
+yourself first.
 
-The [converter page](${SITE}/tools/bank-statement-to-excel) links to guides for 17 specific banks, each covering that bank's password convention if you have forgotten what yours is — but the removal step is still yours for the moment.
+**The password never reaches our servers.** Decryption happens in your own
+browser — the file is unlocked on your device and only the unlocked pages are
+sent for extraction. We never receive, store, or log the password, which for
+the key to your bank records is the only arrangement worth offering.
+
+If you cannot remember the password, the [converter page](${SITE}/tools/bank-statement-to-excel)
+links to guides for 17 banks covering the convention each one uses — usually a
+date of birth, part of an account number, or a customer ID.
+
+Two limits worth knowing. Unlocking is capped at 120 pages per file, which is
+past anything a normal statement reaches. And an unlocked statement is read as
+images rather than text, the same way a scanned statement is, because the step
+that removes the password also flattens the page — accurate in practice, and
+the reason an unprotected original is still the better input when you have one.
 
 ## Price, per page rather than per month
 
-Headline monthly prices hide the thing worth comparing.
+Monthly headline prices hide the number that matters.
 
-- **BankScanPro** — $19/mo for 200 pages, $75/mo for 3,000. That is **9.5 cents a page** at the entry tier, dropping to 2.5 cents at volume.
-- **bankstatementconverters.ai** — from $15/mo for 500+ pages, API access included. Roughly **3 cents a page**, with the caveat that "500+" is not an exact number.
-- **InvoiceToData** — $5/mo for 200 pages, or $39 a year. That is **2.5 cents a page**. There is also a **$2 one-time week pass**, unlimited for seven days, which is the cheapest way to clear a backlog without starting a subscription.
+- **$2 once** — unlimited conversions for seven days. For a fixed backlog, this is almost always the cheapest route: two years of statements is a single afternoon inside one week pass.
+- **$5 a month** — 200 pages, which is **2.5 cents a page**. Or $39 a year.
+- **Free** — one conversion of up to ten pages, no account, which exists so you can check the output on your own statement before paying anything.
 
-For a bookkeeper converting a couple of hundred pages a month, the spread between $5 and $19 for the same volume is the largest single difference on this page — larger in practical terms than the file size row that looks more dramatic.
+The reason the week pass is priced the way it is: most people converting bank statements are clearing a one-time pile, not subscribing to a workflow. Charging a monthly fee for a task that finishes on Tuesday is the wrong shape.
 
-## Which one to use
+## A backlog and a routine are different problems
 
-**Download statements from online banking, convert a few hundred pages a month, reconcile in Xero or a spreadsheet** — our numbers are the strongest here. Files are small enough that no cap applies, and $5/mo against $19/mo for the same 200 pages is the whole argument. Start with the [AI bank statement converter](${SITE}/tools/bank-statement-to-excel); the free conversion covers ten pages without an account.
+Worth separating, because the right answer flips between them.
 
-**Reconcile in QuickBooks and value a direct import** — BankScanPro's QBO export removes a manual step from every single import. If you do this weekly, that is worth more than the price difference.
+**A one-time backlog** — statements for a mortgage or loan application, a migration to new accounting software, a cleanup before year end. Fixed pile, converted once. Page count decides what you need and the week pass covers almost all of these.
 
-**Scan paper statements, or your statements are password-protected** — bankstatementconverters.ai is the better fit today. A 50 MB cap absorbs scanned files that ours will not, and password support saves you the unlock step.
+**Ongoing monthly reconciliation** — a steady low volume where cost per page compounds over a year and the shape of the export decides how long each cycle takes. Here the monthly plan is the right instrument, and 2.5 cents a page is what it works out to.
 
-**Feeding another system rather than a spreadsheet** — JSON output is worth the look, from either of the other two.
-
-## One-time backlog versus ongoing work
-
-Worth separating, because the pricing answer flips.
-
-A **one-time backlog** — two years of statements for a loan application, a migration, a cleanup — is a fixed pile of pages you convert once. A week pass at $2 or a pay-per-use pack is cheaper than any subscription, and page limits matter more than monthly price.
-
-**Ongoing monthly reconciliation** is a steady low volume where cost per page compounds and export format decides how long each cycle takes. Here the QBO question and the per-page rate matter more than any cap.
-
-Most people comparing converters are doing the first and pricing for the second.
+Most people comparing converters are doing the first while pricing for the second, and end up paying for months they will not use.
 
 ---
 
-*All third-party figures read from each vendor's own website on 13 September 2026. Our own figures are the values in our code on that date. Pricing and limits change — check the source before relying on any of this.*
+*Figures current as of 13 September 2026 and taken from the running service, not from a marketing page. Limits and pricing change — the [converter](${SITE}/tools/bank-statement-to-excel) and [pricing page](${SITE}/pricing) always carry the live numbers.*
 `,
 };
 
@@ -153,6 +169,15 @@ async function run() {
   console.log(`slug:  ${post.slug}`);
   console.log(`meta:  ${post.meta_description.length} chars`);
   console.log(`words: ~${post.content.split(/\s+/).length}`);
+
+  for (const banned of ["bankstatementconverters", "BankScanPro", "bankscanpro"]) {
+    if (post.content.includes(banned) || post.title.includes(banned)) {
+      console.error(`\nRefusing to publish: competitor name "${banned}" is back in the post.`);
+      process.exitCode = 1;
+      return;
+    }
+  }
+  console.log("competitor-name check: clean");
 
   const { data: existing } = await supabase
     .from("blogs")
