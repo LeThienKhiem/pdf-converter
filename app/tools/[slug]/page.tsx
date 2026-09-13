@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import PdfToGsheetTool from "@/components/PdfToGsheetTool";
 
@@ -14,6 +14,29 @@ type LandingPage = {
   pain_point: string | null;
   industry: string | null;
 };
+
+/** Letters and digits only — the comparison that makes "e-commerce" equal "ecommerce". */
+function normalizeSlug(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * Find a landing page whose slug matches apart from punctuation.
+ *
+ * Returns null when nothing matches, so the caller still 404s — this is a
+ * rescue for near-misses, not a fuzzy search that would send every typo to an
+ * unrelated page.
+ */
+async function findSlugIgnoringPunctuation(
+  supabase: ReturnType<typeof getSupabase>,
+  slug: string
+): Promise<string | null> {
+  const { data } = await supabase.from("landing_pages").select("slug").limit(10000);
+  if (!data) return null;
+  const want = normalizeSlug(slug);
+  const hit = (data as { slug: string }[]).find((r) => normalizeSlug(r.slug) === want);
+  return hit?.slug ?? null;
+}
 
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
   if (!hasSupabaseConfig) return [];
@@ -76,7 +99,23 @@ export default async function ToolLandingPage({ params }: Props) {
     .eq("slug", slug)
     .single();
 
-  if (error || !data) notFound();
+  if (error || !data) {
+    // Before giving up, try the same slug with punctuation ignored.
+    //
+    // /tools used to build links by slugifying a keyword list, and its
+    // transform disagreed with the one that generated the stored slugs:
+    // "E-commerce" became "e-commerce" against a row at "ecommerce", and
+    // "HR & Payroll" became "hr-and-payroll" against "hr-payroll". Those two
+    // URLs were published on the site's largest page for months and are
+    // indexed, so they need to land somewhere rather than 404.
+    //
+    // A permanent redirect passes their accumulated signals to the real page
+    // and covers any future drift of the same shape, which a pair of
+    // hardcoded rules would not.
+    const target = await findSlugIgnoringPunctuation(supabase, slug);
+    if (target) permanentRedirect(`/tools/${target}`);
+    notFound();
+  }
 
   const page = data as LandingPage;
   const industry = page.industry?.trim() || "your industry";
