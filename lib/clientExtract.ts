@@ -9,8 +9,17 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *    /api/upload-url), then /api/extract with { storagePath }
  */
 
+/**
+ * Mirrors of the server's caps in app/api/extract/route.ts, which is the
+ * authority — these exist only to fail fast in the browser before an upload.
+ *
+ * Keep them in step. When the paid cap moved 25MB -> 23MB (base64 inflates by
+ * 4/3 against Anthropic's 32MB request ceiling) this copy was missed, so the
+ * browser accepted a 24MB file, spent the upload, and the server rejected it.
+ * A client cap above the server's is worse than no client cap at all.
+ */
 export const FREE_MAX_BYTES = 5 * 1024 * 1024;
-export const PAID_MAX_BYTES = 25 * 1024 * 1024;
+export const PAID_MAX_BYTES = 23 * 1024 * 1024;
 
 export type GridData = (string | null)[][];
 
