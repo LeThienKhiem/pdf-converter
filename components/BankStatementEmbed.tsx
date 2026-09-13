@@ -7,6 +7,8 @@ import { canGuestConvert, incrementGuestUsage } from "@/lib/pdfUsage";
 import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimitModal";
 import { createClient } from "@/lib/supabase/client";
 import { extractFileClient, PAID_MAX_BYTES, type GridData } from "@/lib/clientExtract";
+import PdfPasswordPrompt from "@/components/PdfPasswordPrompt";
+import { isEncryptedPdf } from "@/lib/pdfPassword";
 import { downloadQuickBooksCsv } from "@/lib/quickbooks";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 
@@ -22,6 +24,8 @@ const WATERMARK_TEXT = "Converted free at invoicetodata.com — upgrade to remov
  */
 export default function BankStatementEmbed({ bankName }: { bankName: string }) {
   const [file, setFile] = useState<File | null>(null);
+  /** Encrypted PDF waiting on its password — never reaches setFile. */
+  const [lockedFile, setLockedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [grid, setGrid] = useState<GridData>([]);
@@ -40,7 +44,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
     }
   }, []);
 
-  const acceptFile = useCallback((f: File | undefined | null) => {
+  const acceptFile = useCallback(async (f: File | undefined | null) => {
     if (!f) return;
     const okType = f.type === "application/pdf" || f.type.startsWith("image/");
     if (!okType) {
@@ -48,7 +52,12 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
       return;
     }
     if (f.size > PAID_MAX_BYTES) {
-      setError("File too large. Maximum size is 25MB.");
+      setError("File too large. Maximum size is 23MB.");
+      return;
+    }
+    if (await isEncryptedPdf(f)) {
+      setError(null);
+      setLockedFile(f);
       return;
     }
     setError(null);
@@ -133,13 +142,20 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
 
   return (
     <div className="rounded-2xl border-2 border-[#217346]/30 bg-white p-6 shadow-md sm:p-8">
+    {lockedFile && (
+      <PdfPasswordPrompt
+        file={lockedFile}
+        onCancel={() => setLockedFile(null)}
+        onUnlocked={(unlocked) => { setLockedFile(null); setError(null); setFile(unlocked); }}
+      />
+    )}
       <label
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
         onDrop={(e) => {
           e.preventDefault();
           setIsDragging(false);
-          acceptFile(e.dataTransfer.files?.[0]);
+          void acceptFile(e.dataTransfer.files?.[0]);
         }}
         className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
           isDragging ? "border-blue-500 bg-blue-50/50" : "border-slate-300 hover:border-slate-400 hover:bg-slate-50/50"
@@ -149,7 +165,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
           type="file"
           accept=".pdf,image/*"
           className="sr-only"
-          onChange={(e) => { acceptFile(e.target.files?.[0]); e.target.value = ""; }}
+          onChange={(e) => { void acceptFile(e.target.files?.[0]); e.target.value = ""; }}
           aria-label={`Upload ${bankName} statement`}
         />
         <FileUp className="h-9 w-9 text-slate-400" aria-hidden />
@@ -219,7 +235,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
             </button>
           </div>
           <p className="text-xs text-slate-500">
-            Converting a whole year of {bankName} statements? Paid plans unlock batch upload and 25MB files.
+            Converting a whole year of {bankName} statements? Paid plans unlock batch upload and 23MB files.
           </p>
         </div>
       )}

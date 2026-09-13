@@ -40,7 +40,7 @@ const PAID_VARIANT_COPY: Record<string, { title: string; body: string }> = {
   },
   file_too_large: {
     title: "Files Over 5MB Need a Paid Plan",
-    body: "Big statements and long documents (up to 25MB) are a paid feature. Unlock them with a $2 Week Pass — one-time payment, nothing to cancel.",
+    body: "Big statements and long documents (up to 23MB) are a paid feature. Unlock them with a $2 Week Pass — one-time payment, nothing to cancel.",
   },
   batch: {
     title: "Batch Upload is a Paid Feature",
@@ -48,7 +48,7 @@ const PAID_VARIANT_COPY: Record<string, { title: string; body: string }> = {
   },
   pages_limit: {
     title: "Free Plan Covers the First 10 Pages",
-    body: "We extracted the first 10 pages of your document. Unlock the full document — and files up to 25MB — with a $2 Week Pass, one-time payment.",
+    body: "We extracted the first 10 pages of your document. Unlock the full document — and files up to 23MB — with a $2 Week Pass, one-time payment.",
   },
 };
 

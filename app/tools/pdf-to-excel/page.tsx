@@ -27,6 +27,8 @@ import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimit
 import { createClient } from "@/lib/supabase/client";
 import { downloadQuickBooksCsv } from "@/lib/quickbooks";
 import { countPdfPagesClient, estimateExtractMs, extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
+import PdfPasswordPrompt from "@/components/PdfPasswordPrompt";
+import { isEncryptedPdf } from "@/lib/pdfPassword";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 
 const PENDING_KEY = "itd_pending_pdf";
@@ -112,6 +114,8 @@ function applyStylesAndAutoFit(ws: XLSX.WorkSheet, tableRows: GridData): void {
 
 export default function PdfToExcelPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  /** Encrypted PDF waiting on its password — never becomes selectedFile. */
+  const [lockedFile, setLockedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -165,7 +169,7 @@ export default function PdfToExcelPage() {
     setIsDragging(false);
   }, []);
 
-  const setFileWithValidation = useCallback((file: File | null) => {
+  const setFileWithValidation = useCallback(async (file: File | null) => {
     if (!file) {
       setSelectedFile(null);
       return;
@@ -178,6 +182,13 @@ export default function PdfToExcelPage() {
       setToastMessage("File too large. Maximum size is 23MB (paid) / 5MB (free).");
       return;
     }
+    // Encrypted PDFs used to reach the extract call and come back as
+    // "An error occurred while processing the document." Ask for the password
+    // instead; what comes back from the prompt is an ordinary PDF.
+    if (await isEncryptedPdf(file)) {
+      setLockedFile(file);
+      return;
+    }
     setSelectedFile(file);
   }, []);
 
@@ -187,7 +198,7 @@ export default function PdfToExcelPage() {
       e.stopPropagation();
       setIsDragging(false);
       const file = e.dataTransfer.files?.[0];
-      setFileWithValidation(file ?? null);
+      void setFileWithValidation(file ?? null);
     },
     [setFileWithValidation]
   );
@@ -195,7 +206,7 @@ export default function PdfToExcelPage() {
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      setFileWithValidation(file ?? null);
+      void setFileWithValidation(file ?? null);
       e.target.value = "";
     },
     [setFileWithValidation]
@@ -332,6 +343,13 @@ export default function PdfToExcelPage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
+    {lockedFile && (
+      <PdfPasswordPrompt
+        file={lockedFile}
+        onCancel={() => setLockedFile(null)}
+        onUnlocked={(unlocked) => { setLockedFile(null); setSelectedFile(unlocked); }}
+      />
+    )}
       <main>
         {/* Narrow container: the tool itself only — SEO sections below get full width */}
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
