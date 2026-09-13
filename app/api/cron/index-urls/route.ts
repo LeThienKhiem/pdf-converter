@@ -3,29 +3,34 @@ import { getSupabase, hasSupabaseConfig } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 
 /**
- * DEAD — do not wire this into vercel.json expecting it to work.
+ * Half dead. Do not wire this into vercel.json without reading which half.
  *
- * Both mechanisms it is built on were switched off by their owners:
+ * The sitemap pings were switched off by their owners:
  *
  *   google.com/ping?sitemap=   Google announced the sitemaps ping endpoint was
  *                              going away in June 2023 and removed it. Requests
  *                              are not processed.
  *   bing.com/ping?sitemap=     Bing retired its equivalent over the same period.
  *
- * So the cron can report success — a 200 or a redirect still comes back — while
- * submitting nothing. Nothing here is registered in vercel.json today, which is
- * the only reason it has not been quietly producing green reports.
+ * So those two report success — a 200 or a redirect still comes back — while
+ * submitting nothing.
  *
- * There is no automated replacement for this site. Google's Indexing API is
- * limited to JobPosting and BroadcastEvent pages and would be a policy
- * violation here. Requesting a recrawl means Search Console's URL Inspection
- * tool, by hand, one URL at a time — which is fine, because the moments it
- * matters are rare: a canonical or redirect change on a high-value page, not
- * routine publishing. New posts get picked up from sitemap.xml on Google's own
- * schedule.
+ * IndexNow, below, is a different story: still live, still honoured by Bing,
+ * Yandex, Seznam and Naver, and verified working from this codebase on
+ * 2026-09-13. An earlier version of this comment called the whole file dead on
+ * the strength of the ping endpoints, which was too broad.
  *
- * Kept rather than deleted because the Custom Search index-checking helper
- * below is still sound if anyone wants an "is this indexed?" report.
+ * Its one bug was the host. It declared "invoicetodata.com" while every
+ * canonical URL on the site is www, and IndexNow rejects a batch whose URLs do
+ * not belong to the declared host — so it would have failed on every run it
+ * ever made. Fixed here; scripts/submit-indexnow.ts is the version to reach
+ * for when submitting by hand.
+ *
+ * Google has no equivalent at all. Its Indexing API covers only JobPosting and
+ * BroadcastEvent pages, so a Google recrawl means Search Console's URL
+ * Inspection tool, by hand. That is fine — the moments it matters are rare: a
+ * canonical or redirect change on a high-value page, not routine publishing,
+ * which sitemap.xml already covers.
  */
 
 const SITE_URL = "https://invoicetodata.com";
@@ -84,10 +89,11 @@ async function submitIndexNow(urls: string[]): Promise<boolean> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        host: "invoicetodata.com",
+        host: "www.invoicetodata.com",
         urlList: urls,
-        // IndexNow key — can be any string, just needs matching file at root
+        // Any string, as long as public/<key>.txt returns exactly it.
         key: "invoicetodata-indexnow-key",
+        keyLocation: "https://www.invoicetodata.com/invoicetodata-indexnow-key.txt",
       }),
       signal: AbortSignal.timeout(15000),
     });
