@@ -36,6 +36,10 @@ const STATIC_PAGES: { path: string; lastModified: string; priority: number; chan
   { path: "/tools/pdf-to-excel", lastModified: "2026-09-13", priority: 1.0, changeFrequency: "weekly" },
   { path: "/tools/bank-statement-to-excel", lastModified: "2026-09-13", priority: 1.0, changeFrequency: "weekly" },
   { path: "/tools/pdf-to-gsheet", lastModified: "2026-09-12", priority: 0.8, changeFrequency: "monthly" },
+  // 2026-10-03: new, targeting the locked/password-protected phrasings. Nothing
+  // links to a page Google has not been told exists, and this one has no
+  // inbound history at all.
+  { path: "/tools/password-protected-bank-statement-to-excel", lastModified: "2026-10-03", priority: 0.9, changeFrequency: "monthly" },
   // 2026-09-06: industry grid rebuilt, duplicate and dead links removed.
   // Missing from this file until 2026-09-13 despite carrying the largest
   // impression pool on the site — nothing was telling Google it existed

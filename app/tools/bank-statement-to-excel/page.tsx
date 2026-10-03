@@ -904,6 +904,16 @@ export default function BankStatementToExcelPage() {
               <h2 id="banks-heading" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                 Specific bank guides
               </h2>
+              <p className="mt-3 text-slate-600">
+                Statement locked?{" "}
+                <a
+                  href="/tools/password-protected-bank-statement-to-excel"
+                  className="font-medium text-blue-600 hover:underline"
+                >
+                  Converting a password-protected bank statement
+                </a>{" "}
+                covers how the password is handled without leaving your browser.
+              </p>
             </div>
             <p className="mt-3 text-slate-600">
               Step-by-step instructions for downloading and converting statements from major banks. The converter above works with any bank — these pages cover the specifics.
