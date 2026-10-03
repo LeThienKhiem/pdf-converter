@@ -57,68 +57,77 @@ export function generateStaticParams(): { bank: string }[] {
  *   false     — reassure, no extra step needed
  */
 type PasswordGuidance = {
-  showsUnlockStep: boolean;
-  uploadStepNumber: number;
-  downloadStepNumber: number;
+  /**
+   * Whether to render the password section at all.
+   *
+   * Was `showsUnlockStep` — a step the reader had to perform. Since the
+   * in-browser unlock shipped there is no such step, so the flag now just
+   * gates the explanatory section, which is off only for banks known not to
+   * protect their downloads.
+   */
+  showsPasswordSection: boolean;
   heroBadge: string;
   metaFragment: string;
   faqQuestion: string;
   faqAnswer: string;
   unlockHeading: string;
   unlockBody: string;
-  howToStepName: string;
-  howToStepText: string;
 };
 
+/**
+ * Copy about password-protected statements, keyed off what we know per bank.
+ *
+ * Rewritten 2026-10-03. Every branch here used to say the converter could not
+ * read encrypted PDFs — "Not directly — for security we don't process
+ * encrypted PDFs" — and walked the reader through unlocking the file in
+ * Preview or Acrobat themselves. That was true until 2026-09-13, when the
+ * in-browser unlock shipped. It left the two banks we know protect statements,
+ * HSBC and Barclays, telling their visitors to go and do by hand the thing the
+ * tool now does for them.
+ *
+ * It reads as a selling point rather than a caveat now, which is what it is:
+ * the password is entered in the converter, the file is decrypted on the
+ * reader's own machine, and nothing about it reaches a server. Most tools in
+ * this space either refuse encrypted files or decrypt them server-side.
+ */
 function passwordGuidance(entity: BankEntity): PasswordGuidance {
-  const unlockHow =
-    "open it in Preview (Mac) or Acrobat (Windows), enter the password, then save a copy without the password";
+  const privacy =
+    "The password is used in your browser and never reaches our servers — the file is unlocked on your own device.";
 
   if (entity.passwordProtected === true) {
     return {
-      showsUnlockStep: true,
-      uploadStepNumber: 3,
-      downloadStepNumber: 4,
-      heroBadge: " • Password-protected PDFs",
-      metaFragment: "handles password-protected statements (after unlocking)",
+      showsPasswordSection: true,
+      heroBadge: " • Opens password-protected PDFs",
+      metaFragment: "opens password-protected statements",
       faqQuestion: `Does the converter handle password-protected ${entity.name} PDFs?`,
-      faqAnswer: `Not directly — for security we don't process encrypted PDFs. ${entity.name} typically password-protects statement downloads, so unlock the PDF first (${unlockHow}) and then upload.`,
-      unlockHeading: "Remove the password from the PDF",
-      unlockBody: `${entity.name} typically protects statement PDFs with a password. For security reasons our converter does not process encrypted PDFs — ${unlockHow} before uploading.`,
-      howToStepName: "Remove the PDF password",
-      howToStepText: `${entity.name} typically password-protects statement PDFs. Unlock it first: ${unlockHow}, then upload.`,
+      faqAnswer: `Yes. ${entity.name} password-protects statement downloads, so when you upload one a password box appears — enter it and the conversion continues. ${privacy} There is no need to unlock the file yourself first.`,
+      unlockHeading: `${entity.name} statements are password-protected — that is handled`,
+      unlockBody: `${entity.name} protects statement PDFs with a password, usually built from a date of birth, part of an account number, or a customer ID. Upload the file as it came from the bank: the converter asks for the password and opens it for you. ${privacy}`,
     };
   }
 
   if (entity.passwordProtected === false) {
     return {
-      showsUnlockStep: false,
-      uploadStepNumber: 2,
-      downloadStepNumber: 3,
+      showsPasswordSection: false,
       heroBadge: "",
       metaFragment: "no manual data entry",
       faqQuestion: `Does the converter handle downloaded ${entity.name} PDFs?`,
-      faqAnswer: `Yes. ${entity.name} downloads statement PDFs without password protection by default, so you can upload directly without preprocessing.`,
+      faqAnswer: `Yes. ${entity.name} downloads statement PDFs without password protection by default, so you can upload directly. If you ever receive a protected one — some account types differ — the converter asks for the password and opens it. ${privacy}`,
       unlockHeading: "",
       unlockBody: "",
-      howToStepName: "",
-      howToStepText: "",
     };
   }
 
-  // "unknown" — say only what's true: it might be protected, here's the fix.
+  // "unknown" — say only what is true: it may or may not be protected, and
+  // either way the upload is the same action.
   return {
-    showsUnlockStep: true,
-    uploadStepNumber: 3,
-    downloadStepNumber: 4,
-    heroBadge: "",
-    metaFragment: "no manual data entry",
+    showsPasswordSection: true,
+    heroBadge: " • Opens password-protected PDFs",
+    metaFragment: "opens password-protected statements",
     faqQuestion: `Can the converter handle a password-protected ${entity.name} PDF?`,
-    faqAnswer: `Encrypted PDFs aren't processed, for security reasons. Whether ${entity.name} protects statement downloads can vary by account type and region, so if the file asks for a password when you open it, unlock it first (${unlockHow}) and then upload.`,
-    unlockHeading: "Unlock the PDF if it asks for a password",
-    unlockBody: `Some banks protect statement downloads with a password and some don't, and it can differ by account type. If your ${entity.name} PDF prompts for one when you open it, our converter can't read it while it's encrypted — ${unlockHow}, then upload that copy. If it opens without a prompt, skip this step.`,
-    howToStepName: "Unlock the PDF if it is password-protected",
-    howToStepText: `If your ${entity.name} statement asks for a password when opened, ${unlockHow}, then upload the unlocked copy. If it opens without a prompt, no action is needed.`,
+    faqAnswer: `Yes. Whether ${entity.name} protects statement downloads varies by account type and region, so upload the file as it came. If it is protected, a password box appears and the conversion continues from there. ${privacy}`,
+    unlockHeading: "Password-protected statements open here too",
+    unlockBody: `Some banks protect statement downloads and some do not, and it can differ by account type. Either way the step is the same: upload the ${entity.name} PDF as the bank sent it. If it asks for a password, enter it when prompted. ${privacy}`,
   };
 }
 
@@ -179,25 +188,17 @@ function buildStructuredData(entity: BankEntity, pageUrl: string) {
         name: `Download your ${entity.name} statement`,
         text: `Sign in to your ${entity.name} online banking at ${entity.domain} and download the statement as a PDF.`,
       },
-      ...(pw.showsUnlockStep
-        ? [
-            {
-              "@type": "HowToStep",
-              position: 2,
-              name: pw.howToStepName,
-              text: pw.howToStepText,
-            },
-          ]
-        : []),
+      // No unlock step: the converter asks for the password itself, so the
+      // reader does nothing extra and the flow is always these three.
       {
         "@type": "HowToStep",
-        position: pw.uploadStepNumber,
+        position: 2,
         name: "Upload to InvoiceToData",
         text: `Drop the PDF onto the converter. The AI reads the transaction table directly from the visual layout — no template setup needed.`,
       },
       {
         "@type": "HowToStep",
-        position: pw.downloadStepNumber,
+        position: 3,
         name: "Download Excel or CSV",
         text: `Click "Download your Excel" to save a structured spreadsheet ready to import into Xero, QuickBooks, or your accounting workflow.`,
       },
@@ -443,7 +444,7 @@ export default async function BankStatementLandingPage({ params }: Props) {
                 </p>
               </div>
             </li>
-            {pw.showsUnlockStep && (
+            {pw.showsPasswordSection && (
               <li className="flex gap-4">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-white">
                   <Lock className="h-4 w-4" aria-hidden />
@@ -458,7 +459,7 @@ export default async function BankStatementLandingPage({ params }: Props) {
             )}
             <li className="flex gap-4">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
-                {pw.uploadStepNumber}
+                {2}
               </span>
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">
@@ -480,7 +481,7 @@ export default async function BankStatementLandingPage({ params }: Props) {
             </li>
             <li className="flex gap-4">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
-                {pw.downloadStepNumber}
+                {3}
               </span>
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">
