@@ -176,10 +176,10 @@ export const BANK_ENTITIES: ReadonlyArray<BankEntity> = [
     domain: "hsbc.com",
     statementFormats: ["PDF", "CSV"],
     passwordProtected: true,
-    note: "HSBC PDF statements are commonly password-protected on download; you'll need to remove the password (open in Preview/Acrobat, save without password) before uploading.",
+    note: "HSBC commonly password-protects statement PDFs on download. Upload the file as it came — the converter asks for the password and opens it in your browser, so there is no need to unlock it yourself.",
     accountTypes: ["Current Account", "Savings", "Credit Card", "Business"],
     deepDive:
-      "HSBC offers PDF statements through both HSBC UK and international online banking, with CSV exports available for many current accounts and business accounts. Because HSBC PDFs are commonly password-protected on download, you'll need to unlock the file first: open it in Preview (Mac) or Acrobat (Windows), enter the password, then save a copy without the password before uploading to the converter. Once uploaded, the AI extracts each transaction row into a structured Excel or CSV spreadsheet, preserving GBP amounts and HSBC's DD/MM/YYYY date format without conversion. This works for HSBC current accounts, savings, credit cards, and business banking statements. If your HSBC download is already in CSV format, you don't need conversion — but many international HSBC statements are PDF-only, which is where the AI extractor becomes essential. The output is ready for Xero, QuickBooks Online, or Sage import.",
+      "HSBC offers PDF statements through both HSBC UK and international online banking, with CSV exports available for many current accounts and business accounts. HSBC PDFs are commonly password-protected on download, which the converter handles directly: upload the file as it came and enter the password when prompted. The decryption happens in your browser, so the password never reaches a server and there is no need to re-save the file without it. Once uploaded, the AI extracts each transaction row into a structured Excel or CSV spreadsheet, preserving GBP amounts and HSBC's DD/MM/YYYY date format without conversion. This works for HSBC current accounts, savings, credit cards, and business banking statements. If your HSBC download is already in CSV format, you don't need conversion — but many international HSBC statements are PDF-only, which is where the AI extractor becomes essential. The output is ready for Xero, QuickBooks Online, or Sage import.",
   },
   {
     slug: "barclays",
@@ -302,6 +302,92 @@ export const BANK_ENTITIES: ReadonlyArray<BankEntity> = [
     note: "N26 is mobile-first, so statements are generated in-app and often reach a desktop as a shared PDF — the converter reads that PDF without needing the original download session.",
     accountTypes: ["Current Account", "Savings", "Business"],
   },
+  // ─── India ──────────────────────────────────────────────────────────────
+  //
+  // Added 2026-10-03 on the strength of the country split, which had gone
+  // unexamined. India produced 95 of the site's 211 clicks over 90 days — 45%
+  // — at a 5.33% click-through rate against a 1.06% site average, from 1,782
+  // impressions at an average position of 15.8. The United States, by
+  // contrast, generated 8,351 impressions and 23 clicks at 0.28%.
+  //
+  // The bank pages were allocated in the opposite proportion: ten US banks and
+  // six German ones, with Germany contributing 779 impressions and two clicks,
+  // and nothing at all for the market that converts best.
+  //
+  // passwordProtected is "unknown" for four of the five. ICICI states on its
+  // own help pages that it sends statements as password-protected PDFs, which
+  // is citable; the others do not publish the convention, and the exact rule —
+  // a date of birth, a PAN fragment, a customer ID — is not something to
+  // assert on their behalf. "unknown" renders the honest copy: upload it as it
+  // came, and enter a password if one is asked for. That is the same action
+  // either way, now that the converter opens locked files itself.
+  //
+  // statementFormats lists only what each bank is known to offer. PDF is
+  // certain everywhere; ICICI documents CSV and MT940 as well. Understating is
+  // the safe direction — a reader who finds an extra export option loses
+  // nothing, one who is promised CSV and cannot find it does.
+  {
+    slug: "hdfc-bank",
+    name: "HDFC Bank",
+    country: "IN",
+    currency: "INR",
+    domain: "hdfcbank.com",
+    statementFormats: ["PDF"],
+    passwordProtected: "unknown",
+    note: "HDFC Bank provides statement PDFs through NetBanking and the mobile app, with up to three years of history available. If the download opens with a password prompt, enter it in the converter — the file is unlocked in your browser.",
+    accountTypes: ["Savings Account", "Current Account", "Credit Card", "NRI Account"],
+    deepDive:
+      "HDFC Bank statements are available as PDF downloads from NetBanking and from the mobile app, which carries up to three years of history. Amounts are in INR and dates follow the DD/MM/YYYY convention used across Indian banking; the converter preserves both rather than reformatting them, so the output reconciles against the original without adjustment. Statement PDFs from Indian banks are frequently password-protected, and whether yours is can depend on the account type and how the statement was delivered — emailed statements are protected more often than ones downloaded directly. Either way the step is the same: upload the file as it arrived, and if a password is requested, enter it when the converter asks. Decryption happens on your own device. The extracted output carries dates, narration, debit and credit columns and the running balance, laid out for import into Tally, Zoho Books, Xero or QuickBooks.",
+  },
+  {
+    slug: "icici-bank",
+    name: "ICICI Bank",
+    country: "IN",
+    currency: "INR",
+    domain: "icicibank.com",
+    statementFormats: ["PDF", "CSV", "MT940"],
+    passwordProtected: true,
+    note: "ICICI Bank states that it sends statements as password-protected PDFs. Upload the file as it came — the converter asks for the password and opens it in your browser, with no need to unlock it first.",
+    accountTypes: ["Savings Account", "Current Account", "Credit Card", "Business Banking"],
+    deepDive:
+      "ICICI Bank offers statements as PDF and CSV from Internet Banking, and its business banking side publishes CSV, Excel and MT940 for accounting import. The bank documents that statements are sent in password-protected PDF format for security, so a locked file is the expected case rather than an exception — upload it as it came and enter the password when the converter asks. That decryption happens in your browser and the password never reaches a server. If your download is already CSV or MT940 there is nothing to convert; the extractor matters for the PDF path, which is what retail e-statements arrive as. Output preserves INR amounts and DD/MM/YYYY dates, with narration, debit, credit and running balance columns ready for Tally, Zoho Books, Xero or QuickBooks.",
+  },
+  {
+    slug: "state-bank-of-india",
+    name: "State Bank of India",
+    country: "IN",
+    currency: "INR",
+    domain: "sbi.co.in",
+    statementFormats: ["PDF"],
+    passwordProtected: "unknown",
+    note: "SBI statements download as PDF from OnlineSBI and the YONO app. If the file prompts for a password, enter it in the converter rather than unlocking the PDF yourself.",
+    accountTypes: ["Savings Account", "Current Account", "Credit Card"],
+    deepDive:
+      "State Bank of India statements come as PDFs from OnlineSBI and the YONO app. SBI layouts carry a narration column that packs several fields — transaction mode, reference numbers, counterparty — into one string, and its width shifts between statement periods. That is where template-based extractors tend to fail, because the map they were given no longer matches the page. The AI reads the table from the layout itself rather than from a fixed map, so a shift of that kind does not break it. Amounts stay in INR and dates in DD/MM/YYYY. Whether the PDF is password-protected varies with account type and delivery method; if yours asks for one, enter it when prompted and the file is unlocked on your own device. The output carries date, narration, debit, credit and balance, ready for Tally, Zoho Books or a spreadsheet reconciliation.",
+  },
+  {
+    slug: "axis-bank",
+    name: "Axis Bank",
+    country: "IN",
+    currency: "INR",
+    domain: "axisbank.com",
+    statementFormats: ["PDF"],
+    passwordProtected: "unknown",
+    note: "Axis Bank statements download as PDF from Internet Banking and the mobile app. A password-protected file can be uploaded as it is — the converter asks for the password.",
+    accountTypes: ["Savings Account", "Current Account", "Credit Card"],
+  },
+  {
+    slug: "kotak-mahindra-bank",
+    name: "Kotak Mahindra Bank",
+    country: "IN",
+    currency: "INR",
+    domain: "kotak.com",
+    statementFormats: ["PDF"],
+    passwordProtected: "unknown",
+    note: "Kotak Mahindra Bank provides statement PDFs through Net Banking and the mobile app. If the download is password-protected, enter the password in the converter instead of unlocking the file first.",
+    accountTypes: ["Savings Account", "Current Account", "Credit Card"],
+  },
+
 ];
 
 /** Lookup helper used by the dynamic route. */
