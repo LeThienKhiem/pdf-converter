@@ -215,7 +215,7 @@ export default function BankStatementEmbed({
       <PdfPasswordPrompt
         file={lockedFile}
         onCancel={() => setLockedFile(null)}
-        onUnlocked={(unlocked) => { setLockedFile(null); setError(null); setFile(unlocked); }}
+        onUnlocked={(unlocked) => { setError(null); setFile(unlocked); }}
       />
     )}
       <label

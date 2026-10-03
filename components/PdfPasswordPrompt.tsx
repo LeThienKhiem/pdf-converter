@@ -72,8 +72,11 @@ export default function PdfPasswordPrompt({
 
     if (result.ok) {
       setPassword("");
-      // Hand the caller the file first so the conversion starts, then offer the
-      // download. The modal stays up just long enough to show the option.
+      setBusy(false);
+      // Hand the file over so the conversion can proceed, and switch this
+      // modal to its success state rather than closing. Callers must not
+      // close it from onUnlocked — an earlier version did, which unmounted
+      // the component before the download option could render at all.
       setUnlockedUrl({ url: URL.createObjectURL(result.file), name: result.file.name });
       onUnlocked(result.file);
       return;
@@ -121,67 +124,85 @@ export default function PdfPasswordPrompt({
           </button>
         </div>
 
-        <p className="mt-4 text-sm text-slate-600">
-          Enter the password your bank uses for this statement — often a date of birth,
-          part of your account number, or a customer ID.
-        </p>
-
-        <input
-          ref={inputRef}
-          type="password"
-          value={password}
-          onChange={(e) => {
-            setPassword(e.target.value);
-            setError(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void submit();
-            }
-          }}
-          disabled={busy}
-          placeholder="PDF password"
-          autoComplete="off"
-          className="mt-4 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-        />
-
-        {error && (
-          <p className="mt-3 text-sm text-red-600" role="alert">
-            {error}
+        {unlockedUrl ? (
+          <>
+            <p className="mt-4 text-sm text-slate-600">
+              Unlocked. The conversion is running — you can close this.
+            </p>
+            <a
+              href={unlockedUrl.url}
+              download={unlockedUrl.name}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Save a copy without the password
+            </a>
+            <p className="mt-2 text-xs text-slate-500">
+              Your own file with the encryption removed — same text and layout, no password
+              next time.
+            </p>
+            <button
+              type="button"
+              onClick={close}
+              className="mt-5 w-full rounded-xl bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700"
+            >
+              Done
+            </button>
+          </>
+        ) : (
+          <>
+          <p className="mt-4 text-sm text-slate-600">
+            Enter the password your bank uses for this statement — often a date of birth,
+            part of your account number, or a customer ID.
           </p>
-        )}
 
-        {unlockedUrl && (
-          <a
-            href={unlockedUrl.url}
-            download={unlockedUrl.name}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <Download className="h-4 w-4" aria-hidden />
-            Save a copy without the password
-          </a>
-        )}
-
-        <div className="mt-5 flex gap-3">
-          <button
-            type="button"
-            onClick={close}
+          <input
+            ref={inputRef}
+            type="password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void submit();
+              }
+            }}
             disabled={busy}
-            className="flex-1 rounded-xl border border-slate-300 px-4 py-3 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => void submit()}
-            disabled={!password || busy}
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 disabled:opacity-40"
-          >
-            {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-            {busy ? "Unlocking…" : "Unlock and convert"}
-          </button>
-        </div>
+            placeholder="PDF password"
+            autoComplete="off"
+            className="mt-4 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+          />
+
+          {error && (
+            <p className="mt-3 text-sm text-red-600" role="alert">
+              {error}
+            </p>
+          )}
+
+          <div className="mt-5 flex gap-3">
+            <button
+              type="button"
+              onClick={close}
+              disabled={busy}
+              className="flex-1 rounded-xl border border-slate-300 px-4 py-3 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void submit()}
+              disabled={!password || busy}
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+            >
+              {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+              {busy ? "Unlocking…" : "Unlock and convert"}
+            </button>
+          </div>
+          </>
+        )}
 
         <p className="mt-4 text-xs text-slate-500">
           Your password is used in this browser only. It is never sent to our servers,

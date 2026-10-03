@@ -412,7 +412,7 @@ export default function PdfToExcelPage() {
       <PdfPasswordPrompt
         file={lockedFile}
         onCancel={() => setLockedFile(null)}
-        onUnlocked={(unlocked) => { setLockedFile(null); setSelectedFile(unlocked); }}
+        onUnlocked={(unlocked) => setSelectedFile(unlocked)}
       />
     )}
       <main>
