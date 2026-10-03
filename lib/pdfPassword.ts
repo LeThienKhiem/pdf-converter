@@ -129,3 +129,45 @@ export async function unlockPdf(file: File, password: string): Promise<UnlockRes
   });
   return { ok: true, file: unlocked, bytes: result.bytes };
 }
+
+/**
+ * What to do with a file before it enters the normal upload path.
+ *
+ * `ready`  — nothing stands in the way; use this file.
+ * `locked` — genuinely needs a password from the reader.
+ */
+export type Prepared =
+  | { state: "ready"; file: File }
+  | { state: "locked"; file: File };
+
+/**
+ * Decide whether a file needs a password, and silently remove the encryption
+ * when it does not.
+ *
+ * PDFs carry two different passwords and conflating them is why this exists:
+ *
+ *   user password   required to open the document. Undecryptable without it,
+ *                   by design. Bank statements use this one.
+ *   owner password  the document opens freely; only permissions like printing
+ *                   and copying are restricted. The encryption comes off with
+ *                   an empty password — which is most of what the commodity
+ *                   "PDF password remover" tools on the web actually do.
+ *
+ * pdf-lib reports both as simply "encrypted", so the first version of this
+ * prompted for a password on owner-restricted files too. The reader had no
+ * password, did not need one, and had no way forward. Verified against a
+ * generated owner-only PDF: pdf-lib called it encrypted, qpdf opened it with "".
+ *
+ * So an empty password is tried first, without telling anyone. If it works the
+ * file is simply unlocked and the upload continues as though it had never been
+ * protected. Only a real user password reaches the prompt, because only that
+ * case actually requires a human.
+ */
+export async function prepareFile(file: File): Promise<Prepared> {
+  if (!(await isEncryptedPdf(file))) return { state: "ready", file };
+
+  const silent = await unlockPdf(file, "");
+  if (silent.ok) return { state: "ready", file: silent.file };
+
+  return { state: "locked", file };
+}

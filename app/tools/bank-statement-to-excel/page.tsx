@@ -32,7 +32,7 @@ import { createClient } from "@/lib/supabase/client";
 import { gridToQuickBooksRows, quickBooksCsv } from "@/lib/quickbooks";
 import { countPdfPagesClient, estimateExtractMs, extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
 import PdfPasswordPrompt from "@/components/PdfPasswordPrompt";
-import { isEncryptedPdf } from "@/lib/pdfPassword";
+import { prepareFile } from "@/lib/pdfPassword";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 import { extractDocumentClient } from "@/lib/clientExtract";
 import { peekPendingIntent, takePendingFile } from "@/lib/pendingFile";
@@ -271,13 +271,16 @@ export default function BankStatementToExcelPage() {
       }
       // A password-protected PDF used to travel all the way to the extract
       // call and come back as "An error occurred while processing the
-      // document." Catch it here and ask instead. One at a time: the password
-      // differs per file and a queue of prompts is worse than a second drop.
-      if (!locked && (await isEncryptedPdf(file))) {
-        locked = file;
+      // document." prepareFile removes the encryption silently where no
+      // password is needed; only a file that genuinely requires one is held
+      // back. One at a time, since the password differs per file and a queue
+      // of prompts is worse than a second drop.
+      const prepared = await prepareFile(file);
+      if (prepared.state === "locked") {
+        if (!locked) locked = prepared.file;
         continue;
       }
-      valid.push({ file, status: "pending", rows: 0 });
+      valid.push({ file: prepared.file, status: "pending", rows: 0 });
     }
 
     if (valid.length > 0) setBatch((prev) => [...prev, ...valid].slice(0, MAX_BATCH_FILES));
@@ -495,6 +498,7 @@ export default function BankStatementToExcelPage() {
           file={lockedFile}
           onCancel={() => setLockedFile(null)}
           onUnlocked={(unlocked) => {
+            setLockedFile(null);
             setBatch((prev) => [...prev, { file: unlocked, status: "pending" as FileStatus, rows: 0 }].slice(0, MAX_BATCH_FILES));
             setToastMessage("Unlocked — ready to convert.");
           }}

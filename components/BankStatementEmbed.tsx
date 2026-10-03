@@ -8,7 +8,7 @@ import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimit
 import { createClient } from "@/lib/supabase/client";
 import { extractFileClient, PAID_MAX_BYTES, type GridData } from "@/lib/clientExtract";
 import PdfPasswordPrompt from "@/components/PdfPasswordPrompt";
-import { isEncryptedPdf } from "@/lib/pdfPassword";
+import { prepareFile } from "@/lib/pdfPassword";
 import { downloadQuickBooksCsv } from "@/lib/quickbooks";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 import { peekPendingIntent, takePendingFile } from "@/lib/pendingFile";
@@ -123,13 +123,13 @@ export default function BankStatementEmbed({
       setError("File too large. Maximum size is 23MB.");
       return;
     }
-    if (await isEncryptedPdf(f)) {
-      setError(null);
-      setLockedFile(f);
+    setError(null);
+    const prepared = await prepareFile(f);
+    if (prepared.state === "locked") {
+      setLockedFile(prepared.file);
       return;
     }
-    setError(null);
-    setFile(f);
+    setFile(prepared.file);
   }, []);
 
   const handleExtract = useCallback(async () => {
@@ -215,7 +215,7 @@ export default function BankStatementEmbed({
       <PdfPasswordPrompt
         file={lockedFile}
         onCancel={() => setLockedFile(null)}
-        onUnlocked={(unlocked) => { setError(null); setFile(unlocked); }}
+        onUnlocked={(unlocked) => { setLockedFile(null); setError(null); setFile(unlocked); }}
       />
     )}
       <label

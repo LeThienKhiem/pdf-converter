@@ -28,7 +28,7 @@ import { createClient } from "@/lib/supabase/client";
 import { downloadQuickBooksCsv } from "@/lib/quickbooks";
 import { countPdfPagesClient, estimateExtractMs, extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
 import PdfPasswordPrompt from "@/components/PdfPasswordPrompt";
-import { isEncryptedPdf } from "@/lib/pdfPassword";
+import { prepareFile } from "@/lib/pdfPassword";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 import { extractDocumentClient } from "@/lib/clientExtract";
 import { peekPendingIntent, takePendingFile } from "@/lib/pendingFile";
@@ -247,13 +247,15 @@ export default function PdfToExcelPage() {
       return;
     }
     // Encrypted PDFs used to reach the extract call and come back as
-    // "An error occurred while processing the document." Ask for the password
-    // instead; what comes back from the prompt is an ordinary PDF.
-    if (await isEncryptedPdf(file)) {
-      setLockedFile(file);
+    // "An error occurred while processing the document." prepareFile strips
+    // the encryption silently where no password is needed, and only asks when
+    // the file genuinely cannot be opened without one.
+    const prepared = await prepareFile(file);
+    if (prepared.state === "locked") {
+      setLockedFile(prepared.file);
       return;
     }
-    setSelectedFile(file);
+    setSelectedFile(prepared.file);
   }, []);
 
   const handleDrop = useCallback(
@@ -412,7 +414,7 @@ export default function PdfToExcelPage() {
       <PdfPasswordPrompt
         file={lockedFile}
         onCancel={() => setLockedFile(null)}
-        onUnlocked={(unlocked) => setSelectedFile(unlocked)}
+        onUnlocked={(unlocked) => { setLockedFile(null); setSelectedFile(unlocked); }}
       />
     )}
       <main>
