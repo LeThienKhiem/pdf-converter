@@ -50,6 +50,29 @@ export async function savePendingFile(file: File, intent: Omit<UnlockIntent, "sa
   }
 }
 
+/**
+ * Read the intent without consuming it.
+ *
+ * Callers must check "is this stash mine, and is the user signed in?" before
+ * taking it: abandoning the Google prompt and coming back is a normal thing
+ * to do, and consuming the stash on that path would throw the document away —
+ * which is exactly the re-upload this whole mechanism exists to avoid.
+ */
+export function peekPendingIntent(): UnlockIntent | null {
+  try {
+    const raw = localStorage.getItem(META_KEY);
+    if (!raw) return null;
+    const intent = JSON.parse(raw) as UnlockIntent;
+    if (Date.now() - intent.savedAt > TTL_MS) {
+      localStorage.removeItem(META_KEY);
+      return null;
+    }
+    return intent;
+  } catch {
+    return null;
+  }
+}
+
 /** Read back the stashed file + intent, clearing both. Null if absent/stale. */
 export async function takePendingFile(): Promise<{ file: File; intent: UnlockIntent } | null> {
   try {

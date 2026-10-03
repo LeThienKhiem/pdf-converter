@@ -31,7 +31,7 @@ import PdfPasswordPrompt from "@/components/PdfPasswordPrompt";
 import { isEncryptedPdf } from "@/lib/pdfPassword";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 import { extractDocumentClient } from "@/lib/clientExtract";
-import { takePendingFile } from "@/lib/pendingFile";
+import { peekPendingIntent, takePendingFile } from "@/lib/pendingFile";
 
 const PENDING_KEY = "itd_pending_pdf";
 
@@ -193,10 +193,14 @@ export default function PdfToExcelPage() {
   // before leaving, so pick it back up and go straight to the payment step.
   useEffect(() => {
     void (async () => {
-      const pending = await takePendingFile();
-      if (!pending || pending.intent.tool !== "pdf-to-excel") return;
+      // Peek before taking: a visitor who backs out of the Google prompt and
+      // returns must still have their document waiting, not silently dropped.
+      const intent = peekPendingIntent();
+      if (!intent || intent.tool !== "pdf-to-excel") return;
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+      const pending = await takePendingFile();
+      if (!pending) return;
       setSelectedFile(pending.file);
       setUnlockFile(pending.file);
       setPageNotice({ extracted: 10, total: pending.intent.pagesTotal });

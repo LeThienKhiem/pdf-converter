@@ -11,7 +11,7 @@ import PdfPasswordPrompt from "@/components/PdfPasswordPrompt";
 import { isEncryptedPdf } from "@/lib/pdfPassword";
 import { downloadQuickBooksCsv } from "@/lib/quickbooks";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
-import { takePendingFile } from "@/lib/pendingFile";
+import { peekPendingIntent, takePendingFile } from "@/lib/pendingFile";
 import { extractDocumentClient } from "@/lib/clientExtract";
 
 const PENDING_KEY = "itd_pending_embed";
@@ -75,10 +75,14 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
   // Back from the Google redirect mid-purchase — resume at the pay step.
   useEffect(() => {
     void (async () => {
-      const pending = await takePendingFile();
-      if (!pending || pending.intent.tool !== "bank-statement-to-excel") return;
+      // Peek before taking: a visitor who backs out of the Google prompt and
+      // returns must still have their document waiting, not silently dropped.
+      const intent = peekPendingIntent();
+      if (!intent || intent.tool !== "bank-statement-to-excel") return;
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+      const pending = await takePendingFile();
+      if (!pending) return;
       setFile(pending.file);
       setUnlockFile(pending.file);
       setPageNotice({ extracted: 10, total: pending.intent.pagesTotal });
