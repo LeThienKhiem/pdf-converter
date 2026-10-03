@@ -30,6 +30,8 @@ import { countPdfPagesClient, estimateExtractMs, extractFileClient, PAID_MAX_BYT
 import PdfPasswordPrompt from "@/components/PdfPasswordPrompt";
 import { isEncryptedPdf } from "@/lib/pdfPassword";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
+import { extractDocumentClient } from "@/lib/clientExtract";
+import { takePendingFile } from "@/lib/pendingFile";
 
 const PENDING_KEY = "itd_pending_pdf";
 
@@ -128,6 +130,10 @@ export default function PdfToExcelPage() {
   const [quotaModalVariant, setQuotaModalVariant] = useState<QuotaLimitVariant>("guest");
   const [isPaidExtract, setIsPaidExtract] = useState(false);
   const [pageNotice, setPageNotice] = useState<{ extracted: number; total: number } | null>(null);
+  // The document behind the paywall, kept so that paying finishes the job
+  // instead of asking for another upload.
+  const [unlockFile, setUnlockFile] = useState<File | null>(null);
+  const [unlockProgress, setUnlockProgress] = useState<{ done: number; total: number } | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const supabase = useMemo(() => createClient(), []);
 
@@ -143,6 +149,60 @@ export default function PdfToExcelPage() {
         if (session) setToastMessage("Signed in! Your result is ready — click Download.");
       });
     }
+  }, [supabase]);
+
+  /**
+   * Finish the job the user just paid for: re-extract the document in full,
+   * chunked if it is long, with no re-upload. Called straight from the
+   * checkout's completion event.
+   */
+  const runFullUnlock = useCallback(
+    async (file: File) => {
+      setShowQuotaModal(false);
+      setExtractError(null);
+      setIsExtracting(true);
+      setProgress(0);
+      setUnlockProgress({ done: 0, total: 1 });
+
+      const outcome = await extractDocumentClient(file, "pdf-to-excel", supabase, {
+        onProgress: (done, total) => {
+          setUnlockProgress({ done, total });
+          setProgress(Math.min(99, (done / Math.max(total, 1)) * 100));
+        },
+      });
+
+      if (outcome.ok) {
+        setExtractionResult(outcome.grid);
+        setExtractedFileName(file.name);
+        setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
+        setPageNotice(null);
+        setUnlockFile(null);
+        setToastMessage("Unlocked — your full document is ready to download.");
+      } else {
+        setExtractError(outcome.error);
+      }
+      setProgress(100);
+      setTimeout(() => setProgress(-1), 500);
+      setUnlockProgress(null);
+      setIsExtracting(false);
+    },
+    [supabase]
+  );
+
+  // Returning from the Google redirect mid-purchase: the document was stashed
+  // before leaving, so pick it back up and go straight to the payment step.
+  useEffect(() => {
+    void (async () => {
+      const pending = await takePendingFile();
+      if (!pending || pending.intent.tool !== "pdf-to-excel") return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      setSelectedFile(pending.file);
+      setUnlockFile(pending.file);
+      setPageNotice({ extracted: 10, total: pending.intent.pagesTotal });
+      setQuotaModalVariant("pages_limit");
+      setShowQuotaModal(true);
+    })();
   }, [supabase]);
 
   useEffect(() => {
@@ -276,6 +336,7 @@ export default function PdfToExcelPage() {
             outcome.pagesExtracted < outcome.pagesTotal
           ) {
             setPageNotice({ extracted: outcome.pagesExtracted, total: outcome.pagesTotal });
+            setUnlockFile(selectedFile);
             setQuotaModalVariant("pages_limit");
             setShowQuotaModal(true);
           } else {
@@ -406,7 +467,11 @@ export default function PdfToExcelPage() {
               <Loader2 className="h-8 w-8 shrink-0 animate-spin text-blue-600" aria-hidden />
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-slate-900">Extracting your document</p>
-                <p className="text-sm text-slate-500">Using Claude to preserve layout…</p>
+                <p className="text-sm text-slate-500">
+                  {unlockProgress && unlockProgress.total > 1
+                    ? `Unlocked — extracting batch ${unlockProgress.done + 1} of ${unlockProgress.total} from your document…`
+                    : "Using Claude to preserve layout…"}
+                </p>
                 <div className="mt-3" role="status" aria-live="polite" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
                   <progress
                     max={100}
@@ -820,7 +885,17 @@ export default function PdfToExcelPage() {
           </section>
         </div>
       </main>
-      <QuotaLimitModal open={showQuotaModal} onClose={() => setShowQuotaModal(false)} variant={quotaModalVariant} />
+      <QuotaLimitModal
+        open={showQuotaModal}
+        onClose={() => setShowQuotaModal(false)}
+        variant={quotaModalVariant}
+        unlockContext={
+          unlockFile && pageNotice
+            ? { file: unlockFile, tool: "pdf-to-excel", pagesTotal: pageNotice.total }
+            : null
+        }
+        onPurchased={unlockFile ? () => void runFullUnlock(unlockFile) : undefined}
+      />
     </div>
   );
 }

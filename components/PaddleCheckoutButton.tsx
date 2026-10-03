@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { initializePaddle } from "@paddle/paddle-js";
 
 type PaddleInstance = Awaited<ReturnType<typeof initializePaddle>>;
@@ -12,6 +12,13 @@ interface PaddleCheckoutButtonProps {
   children?: React.ReactNode;
   className?: string;
   successMessage?: string;
+  /**
+   * Called once the overlay reports a completed checkout. When provided, the
+   * built-in success dialog is suppressed so the caller can continue the
+   * user's actual job (e.g. finish extracting the document they just paid to
+   * unlock) instead of showing a dead-end "payment successful" box.
+   */
+  onPurchased?: () => void;
 }
 
 export default function PaddleCheckoutButton({
@@ -21,16 +28,24 @@ export default function PaddleCheckoutButton({
   children = "Buy credits",
   className = "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#217346] px-6 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-[#1d603d] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed",
   successMessage = "Your purchase is complete. You can start converting right away.",
+  onPurchased,
 }: PaddleCheckoutButtonProps) {
   const [paddle, setPaddle] = useState<PaddleInstance | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSuccess, setShowSuccess] = useState(false);
+  // Held in a ref so the Paddle event callback, which is registered once at
+  // init, always reaches the current handler.
+  const onPurchasedRef = useRef(onPurchased);
+  useEffect(() => {
+    onPurchasedRef.current = onPurchased;
+  }, [onPurchased]);
 
   const handleEvent = useCallback((event: { name?: string; data?: unknown }) => {
     console.log("[Paddle] Event:", event.name, event);
     if (event.name === "checkout.completed") {
       console.log("[Paddle] Checkout completed!", event.data);
-      setShowSuccess(true);
+      if (onPurchasedRef.current) onPurchasedRef.current();
+      else setShowSuccess(true);
     }
     if (event.name === "checkout.error") {
       console.error("[Paddle] Checkout error:", event);

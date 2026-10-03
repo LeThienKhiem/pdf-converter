@@ -6,6 +6,7 @@ import { logAnalyticsEvent } from "@/lib/firebase";
 import { createClient } from "@/lib/supabase/client";
 import PaddleCheckoutButton from "@/components/PaddleCheckoutButton";
 import { PADDLE_PRICES } from "@/lib/paddlePrices";
+import { savePendingFile } from "@/lib/pendingFile";
 
 export type QuotaLimitVariant =
   | "guest"
@@ -56,9 +57,23 @@ type QuotaLimitModalProps = {
   open: boolean;
   onClose: () => void;
   variant: QuotaLimitVariant;
+  /**
+   * The document the user is trying to unlock. Supplying it turns the paywall
+   * into a two-click flow for guests: the file is stashed before the Google
+   * redirect and restored afterwards, so paying never costs them a re-upload.
+   */
+  unlockContext?: { file: File; tool: string; pagesTotal: number } | null;
+  /** Fired after a completed checkout so the caller can finish the job. */
+  onPurchased?: () => void;
 };
 
-export default function QuotaLimitModal({ open, onClose, variant }: QuotaLimitModalProps) {
+export default function QuotaLimitModal({
+  open,
+  onClose,
+  variant,
+  unlockContext,
+  onPurchased,
+}: QuotaLimitModalProps) {
   const supabase = useMemo(() => createClient(), []);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | undefined>(undefined);
@@ -94,8 +109,18 @@ export default function QuotaLimitModal({ open, onClose, variant }: QuotaLimitMo
   const isGuest = variant === "guest" || variant === "download_signin";
   const guestCopy = GUEST_VARIANT_COPY[variant] ?? GUEST_VARIANT_COPY.guest!;
   const canBuyWeekPass = !isGuest && Boolean(userId && PADDLE_PRICES.weekPass);
+  // A paywall hit with no account: offer sign-in-then-pay in place rather
+  // than a link to /pricing that loses the document.
+  const needsAccountToBuy = !isGuest && !userId && Boolean(PADDLE_PRICES.weekPass);
 
   const handleGoogle = async () => {
+    if (unlockContext) {
+      await savePendingFile(unlockContext.file, {
+        tool: unlockContext.tool,
+        fileName: unlockContext.file.name,
+        pagesTotal: unlockContext.pagesTotal,
+      });
+    }
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: typeof window !== "undefined" ? window.location.href : undefined },
@@ -170,9 +195,40 @@ export default function QuotaLimitModal({ open, onClose, variant }: QuotaLimitMo
                     userEmail={userEmail}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     successMessage="Your Week Pass is active — unlimited conversions for the next 7 days."
+                    onPurchased={onPurchased}
                   >
-                    Unlock 7 Days Unlimited — $2
+                    {unlockContext
+                      ? `Unlock all ${unlockContext.pagesTotal} pages — $2`
+                      : "Unlock 7 Days Unlimited — $2"}
                   </PaddleCheckoutButton>
+                ) : needsAccountToBuy ? (
+                  /*
+                   * Not signed in, but there is a document waiting. Every
+                   * paywall hit so far has been a guest, and sending them to
+                   * /pricing meant signing in, paying, coming back and
+                   * re-uploading — so buying starts here instead, with the
+                   * file carried across the redirect.
+                   */
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleGoogle}
+                      className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-blue-700"
+                    >
+                      <svg className="h-5 w-5 rounded-full bg-white p-0.5" viewBox="0 0 24 24" aria-hidden>
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z" />
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                        <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18A11 11 0 0 0 1 12c0 1.77.43 3.45 1.18 4.94l3.66-2.84z" />
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                      </svg>
+                      Continue with Google to unlock
+                    </button>
+                    <p className="text-center text-xs text-slate-500">
+                      {unlockContext
+                        ? `Your document stays loaded — no re-upload. One click to sign in, then $2 unlocks all ${unlockContext.pagesTotal} pages.`
+                        : "One click to sign in, then $2 — no credit card details stored by us."}
+                    </p>
+                  </>
                 ) : (
                   <Link
                     href="/pricing"

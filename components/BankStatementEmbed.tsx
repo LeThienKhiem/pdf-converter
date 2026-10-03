@@ -11,6 +11,8 @@ import PdfPasswordPrompt from "@/components/PdfPasswordPrompt";
 import { isEncryptedPdf } from "@/lib/pdfPassword";
 import { downloadQuickBooksCsv } from "@/lib/quickbooks";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
+import { takePendingFile } from "@/lib/pendingFile";
+import { extractDocumentClient } from "@/lib/clientExtract";
 
 const PENDING_KEY = "itd_pending_embed";
 
@@ -34,6 +36,8 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
   const [showModal, setShowModal] = useState(false);
   const [modalVariant, setModalVariant] = useState<QuotaLimitVariant>("guest");
   const [pageNotice, setPageNotice] = useState<{ extracted: number; total: number } | null>(null);
+  const [unlockFile, setUnlockFile] = useState<File | null>(null);
+  const [unlockProgress, setUnlockProgress] = useState<{ done: number; total: number } | null>(null);
   const supabase = useMemo(() => createClient(), []);
 
   // Restore a result stashed before the sign-in redirect (download wall).
@@ -43,6 +47,45 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
       queueMicrotask(() => setGrid(grids[0]!.grid));
     }
   }, []);
+
+  /** Finish the paid job in place: full extraction, chunked, no re-upload. */
+  const runFullUnlock = useCallback(
+    async (f: File) => {
+      setShowModal(false);
+      setError(null);
+      setIsExtracting(true);
+      setUnlockProgress({ done: 0, total: 1 });
+      const outcome = await extractDocumentClient(f, "bank-statement-to-excel", supabase, {
+        onProgress: (done, total) => setUnlockProgress({ done, total }),
+      });
+      if (outcome.ok) {
+        setGrid(outcome.grid);
+        setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
+        setPageNotice(null);
+        setUnlockFile(null);
+      } else {
+        setError(outcome.error);
+      }
+      setUnlockProgress(null);
+      setIsExtracting(false);
+    },
+    [supabase]
+  );
+
+  // Back from the Google redirect mid-purchase — resume at the pay step.
+  useEffect(() => {
+    void (async () => {
+      const pending = await takePendingFile();
+      if (!pending || pending.intent.tool !== "bank-statement-to-excel") return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      setFile(pending.file);
+      setUnlockFile(pending.file);
+      setPageNotice({ extracted: 10, total: pending.intent.pagesTotal });
+      setModalVariant("pages_limit");
+      setShowModal(true);
+    })();
+  }, [supabase]);
 
   const acceptFile = useCallback(async (f: File | undefined | null) => {
     if (!f) return;
@@ -90,6 +133,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
         outcome.pagesExtracted < outcome.pagesTotal
       ) {
         setPageNotice({ extracted: outcome.pagesExtracted, total: outcome.pagesTotal });
+        setUnlockFile(file);
       } else {
         setPageNotice(null);
       }
@@ -193,7 +237,9 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
           {isExtracting ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-              Extracting transactions…
+              {unlockProgress && unlockProgress.total > 1
+                ? `Extracting batch ${unlockProgress.done + 1} of ${unlockProgress.total}…`
+                : "Extracting transactions…"}
             </>
           ) : (
             "Convert to Excel — Free"
@@ -240,7 +286,17 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
         </div>
       )}
 
-      <QuotaLimitModal open={showModal} onClose={() => setShowModal(false)} variant={modalVariant} />
+      <QuotaLimitModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        variant={modalVariant}
+        unlockContext={
+          unlockFile && pageNotice
+            ? { file: unlockFile, tool: "bank-statement-to-excel", pagesTotal: pageNotice.total }
+            : null
+        }
+        onPurchased={unlockFile ? () => void runFullUnlock(unlockFile) : undefined}
+      />
     </div>
   );
 }

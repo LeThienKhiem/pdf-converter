@@ -18,8 +18,13 @@ import { getSupabase } from "@/lib/supabase";
 const GUEST_COOKIE = "itd_gid";
 const GUEST_LIFETIME_LIMIT = 1;
 const GUEST_IP_DAILY_LIMIT = 3;
-const USER_PER_MINUTE_LIMIT = 10;
-const IP_PER_MINUTE_LIMIT = 6;
+// Long documents are extracted in ~12-page chunks, so one paying customer
+// legitimately fires dozens of requests in a row. Their real ceiling is the
+// plan quota enforced by consume_page; these limits only exist to stop a
+// runaway client or an anonymous abuser, so signed-in users get a high one
+// and the tight per-IP burst applies to guests only.
+const USER_PER_MINUTE_LIMIT = 60;
+const GUEST_IP_PER_MINUTE_LIMIT = 6;
 
 export type PaidCheck = {
   isPaid: boolean;
@@ -99,15 +104,17 @@ async function countExtractions(
 export async function checkAndConsume(): Promise<Entitlement> {
   const ip = await getClientIp();
 
-  const supabase = await createClient();
+  const supabaseAuth = await createClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { user: authUser },
+  } = await supabaseAuth.auth.getUser();
+  const user = authUser;
 
-  // Burst rate limit by IP for everyone.
-  if (ip) {
+  // Burst rate limit by IP — guests only. A signed-in user chunking a long
+  // document shares one IP across every chunk and must not be throttled.
+  if (ip && !authUser) {
     const perMinuteIp = await countExtractions({ ip }, 60_000, false);
-    if (perMinuteIp >= IP_PER_MINUTE_LIMIT) {
+    if (perMinuteIp >= GUEST_IP_PER_MINUTE_LIMIT) {
       return {
         allowed: false,
         status: 429,
