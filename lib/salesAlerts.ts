@@ -110,7 +110,10 @@ export async function alertDailyHealth(): Promise<{ sent: boolean; reason?: stri
     const since = new Date(Date.now() - 24 * 3600_000).toISOString();
 
     const [extRes, txRes] = await Promise.all([
-      admin.from("extractions").select("status, error_code").gte("created_at", since),
+      admin
+        .from("extractions")
+        .select("status, error_code, pages_total, pages_extracted")
+        .gte("created_at", since),
       admin
         .from("transactions")
         .select("amount_usd")
@@ -121,6 +124,14 @@ export async function alertDailyHealth(): Promise<{ sent: boolean; reason?: stri
     const rows = extRes.data ?? [];
     const success = rows.filter((r) => r.status === "success").length;
     const failed = rows.filter((r) => r.status === "failed").length;
+    // People who hit the 10-page paywall — the moment a sale is possible.
+    // Printed next to orders so the two numbers can be read as a ratio.
+    const paywallHits = rows.filter(
+      (r) =>
+        r.pages_total != null &&
+        r.pages_extracted != null &&
+        Number(r.pages_extracted) < Number(r.pages_total)
+    ).length;
     const orders = txRes.data ?? [];
     const total = success + failed;
 
@@ -148,6 +159,11 @@ export async function alertDailyHealth(): Promise<{ sent: boolean; reason?: stri
     ];
     if (rate != null) lines.push(`Success rate: <b>${rate}%</b>${unhealthy ? " ⚠️ below 90%" : ""}`);
     if (topError) lines.push(`Top failure: ${esc(topError)}`);
+    if (paywallHits > 0) {
+      lines.push(
+        `Paywall reached: <b>${paywallHits}</b>${orders.length === 0 ? " · 0 bought" : ""}`
+      );
+    }
     if (orders.length > 0) {
       const revenue = orders.reduce((a, o) => a + (Number(o.amount_usd) || 0), 0);
       lines.push(`Orders: <b>${orders.length}</b> · $${revenue.toFixed(2)}`);
