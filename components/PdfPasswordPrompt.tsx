@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Lock, Loader2, X } from "lucide-react";
-import { MAX_UNLOCK_PAGES, unlockPdf } from "@/lib/pdfPassword";
+import { Lock, Loader2, X, Download } from "lucide-react";
+import { unlockPdf } from "@/lib/pdfPassword";
 
 /**
  * Asks for the password on an encrypted PDF and hands back an unlocked copy.
@@ -15,6 +15,13 @@ import { MAX_UNLOCK_PAGES, unlockPdf } from "@/lib/pdfPassword";
  * state that outlives the modal, never sent anywhere, and the input is cleared
  * on close. That is the whole point of doing the decryption in the browser, so
  * the UI says so rather than leaving the user to wonder.
+ *
+ * On success it also offers the unlocked PDF as a download. qpdf strips the
+ * encryption from the original rather than rebuilding the document, so what
+ * comes back is the reader's own file with the password removed — same text,
+ * same layout, same size. Worth offering: someone who had to look up a bank
+ * password to convert one statement generally does not want to look it up
+ * again next month.
  */
 export default function PdfPasswordPrompt({
   file,
@@ -22,12 +29,14 @@ export default function PdfPasswordPrompt({
   onCancel,
 }: {
   file: File;
-  onUnlocked: (unlocked: File, pages: number) => void;
+  onUnlocked: (unlocked: File) => void;
   onCancel: () => void;
 }) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Object URL for the unlocked copy, created only if the reader asks for it. */
+  const [unlockedUrl, setUnlockedUrl] = useState<{ url: string; name: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -38,6 +47,13 @@ export default function PdfPasswordPrompt({
     setPassword("");
     onCancel();
   }, [onCancel]);
+
+  // Object URLs hold the decrypted file in memory until revoked.
+  useEffect(() => {
+    return () => {
+      if (unlockedUrl) URL.revokeObjectURL(unlockedUrl.url);
+    };
+  }, [unlockedUrl]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -56,7 +72,10 @@ export default function PdfPasswordPrompt({
 
     if (result.ok) {
       setPassword("");
-      onUnlocked(result.file, result.pagesRendered);
+      // Hand the caller the file first so the conversion starts, then offer the
+      // download. The modal stays up just long enough to show the option.
+      setUnlockedUrl({ url: URL.createObjectURL(result.file), name: result.file.name });
+      onUnlocked(result.file);
       return;
     }
 
@@ -64,11 +83,6 @@ export default function PdfPasswordPrompt({
     if (result.reason === "wrong_password") {
       setError("That password did not open the file. Check it and try again.");
       inputRef.current?.select();
-    } else if (result.reason === "too_many_pages") {
-      setError(
-        `This PDF has ${result.pagesTotal} pages; unlocking is limited to ${MAX_UNLOCK_PAGES}. ` +
-          `Remove the password in your PDF reader and upload it directly.`
-      );
     } else {
       setError("Could not read this PDF. It may be damaged or use an unsupported format.");
     }
@@ -136,6 +150,17 @@ export default function PdfPasswordPrompt({
           <p className="mt-3 text-sm text-red-600" role="alert">
             {error}
           </p>
+        )}
+
+        {unlockedUrl && (
+          <a
+            href={unlockedUrl.url}
+            download={unlockedUrl.name}
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            Save a copy without the password
+          </a>
         )}
 
         <div className="mt-5 flex gap-3">

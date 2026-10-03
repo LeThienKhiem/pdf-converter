@@ -494,10 +494,10 @@ export default function BankStatementToExcelPage() {
         <PdfPasswordPrompt
           file={lockedFile}
           onCancel={() => setLockedFile(null)}
-          onUnlocked={(unlocked, pages) => {
+          onUnlocked={(unlocked) => {
             setLockedFile(null);
             setBatch((prev) => [...prev, { file: unlocked, status: "pending" as FileStatus, rows: 0 }].slice(0, MAX_BATCH_FILES));
-            setToastMessage(`Unlocked ${pages} page${pages === 1 ? "" : "s"} — ready to convert.`);
+            setToastMessage("Unlocked — ready to convert.");
           }}
         />
       )}

@@ -6,12 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "prebuild": "node scripts/copy-pdfjs-assets.mjs",
-    "predev": "node scripts/copy-pdfjs-assets.mjs"
+    "lint": "eslint"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
+    "@arshad-shah/qpdf-wasm": "^0.1.0",
     "@next/third-parties": "^16.1.6",
     "@paddle/paddle-js": "^1.6.2",
     "@paddle/paddle-node-sdk": "^3.6.0",
@@ -25,7 +24,6 @@
     "node-fetch": "^3.3.2",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
-    "pdfjs-dist": "^6.3.289",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
