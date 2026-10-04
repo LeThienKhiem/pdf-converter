@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BankStatementEmbed from "@/components/BankStatementEmbed";
 import {
   FileSpreadsheet,
   Shield,
@@ -28,26 +29,32 @@ export default function Home() {
               <h1 id="hero-heading" className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
                 Automate Financial Data Entry with AI
               </h1>
-              <p className="mt-6 text-lg text-slate-600 leading-relaxed sm:text-xl max-w-3xl mx-auto">
-                InvoiceToData eliminates manual typing by converting complex PDFs, receipts, and bank statements into Excel, CSV, or Google Sheets in seconds. Our context-aware AI understands tables, line items, and financial layouts—so you get structured data that matches your source document without reformatting. No more copy-pasting from invoices or re-keying statement lines; just upload, extract, and integrate into your existing workflows.
+              <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600 sm:text-xl">
+                Drop an invoice, receipt or bank statement — get a clean Excel file in seconds.
+                Free to try, no credit card.
               </p>
-              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
-              <Link
-                href="/tools/pdf-to-excel"
-                className="inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-[#217346] px-6 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-[#1d603d] hover:shadow-lg sm:w-auto"
-              >
-                <FileBarChart className="h-5 w-5 shrink-0" aria-hidden />
-                Convert PDF to Excel
-              </Link>
-              <Link
-                href="/tools/pdf-to-gsheet"
-                className="inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0F9D58] to-[#1a73e8] px-6 py-4 text-base font-semibold text-white shadow-md transition-all hover:opacity-95 hover:shadow-lg sm:w-auto"
-              >
-                <FileSpreadsheet className="h-5 w-5 shrink-0" aria-hidden />
-                Convert PDF to Google Sheet
-              </Link>
             </div>
+
+            {/* The converter itself, above the fold. Every click between landing
+                and uploading is a place to lose the visitor, so the homepage
+                no longer routes them to a tool page first. */}
+            <div className="mx-auto mt-8 max-w-2xl">
+              <BankStatementEmbed
+                tool="pdf-to-excel"
+                noun="document"
+                dropLabel="Drop your PDF, invoice or bank statement here"
+              />
+              <p className="mt-4 text-center text-sm text-slate-500">
+                Prefer Google Sheets?{" "}
+                <Link href="/tools/pdf-to-gsheet" className="font-medium text-blue-600 hover:underline">
+                  Convert straight into a sheet →
+                </Link>
+              </p>
             </div>
+
+            <p className="mx-auto mt-12 max-w-3xl text-center text-base leading-relaxed text-slate-600">
+              InvoiceToData eliminates manual typing by converting complex PDFs, receipts, and bank statements into Excel, CSV, or Google Sheets in seconds. Our context-aware AI understands tables, line items, and financial layouts—so you get structured data that matches your source document without reformatting. No more copy-pasting from invoices or re-keying statement lines; just upload, extract, and integrate into your existing workflows.
+            </p>
           </div>
         </section>
 

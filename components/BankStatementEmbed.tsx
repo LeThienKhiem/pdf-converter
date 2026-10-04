@@ -14,17 +14,38 @@ import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 import { peekPendingIntent, takePendingFile } from "@/lib/pendingFile";
 import { extractDocumentClient } from "@/lib/clientExtract";
 
-const PENDING_KEY = "itd_pending_embed";
+/** Rows shown in the inline preview — enough to judge the result at a glance. */
+const PREVIEW_ROWS = 8;
 
 const WATERMARK_TEXT = "Converted free at invoicetodata.com — upgrade to remove this line";
 
+type ConverterEmbedProps = {
+  /** Bank SEO pages: personalises the copy ("Drop your Chase statement here"). */
+  bankName?: string;
+  /** Extraction tool id — drives server-side logging and bank-only categorisation. */
+  tool?: string;
+  /** What the upload is called in status copy: "statement", "document". */
+  noun?: string;
+  dropLabel?: string;
+  footnote?: string;
+};
+
 /**
- * Compact bank-statement converter embedded in the SEO bank pages
- * (/tools/bank/[bank]) — same server-enforced pipeline as the full tool,
- * trimmed to upload → extract → download so visitors convert on the page
- * they landed on instead of being sent away.
+ * Compact converter — upload → extract → preview → download, with the full
+ * paywall flow (10-page gate, in-place purchase, download wall) built in.
+ *
+ * Used on the homepage hero and on the bank SEO pages (/tools/bank/[bank]),
+ * so visitors convert on the page they landed on instead of being sent away.
  */
-export default function BankStatementEmbed({ bankName }: { bankName: string }) {
+export default function BankStatementEmbed({
+  bankName,
+  tool = "bank-statement-to-excel",
+  noun = "statement",
+  dropLabel,
+  footnote,
+}: ConverterEmbedProps) {
+  // Per-tool so a result stashed on one page is never restored on another.
+  const pendingKey = `itd_pending_embed:${tool}`;
   const [file, setFile] = useState<File | null>(null);
   /** Encrypted PDF waiting on its password — never reaches setFile. */
   const [lockedFile, setLockedFile] = useState<File | null>(null);
@@ -42,11 +63,11 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
 
   // Restore a result stashed before the sign-in redirect (download wall).
   useEffect(() => {
-    const grids = takePendingResult(PENDING_KEY);
+    const grids = takePendingResult(pendingKey);
     if (grids && grids[0]) {
       queueMicrotask(() => setGrid(grids[0]!.grid));
     }
-  }, []);
+  }, [pendingKey]);
 
   /** Finish the paid job in place: full extraction, chunked, no re-upload. */
   const runFullUnlock = useCallback(
@@ -55,7 +76,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
       setError(null);
       setIsExtracting(true);
       setUnlockProgress({ done: 0, total: 1 });
-      const outcome = await extractDocumentClient(f, "bank-statement-to-excel", supabase, {
+      const outcome = await extractDocumentClient(f, tool, supabase, {
         onProgress: (done, total) => setUnlockProgress({ done, total }),
       });
       if (outcome.ok) {
@@ -69,7 +90,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
       setUnlockProgress(null);
       setIsExtracting(false);
     },
-    [supabase]
+    [supabase, tool]
   );
 
   // Back from the Google redirect mid-purchase — resume at the pay step.
@@ -78,7 +99,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
       // Peek before taking: a visitor who backs out of the Google prompt and
       // returns must still have their document waiting, not silently dropped.
       const intent = peekPendingIntent();
-      if (!intent || intent.tool !== "bank-statement-to-excel") return;
+      if (!intent || intent.tool !== tool) return;
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       const pending = await takePendingFile();
@@ -89,7 +110,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
       setModalVariant("pages_limit");
       setShowModal(true);
     })();
-  }, [supabase]);
+  }, [supabase, tool]);
 
   const acceptFile = useCallback(async (f: File | undefined | null) => {
     if (!f) return;
@@ -126,7 +147,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
     setError(null);
     setGrid([]);
 
-    const outcome = await extractFileClient(file, "bank-statement-to-excel", supabase);
+    const outcome = await extractFileClient(file, tool, supabase);
     if (outcome.ok) {
       if (!session) incrementGuestUsage();
       setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
@@ -159,14 +180,14 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
       setError(outcome.error);
     }
     setIsExtracting(false);
-  }, [file, isExtracting, supabase]);
+  }, [file, isExtracting, supabase, tool]);
 
   const handleDownload = useCallback(async () => {
     if (grid.length === 0) return;
     // Download wall: viewing is free, downloading needs a (free) account.
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      savePendingResult(PENDING_KEY, [{ name: "bank-statement", grid }]);
+      savePendingResult(pendingKey, [{ name: "bank-statement", grid }]);
       setModalVariant("download_signin");
       setShowModal(true);
       return;
@@ -176,7 +197,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Statement");
     XLSX.writeFile(wb, "bank-statement.xlsx");
-  }, [grid, isPaidExtract, supabase]);
+  }, [grid, isPaidExtract, supabase, pendingKey]);
 
   const handleQuickBooks = useCallback(() => {
     if (grid.length === 0) return;
@@ -214,11 +235,11 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
           accept=".pdf,image/*"
           className="sr-only"
           onChange={(e) => { void acceptFile(e.target.files?.[0]); e.target.value = ""; }}
-          aria-label={`Upload ${bankName} statement`}
+          aria-label={bankName ? `Upload ${bankName} statement` : `Upload ${noun}`}
         />
         <FileUp className="h-9 w-9 text-slate-400" aria-hidden />
         <span className="mt-3 font-medium text-slate-700">
-          {file ? file.name : `Drop your ${bankName} statement here`}
+          {file ? file.name : dropLabel ?? (bankName ? `Drop your ${bankName} statement here` : "Drop your PDF here or click to browse")}
         </span>
         <span className="mt-1 text-sm text-slate-500">
           PDF or photo — first conversion free, no sign-up
@@ -243,7 +264,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
               {unlockProgress && unlockProgress.total > 1
                 ? `Extracting batch ${unlockProgress.done + 1} of ${unlockProgress.total}…`
-                : "Extracting transactions…"}
+                : `Extracting your ${noun}…`}
             </>
           ) : (
             "Convert to Excel — Free"
@@ -252,8 +273,30 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
       ) : (
         <div className="mt-4 space-y-3">
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
-            ✓ Extracted {grid.length} rows from your statement
+            ✓ Extracted {grid.length} rows from your {noun}
           </p>
+          {/* Preview before the wall: seeing their own data in rows and
+              columns is what makes the sign-in-to-download ask worth it. */}
+          <div className="overflow-x-auto rounded-lg border border-slate-200 text-left">
+            <table className="min-w-full text-xs">
+              <tbody className="divide-y divide-slate-100">
+                {grid.slice(0, PREVIEW_ROWS).map((row, i) => (
+                  <tr key={i} className={i === 0 ? "bg-slate-50 font-semibold text-slate-700" : "text-slate-600"}>
+                    {row.map((cell, j) => (
+                      <td key={j} className="whitespace-nowrap px-2.5 py-1.5">
+                        {cell ?? ""}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {grid.length > PREVIEW_ROWS && (
+            <p className="text-xs text-slate-500">
+              Showing {PREVIEW_ROWS} of {grid.length} rows — the download has all of them.
+            </p>
+          )}
           {pageNotice && (
             <button
               type="button"
@@ -261,7 +304,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
               className="block w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-left text-sm text-amber-900 transition-colors hover:bg-amber-100"
             >
               <strong>First {pageNotice.extracted} of {pageNotice.total} pages extracted.</strong>{" "}
-              Unlock the full statement — $2 →
+              Unlock the full {noun} — $2 →
             </button>
           )}
           <div className="flex flex-wrap gap-3">
@@ -285,7 +328,10 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
             </button>
           </div>
           <p className="text-xs text-slate-500">
-            Converting a whole year of {bankName} statements? Paid plans unlock batch upload and 23MB files.
+            {footnote ??
+              (bankName
+                ? `Converting a whole year of ${bankName} statements? Paid plans unlock batch upload and 23MB files.`
+                : "Long documents or a stack of files? Paid plans start at $2 — full documents, 23MB files, no watermark.")}
           </p>
         </div>
       )}
@@ -296,7 +342,7 @@ export default function BankStatementEmbed({ bankName }: { bankName: string }) {
         variant={modalVariant}
         unlockContext={
           unlockFile && pageNotice
-            ? { file: unlockFile, tool: "bank-statement-to-excel", pagesTotal: pageNotice.total }
+            ? { file: unlockFile, tool, pagesTotal: pageNotice.total }
             : null
         }
         onPurchased={unlockFile ? () => void runFullUnlock(unlockFile) : undefined}
