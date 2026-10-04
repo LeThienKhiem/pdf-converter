@@ -48,8 +48,21 @@ async function loadQpdf() {
   const qpdf = await import("@arshad-shah/qpdf-wasm");
   // Resolve the binary through the bundler rather than a CDN, so its version
   // can never drift from the JavaScript that drives it.
+  const asset = new URL("@arshad-shah/qpdf-wasm/qpdf.wasm", import.meta.url);
+  // In client bundles Turbopack rewrites import.meta.url to a file:// path on
+  // the build machine, so the asset URL comes out as file:///_next/static/….
+  // The library treats "file:" as Node and reaches for node:fs, which does not
+  // exist in a browser — so every unlock failed before the binary was even
+  // requested. Keep only the path the bundler emitted and fetch it ourselves
+  // from this origin.
+  const href = new URL(asset.pathname, window.location.origin).href;
   qpdf.configure({
-    wasmUrl: new URL("@arshad-shah/qpdf-wasm/qpdf.wasm", import.meta.url),
+    wasmUrl: href,
+    compileWasm: async () => {
+      const res = await fetch(href);
+      if (!res.ok) throw new Error(`Unable to fetch qpdf.wasm: ${res.status}`);
+      return WebAssembly.compile(await res.arrayBuffer());
+    },
   });
   return qpdf;
 }
