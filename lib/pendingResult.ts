@@ -1,6 +1,7 @@
 "use client";
 
 import type { GridData } from "@/lib/clientExtract";
+import type { StatementMeta } from "@/lib/bankStatement";
 
 /**
  * The download wall sends guests through Google OAuth, which is a full-page
@@ -9,7 +10,7 @@ import type { GridData } from "@/lib/clientExtract";
  */
 
 export type PendingResult = {
-  grids: { name: string; grid: GridData }[];
+  grids: { name: string; grid: GridData; statement?: StatementMeta | null; partial?: boolean }[];
   savedAt: number;
 };
 

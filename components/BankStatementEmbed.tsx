@@ -14,6 +14,9 @@ import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 import { peekPendingIntent, takePendingFile } from "@/lib/pendingFile";
 import { trackFunnel } from "@/lib/funnel";
 import { extractDocumentClient } from "@/lib/clientExtract";
+import { isBankGrid, reconcileStatement, type StatementMeta } from "@/lib/bankStatement";
+import { bankWorksheet, checksWorksheet } from "@/lib/bankWorkbook";
+import ReconciliationBadge from "@/components/ReconciliationBadge";
 
 /** Rows shown in the inline preview — enough to judge the result at a glance. */
 const PREVIEW_ROWS = 8;
@@ -53,6 +56,8 @@ export default function BankStatementEmbed({
   const [isDragging, setIsDragging] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [grid, setGrid] = useState<GridData>([]);
+  const [statement, setStatement] = useState<StatementMeta | null>(null);
+  const [truncated, setTruncated] = useState(false);
   const [isPaidExtract, setIsPaidExtract] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -61,12 +66,21 @@ export default function BankStatementEmbed({
   const [unlockFile, setUnlockFile] = useState<File | null>(null);
   const [unlockProgress, setUnlockProgress] = useState<{ done: number; total: number } | null>(null);
   const supabase = useMemo(() => createClient(), []);
+  const bank = isBankGrid(grid);
+  const check = useMemo(
+    () => reconcileStatement(grid, statement, { partial: Boolean(pageNotice) || truncated }),
+    [grid, statement, pageNotice, truncated]
+  );
 
   // Restore a result stashed before the sign-in redirect (download wall).
   useEffect(() => {
     const grids = takePendingResult(pendingKey);
     if (grids && grids[0]) {
-      queueMicrotask(() => setGrid(grids[0]!.grid));
+      queueMicrotask(() => {
+        setGrid(grids[0]!.grid);
+        setStatement(grids[0]!.statement ?? null);
+        setTruncated(Boolean(grids[0]!.partial));
+      });
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) trackFunnel("download_resumed", { tool });
       });
@@ -85,6 +99,8 @@ export default function BankStatementEmbed({
       });
       if (outcome.ok) {
         setGrid(outcome.grid);
+        setStatement(outcome.statement ?? null);
+        setTruncated(false);
         setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
         setPageNotice(null);
         setUnlockFile(null);
@@ -151,12 +167,15 @@ export default function BankStatementEmbed({
     setIsExtracting(true);
     setError(null);
     setGrid([]);
+    setStatement(null);
 
     const outcome = await extractFileClient(file, tool, supabase);
     if (outcome.ok) {
       if (!session) incrementGuestUsage();
       setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
       setGrid(outcome.grid);
+      setStatement(outcome.statement ?? null);
+      setTruncated(Boolean(outcome.truncated));
       if (
         outcome.pagesTotal != null &&
         outcome.pagesExtracted != null &&
@@ -192,18 +211,22 @@ export default function BankStatementEmbed({
     // Download wall: viewing is free, downloading needs a (free) account.
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      savePendingResult(pendingKey, [{ name: "bank-statement", grid }]);
+      savePendingResult(pendingKey, [{ name: "bank-statement", grid, statement, partial: truncated }]);
       setModalVariant("download_signin");
       setShowModal(true);
       return;
     }
-    const rows = isPaidExtract ? grid : [...grid, [], [WATERMARK_TEXT]];
-    const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Statement");
+    if (bank) {
+      XLSX.utils.book_append_sheet(wb, bankWorksheet(grid, check, isPaidExtract ? null : WATERMARK_TEXT), "Transactions");
+      if (check) XLSX.utils.book_append_sheet(wb, checksWorksheet([{ name: file?.name ?? "Statement", check }]), "Checks");
+    } else {
+      const rows = isPaidExtract ? grid : [...grid, [], [WATERMARK_TEXT]];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "Statement");
+    }
     XLSX.writeFile(wb, "bank-statement.xlsx");
     trackFunnel("excel_downloaded", { tool, variant: isPaidExtract ? "paid" : "free" });
-  }, [grid, isPaidExtract, supabase, pendingKey, tool]);
+  }, [grid, isPaidExtract, supabase, pendingKey, tool, bank, check, file, statement, truncated]);
 
   const handleQuickBooks = useCallback(() => {
     if (grid.length === 0) return;
@@ -279,8 +302,15 @@ export default function BankStatementEmbed({
       ) : (
         <div className="mt-4 space-y-3">
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
-            ✓ Extracted {grid.length} rows from your {noun}
+            ✓ Extracted {bank ? `${grid.length - 1} transactions` : `${grid.length} rows`} from your {noun}
           </p>
+          {check && (
+            <ReconciliationBadge
+              check={check}
+              pages={pageNotice}
+              onUnlock={pageNotice ? () => { setModalVariant("pages_limit"); setShowModal(true); } : undefined}
+            />
+          )}
           {/* Preview before the wall: seeing their own data in rows and
               columns is what makes the sign-in-to-download ask worth it. */}
           <div className="overflow-x-auto rounded-lg border border-slate-200 text-left">

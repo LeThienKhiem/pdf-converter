@@ -37,6 +37,13 @@ import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 import { extractDocumentClient } from "@/lib/clientExtract";
 import { peekPendingIntent, takePendingFile } from "@/lib/pendingFile";
 import { trackFunnel } from "@/lib/funnel";
+import { isBankGrid, reconcileStatement, type StatementMeta } from "@/lib/bankStatement";
+import { bankWorksheet, checksWorksheet } from "@/lib/bankWorkbook";
+import ReconciliationBadge from "@/components/ReconciliationBadge";
+
+type StatementResult = { name: string; grid: GridData; statement?: StatementMeta | null; partial?: boolean };
+
+const checkFor = (r: StatementResult) => reconcileStatement(r.grid, r.statement, { partial: r.partial });
 
 const PENDING_KEY = "itd_pending_bank";
 
@@ -142,14 +149,14 @@ export default function BankStatementToExcelPage() {
    * time anything reaches it, it is an ordinary PDF.
    */
   const [lockedFile, setLockedFile] = useState<File | null>(null);
-  const [batchResults, setBatchResults] = useState<{ name: string; grid: GridData }[]>([]);
+  const [batchResults, setBatchResults] = useState<StatementResult[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [progress, setProgress] = useState(-1);
   const [extractionResult, setExtractionResult] = useState<GridData>([]);
   const [extractedFileName, setExtractedFileName] = useState<string>("");
-  const [tableExpanded, setTableExpanded] = useState(false);
+  const [tableExpanded, setTableExpanded] = useState(true);
   const [extractError, setExtractError] = useState<string | null>(null);
   const [showQuotaModal, setShowQuotaModal] = useState(false);
   const [quotaModalVariant, setQuotaModalVariant] = useState<QuotaLimitVariant>("guest");
@@ -198,7 +205,7 @@ export default function BankStatementToExcelPage() {
       });
 
       if (outcome.ok) {
-        setBatchResults([{ name: file.name, grid: outcome.grid }]);
+        setBatchResults([{ name: file.name, grid: outcome.grid, statement: outcome.statement }]);
         setExtractionResult(outcome.grid);
         setExtractedFileName(file.name);
         setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
@@ -350,13 +357,13 @@ export default function BankStatementToExcelPage() {
     setExtractionResult([]);
     setBatchResults([]);
     setExtractedFileName("");
-    setTableExpanded(false);
+    setTableExpanded(true);
     setIsExtracting(true);
     setProgress(0);
     setBatch((prev) => prev.map((b) => ({ ...b, status: "pending" as FileStatus, rows: 0, error: undefined })));
 
     const items = batch;
-    const results: { name: string; grid: GridData }[] = [];
+    const results: StatementResult[] = [];
     let paidSeen = false;
     let hitPaywall = false;
     let pagesLimited: { extracted: number; total: number } | null = null;
@@ -388,7 +395,14 @@ export default function BankStatementToExcelPage() {
       if (outcome.ok) {
         if (!session) incrementGuestUsage();
         paidSeen = outcome.source === "plan" || outcome.source === "credits";
-        results.push({ name: items[i]!.file.name, grid: outcome.grid });
+        results.push({
+          name: items[i]!.file.name,
+          grid: outcome.grid,
+          statement: outcome.statement,
+          partial:
+            Boolean(outcome.truncated) ||
+            (outcome.pagesTotal != null && outcome.pagesExtracted != null && outcome.pagesExtracted < outcome.pagesTotal),
+        });
         if (outcome.truncated) {
           setToastMessage(
             `${items[i]!.file.name}: very long — extracted the first ${outcome.grid.length} rows.`
@@ -403,7 +417,7 @@ export default function BankStatementToExcelPage() {
           gatedFile = items[i]!.file;
         }
         setBatch((prev) =>
-          prev.map((b, j) => (j === i ? { ...b, status: "done" as FileStatus, rows: outcome.grid.length } : b))
+          prev.map((b, j) => (j === i ? { ...b, status: "done" as FileStatus, rows: isBankGrid(outcome.grid) ? outcome.grid.length - 1 : outcome.grid.length } : b))
         );
       } else if (outcome.status === 402 || outcome.status === 413 || outcome.status === 401) {
         setQuotaModalVariant(reasonToVariant(outcome.reason));
@@ -452,7 +466,15 @@ export default function BankStatementToExcelPage() {
     }
     const wb = XLSX.utils.book_new();
     const used = new Set<string>();
+    const checks: { name: string; check: NonNullable<ReturnType<typeof checkFor>> }[] = [];
     batchResults.forEach((r, i) => {
+      if (isBankGrid(r.grid)) {
+        const check = checkFor(r);
+        if (check) checks.push({ name: r.name, check });
+        const ws = bankWorksheet(r.grid, check, isPaidExtract ? null : WATERMARK_TEXT);
+        XLSX.utils.book_append_sheet(wb, ws, sheetNameFor(r.name, i, used));
+        return;
+      }
       const exportRows = isPaidExtract ? r.grid : [...r.grid, [], [WATERMARK_TEXT]];
       const ws = XLSX.utils.aoa_to_sheet(exportRows);
       applyStylesAndAutoFit(ws, r.grid);
@@ -462,6 +484,7 @@ export default function BankStatementToExcelPage() {
       }
       XLSX.utils.book_append_sheet(wb, ws, sheetNameFor(r.name, i, used));
     });
+    if (checks.length > 0) XLSX.utils.book_append_sheet(wb, checksWorksheet(checks), "Checks");
     XLSX.writeFile(wb, batchResults.length > 1 ? "bank-statements.xlsx" : "extracted-data.xlsx");
     trackFunnel("excel_downloaded", { tool: "bank-statement-to-excel", variant: isPaidExtract ? "paid" : "free" });
   }, [batchResults, isPaidExtract, supabase]);
@@ -490,7 +513,12 @@ export default function BankStatementToExcelPage() {
   }, [batchResults, isPaidExtract]);
 
   const colCount = getColumnCount(extractionResult);
-  const headers = Array.from({ length: colCount }, (_, i) => `Column ${i + 1}`);
+  // A structured statement carries its own header row; a layout copy doesn't.
+  const bankTable = isBankGrid(extractionResult);
+  const headers = bankTable
+    ? extractionResult[0]!.map((h, i) => h ?? `Column ${i + 1}`)
+    : Array.from({ length: colCount }, (_, i) => `Column ${i + 1}`);
+  const tableRows = bankTable ? extractionResult.slice(1) : extractionResult;
   const showProgress = progress >= 0 && isExtracting;
   const showResult = batchResults.length > 0 && !isExtracting;
   const isBatch = batch.length > 1;
@@ -646,6 +674,22 @@ export default function BankStatementToExcelPage() {
                 </button>
               </div>
             )}
+            <div className="mt-6 space-y-2">
+              {batchResults.map((r) => {
+                const check = checkFor(r);
+                if (!check) return null;
+                return (
+                  <div key={r.name}>
+                    {batchResults.length > 1 && <p className="mb-1 text-xs font-medium text-slate-500">{r.name}</p>}
+                    <ReconciliationBadge
+                      check={check}
+                      pages={r.partial ? pageNotice : null}
+                      onUnlock={r.partial && pageNotice ? () => { setQuotaModalVariant("pages_limit"); setShowQuotaModal(true); } : undefined}
+                    />
+                  </div>
+                );
+              })}
+            </div>
             <section className="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="extracted-table-heading">
               <h2 id="extracted-table-heading" className="sr-only">Table of Content</h2>
               <button
@@ -677,7 +721,7 @@ export default function BankStatementToExcelPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {extractionResult.map((row, index) => (
+                      {tableRows.map((row, index) => (
                         <TableRow key={index} className="transition-colors hover:bg-slate-50/50">
                           {headers.map((_, j) => (
                             <TableCell key={j} className="whitespace-nowrap">

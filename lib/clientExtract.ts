@@ -1,6 +1,7 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { mergeStatementMeta, type StatementMeta } from "@/lib/bankStatement";
 
 /**
  * Client-side extraction call that routes by file size:
@@ -55,6 +56,8 @@ export type ExtractOutcome =
       source?: string;
       plan?: string;
       categorized?: boolean;
+      /** Bank tool only: the statement's opening/closing balances, for the balance check. */
+      statement?: StatementMeta | null;
       truncated?: boolean;
       pagesTotal?: number | null;
       pagesExtracted?: number | null;
@@ -100,7 +103,7 @@ export async function extractFileClient(
       });
       const json = await res.json();
       if (res.ok && Array.isArray(json.data)) {
-        return { ok: true, grid: json.data, source: json.source, plan: json.plan, categorized: json.categorized, truncated: json.truncated, pagesTotal: json.pagesTotal, pagesExtracted: json.pagesExtracted };
+        return { ok: true, grid: json.data, source: json.source, plan: json.plan, categorized: json.categorized, statement: json.statement ?? null, truncated: json.truncated, pagesTotal: json.pagesTotal, pagesExtracted: json.pagesExtracted };
       }
       return { ok: false, status: res.status, reason: json?.reason, error: json?.error ?? "Extraction failed." };
     }
@@ -111,7 +114,7 @@ export async function extractFileClient(
     const res = await fetch("/api/extract", { method: "POST", body: formData });
     const json = await res.json();
     if (res.ok && Array.isArray(json.data) && json.data.every((r: unknown) => Array.isArray(r))) {
-      return { ok: true, grid: json.data, source: json.source, plan: json.plan, categorized: json.categorized, truncated: json.truncated, pagesTotal: json.pagesTotal, pagesExtracted: json.pagesExtracted };
+      return { ok: true, grid: json.data, source: json.source, plan: json.plan, categorized: json.categorized, statement: json.statement ?? null, truncated: json.truncated, pagesTotal: json.pagesTotal, pagesExtracted: json.pagesExtracted };
     }
     return { ok: false, status: res.status, reason: json?.reason, error: json?.error ?? "Extraction failed." };
   } catch (err) {
@@ -171,6 +174,7 @@ export async function extractDocumentClient(
   const merged: GridData = [];
   let header: (string | null)[] | undefined;
   let meta: Extract<ExtractOutcome, { ok: true }> | null = null;
+  const statements: (StatementMeta | null | undefined)[] = [];
 
   for (let c = 0; c < chunkCount; c++) {
     opts.onProgress?.(c, chunkCount);
@@ -184,6 +188,10 @@ export async function extractDocumentClient(
       outcome = await extractFileClient(part, tool, supabase);
     }
 
+    // A chunk with no transactions (the closing pages of a statement are
+    // often only disclosures) is not a failure of the document.
+    if (!outcome.ok && outcome.status === 422 && merged.length > 0) continue;
+
     if (!outcome.ok) {
       // Partial success still beats nothing — return what we have if the
       // failure happened late, otherwise surface the error.
@@ -192,6 +200,7 @@ export async function extractDocumentClient(
     }
 
     meta = outcome;
+    statements.push(outcome.statement);
     const rows = outcome.grid;
     if (c === 0) {
       header = rows[0];
@@ -208,6 +217,7 @@ export async function extractDocumentClient(
     source: meta?.source,
     plan: meta?.plan,
     categorized: meta?.categorized,
+    statement: mergeStatementMeta(statements),
     truncated: false,
     pagesTotal: pages,
     pagesExtracted: pages,

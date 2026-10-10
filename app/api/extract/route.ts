@@ -16,6 +16,12 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase";
 import { analyzePdfPages } from "@/lib/pdfPages";
+import {
+  BANK_CATEGORIZE_APPENDIX,
+  BANK_SYSTEM_PROMPT,
+  structureBankResponse,
+  type StatementMeta,
+} from "@/lib/bankStatement";
 
 const BASE_SYSTEM_PROMPT = `You are a Visual-to-Excel copier. Analyze the document as a visual grid and reproduce its exact layout.
 
@@ -257,10 +263,15 @@ export async function POST(request: Request) {
     const isPaidExtract =
       entitlement.source === "plan" || entitlement.source === "credits";
     const model = isPaidExtract ? PDF_MODEL_PREMIUM : PDF_MODEL;
-    const categorize = isPaidExtract && tool.includes("bank");
-    const systemPrompt = categorize
-      ? BASE_SYSTEM_PROMPT + CATEGORIZE_APPENDIX
-      : BASE_SYSTEM_PROMPT;
+    // Bank statements get their own extractor: one clean transaction table
+    // instead of a copy of every page's layout (see lib/bankStatement.ts).
+    const isBank = tool.includes("bank");
+    const categorize = isPaidExtract && isBank;
+    const systemPrompt = isBank
+      ? BANK_SYSTEM_PROMPT + (categorize ? BANK_CATEGORIZE_APPENDIX : "")
+      : categorize
+        ? BASE_SYSTEM_PROMPT + CATEGORIZE_APPENDIX
+        : BASE_SYSTEM_PROMPT;
 
     // Free-tier page gating: extract the first 10 pages of longer PDFs and
     // tell the client how much is left — value first, then the upsell.
@@ -360,7 +371,31 @@ export async function POST(request: Request) {
       );
     }
 
-    const data = normalizeTo2DArray(parsed);
+    let data: (string | null)[][];
+    let statement: StatementMeta | null = null;
+    if (isBank) {
+      const structured = structureBankResponse(parsed, categorize);
+      data = structured.grid;
+      statement = structured.statement;
+      if (structured.mode === "statement" && structured.transactions === 0) {
+        await refundExtraction(entitlement);
+        await recordExtraction(entitlement, tool, "failed", {
+          errorCode: "no_transactions",
+          durationMs: Date.now() - startedAt,
+          pagesTotal,
+          pagesExtracted,
+          model,
+          inputTokens: response.usage?.input_tokens ?? null,
+          outputTokens: response.usage?.output_tokens ?? null,
+        });
+        return NextResponse.json(
+          { error: "No transactions were found in this document. Is it a bank or card statement?" },
+          { status: 422 }
+        );
+      }
+    } else {
+      data = normalizeTo2DArray(parsed);
+    }
     const truncated = response.stop_reason === "max_tokens";
     await recordExtraction(entitlement, tool, "success", {
       errorCode: truncated ? "truncated_salvaged" : null,
@@ -383,6 +418,7 @@ export async function POST(request: Request) {
       source: entitlement.source,
       remaining: entitlement.remaining,
       categorized: categorize,
+      statement,
       truncated,
       pagesTotal,
       pagesExtracted,
