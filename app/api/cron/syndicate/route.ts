@@ -268,7 +268,21 @@ const PLATFORMS: {
   post: (title: string, content: string, slug: string, tags: string[]) => Promise<PlatformResult>;
 }[] = [
   { key: "devto", label: "dev.to", post: postToDevTo },
-  { key: "hashnode", label: "Hashnode", post: postToHashnode },
+  // Hashnode removed 2026-10-10. Not a bug on our side and not fixable in code:
+  // Hashnode retired free GraphQL API access on 2026-05-13 — "Every API
+  // request, queries and mutations, now requires a Pro plan on your
+  // publication" — and free accounts lost API access entirely.
+  //
+  // What that looked like from here was gql.hashnode.com answering 200 with
+  // text/html instead of JSON. An earlier note in this file guessed "likely
+  // edge filtering", which was wrong and went unchecked for two months while
+  // the cron burned one attempt per run: 37 failures, zero publishes, every
+  // one of them doomed before it was made. The endpoint is really a 301 to the
+  // announcement page; following the redirect is what finally said so.
+  //
+  // postToHashnode is kept rather than deleted — the account and the
+  // publication ID are still valid, so this is one line to restore if the
+  // publication is ever upgraded to Pro.
 ];
 
 export type SyndicateResult =
