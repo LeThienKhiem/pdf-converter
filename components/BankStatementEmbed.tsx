@@ -12,6 +12,7 @@ import { prepareFile } from "@/lib/pdfPassword";
 import { downloadQuickBooksCsv } from "@/lib/quickbooks";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 import { peekPendingIntent, takePendingFile } from "@/lib/pendingFile";
+import { trackFunnel } from "@/lib/funnel";
 import { extractDocumentClient } from "@/lib/clientExtract";
 
 /** Rows shown in the inline preview — enough to judge the result at a glance. */
@@ -66,8 +67,11 @@ export default function BankStatementEmbed({
     const grids = takePendingResult(pendingKey);
     if (grids && grids[0]) {
       queueMicrotask(() => setGrid(grids[0]!.grid));
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) trackFunnel("download_resumed", { tool });
+      });
     }
-  }, [pendingKey]);
+  }, [pendingKey, supabase, tool]);
 
   /** Finish the paid job in place: full extraction, chunked, no re-upload. */
   const runFullUnlock = useCallback(
@@ -104,6 +108,7 @@ export default function BankStatementEmbed({
       if (!session) return;
       const pending = await takePendingFile();
       if (!pending) return;
+      trackFunnel("unlock_resumed", { tool, pagesTotal: pending.intent.pagesTotal });
       setFile(pending.file);
       setUnlockFile(pending.file);
       setPageNotice({ extracted: 10, total: pending.intent.pagesTotal });
@@ -197,7 +202,8 @@ export default function BankStatementEmbed({
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Statement");
     XLSX.writeFile(wb, "bank-statement.xlsx");
-  }, [grid, isPaidExtract, supabase, pendingKey]);
+    trackFunnel("excel_downloaded", { tool, variant: isPaidExtract ? "paid" : "free" });
+  }, [grid, isPaidExtract, supabase, pendingKey, tool]);
 
   const handleQuickBooks = useCallback(() => {
     if (grid.length === 0) return;

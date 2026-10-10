@@ -45,7 +45,7 @@ export async function GET(request: Request) {
 
   const admin = getSupabase();
 
-  const [extRes, gscRes, usersRes, txRes, authRes] = await Promise.all([
+  const [extRes, gscRes, usersRes, txRes, authRes, funnelRes] = await Promise.all([
     admin
       .from("extractions")
       .select("user_id, guest_key, tool, status, plan, error_code, duration_ms, pages_total, model, input_tokens, output_tokens, created_at")
@@ -56,6 +56,11 @@ export async function GET(request: Request) {
     admin.from("users").select("id, plan, credits, created_at").limit(10000),
     admin.from("transactions").select("created_at, amount_usd, status").limit(5000),
     admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    admin
+      .from("funnel_events")
+      .select("event, variant, source, user_id, guest_key, ip")
+      .gte("created_at", windowStart)
+      .limit(50000),
   ]);
 
   const ext = (extRes.data ?? []) as Row[];
@@ -142,6 +147,48 @@ export async function GET(request: Request) {
     { stage: "Paid", count: paidUsers },
   ];
 
+  // ── Paywall funnels (funnel_events, distinct people per step) ───────────
+  // The guest cookie survives sign-in, so it keys one person across the
+  // Google redirect; fall back to the account, then the IP.
+  const fev = (funnelRes.data ?? []) as Row[];
+  const SIGNIN_VARIANTS = new Set(["guest", "download_signin"]);
+  const people = (pred: (r: Row) => boolean) =>
+    new Set(fev.filter(pred).map((r) => String(r.guest_key ?? r.user_id ?? r.ip))).size;
+  const isUpgrade = (r: Row) => r.variant != null && !SIGNIN_VARIANTS.has(String(r.variant));
+  const fromPaywall = (r: Row) => String(r.source ?? "").startsWith("paywall:");
+  const upgradeFunnel = [
+    { stage: "Saw upgrade offer", count: people((r) => r.event === "paywall_shown" && isUpgrade(r)) },
+    {
+      stage: "Clicked to unlock",
+      count: people(
+        (r) =>
+          (r.event === "checkout_open" && fromPaywall(r)) ||
+          (["paywall_google_click", "paywall_pricing_click"].includes(String(r.event)) && isUpgrade(r))
+      ),
+    },
+    { stage: "Checkout opened", count: people((r) => r.event === "checkout_open" && fromPaywall(r)) },
+    { stage: "Entered checkout details", count: people((r) => r.event === "checkout_customer" && fromPaywall(r)) },
+    { stage: "Paid", count: people((r) => r.event === "checkout_completed" && fromPaywall(r)) },
+  ];
+  const signinFunnel = [
+    {
+      stage: "Saw sign-in to download",
+      count: people((r) => r.event === "paywall_shown" && SIGNIN_VARIANTS.has(String(r.variant))),
+    },
+    {
+      stage: "Clicked sign-in",
+      count: people(
+        (r) =>
+          ["paywall_google_click", "paywall_email_click"].includes(String(r.event)) &&
+          SIGNIN_VARIANTS.has(String(r.variant))
+      ),
+    },
+    { stage: "Came back signed in", count: people((r) => r.event === "download_resumed") },
+    { stage: "Downloaded Excel", count: people((r) => r.event === "excel_downloaded") },
+  ];
+  const paywallDismissed = people((r) => r.event === "paywall_dismiss");
+  const pricingCheckouts = people((r) => r.event === "checkout_open" && !fromPaywall(r));
+
   // ── Failure breakdown ─────────────────────────────────────────────────────
   const errorCounts: Record<string, number> = {};
   for (const r of inWindow) {
@@ -202,6 +249,10 @@ export async function GET(request: Request) {
       totalUsers: authUsers.length,
     },
     funnel,
+    upgradeFunnel,
+    signinFunnel,
+    paywallDismissed,
+    pricingCheckouts,
     errors,
     latency: {
       p50: percentile(durations, 50),

@@ -277,6 +277,7 @@ export default async function PricingPage() {
               {user?.id ? (
                 <PaddleCheckoutButton
                   priceId={PADDLE_PRICES.weekPass}
+                  source="pricing:week_pass"
                   userEmail={user.email ?? undefined}
                   userId={user.id}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-blue-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
@@ -340,6 +341,7 @@ export default async function PricingPage() {
                 <>
                   <PaddleCheckoutButton
                     priceId={proPriceId}
+                    source="pricing:pro_monthly"
                     userEmail={user.email ?? undefined}
                     userId={user.id}
                     successMessage="Welcome to Pro! Your account is upgraded — 200 pages/month, QuickBooks export, and no watermarks."
@@ -351,6 +353,7 @@ export default async function PricingPage() {
                   {!foundingActive && PADDLE_PRICES.proYearly && (
                     <PaddleCheckoutButton
                       priceId={PADDLE_PRICES.proYearly}
+                      source="pricing:pro_yearly"
                       userEmail={user.email ?? undefined}
                       userId={user.id}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#217346] bg-white px-6 py-3 text-sm font-semibold text-[#217346] shadow-sm transition-all hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -379,6 +382,7 @@ export default async function PricingPage() {
           {user?.id ? (
             <PaddleCheckoutButton
               priceId={PADDLE_PRICES.credits50}
+              source="pricing:credits50"
               userEmail={user.email ?? undefined}
               userId={user.id}
               className="ml-1 inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50"

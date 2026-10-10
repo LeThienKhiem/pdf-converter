@@ -36,6 +36,7 @@ import { prepareFile } from "@/lib/pdfPassword";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 import { extractDocumentClient } from "@/lib/clientExtract";
 import { peekPendingIntent, takePendingFile } from "@/lib/pendingFile";
+import { trackFunnel } from "@/lib/funnel";
 
 const PENDING_KEY = "itd_pending_bank";
 
@@ -170,7 +171,9 @@ export default function BankStatementToExcelPage() {
         setExtractedFileName(grids.length > 1 ? `${grids.length} statements` : grids[0]!.name);
       });
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) setToastMessage("Signed in! Your result is ready — click Download.");
+        if (!session) return;
+        trackFunnel("download_resumed", { tool: "bank-statement-to-excel" });
+        setToastMessage("Signed in! Your result is ready — click Download.");
       });
     }
   }, [supabase]);
@@ -224,6 +227,7 @@ export default function BankStatementToExcelPage() {
       if (!session) return;
       const pending = await takePendingFile();
       if (!pending) return;
+      trackFunnel("unlock_resumed", { tool: "bank-statement-to-excel", pagesTotal: pending.intent.pagesTotal });
       setUnlockFile(pending.file);
       setPageNotice({ extracted: 10, total: pending.intent.pagesTotal });
       setQuotaModalVariant("pages_limit");
@@ -459,6 +463,7 @@ export default function BankStatementToExcelPage() {
       XLSX.utils.book_append_sheet(wb, ws, sheetNameFor(r.name, i, used));
     });
     XLSX.writeFile(wb, batchResults.length > 1 ? "bank-statements.xlsx" : "extracted-data.xlsx");
+    trackFunnel("excel_downloaded", { tool: "bank-statement-to-excel", variant: isPaidExtract ? "paid" : "free" });
   }, [batchResults, isPaidExtract, supabase]);
 
   const handleExportQuickBooks = useCallback(() => {

@@ -32,6 +32,7 @@ import { prepareFile } from "@/lib/pdfPassword";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 import { extractDocumentClient } from "@/lib/clientExtract";
 import { peekPendingIntent, takePendingFile } from "@/lib/pendingFile";
+import { trackFunnel } from "@/lib/funnel";
 
 const PENDING_KEY = "itd_pending_pdf";
 
@@ -146,7 +147,9 @@ export default function PdfToExcelPage() {
         setExtractedFileName(grids[0]!.name);
       });
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) setToastMessage("Signed in! Your result is ready — click Download.");
+        if (!session) return;
+        trackFunnel("download_resumed", { tool: "pdf-to-excel" });
+        setToastMessage("Signed in! Your result is ready — click Download.");
       });
     }
   }, [supabase]);
@@ -201,6 +204,7 @@ export default function PdfToExcelPage() {
       if (!session) return;
       const pending = await takePendingFile();
       if (!pending) return;
+      trackFunnel("unlock_resumed", { tool: "pdf-to-excel", pagesTotal: pending.intent.pagesTotal });
       setSelectedFile(pending.file);
       setUnlockFile(pending.file);
       setPageNotice({ extracted: 10, total: pending.intent.pagesTotal });
@@ -388,6 +392,7 @@ export default function PdfToExcelPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
     XLSX.writeFile(wb, "extracted-data.xlsx");
+    trackFunnel("excel_downloaded", { tool: "pdf-to-excel", variant: isPaidExtract ? "paid" : "free" });
   }, [extractionResult, isPaidExtract, extractedFileName, supabase]);
 
   const handleExportQuickBooks = useCallback(() => {

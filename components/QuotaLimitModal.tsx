@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { logAnalyticsEvent } from "@/lib/firebase";
+import { trackFunnel } from "@/lib/funnel";
 import { createClient } from "@/lib/supabase/client";
 import PaddleCheckoutButton from "@/components/PaddleCheckoutButton";
 import { PADDLE_PRICES } from "@/lib/paddlePrices";
@@ -78,10 +79,20 @@ export default function QuotaLimitModal({
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | undefined>(undefined);
 
+  const tool = unlockContext?.tool ?? null;
+  const pagesTotal = unlockContext?.pagesTotal ?? null;
+
   useEffect(() => {
     if (!open) return;
     logAnalyticsEvent("quota_limit_popup", { variant });
-  }, [open, variant]);
+    trackFunnel("paywall_shown", { variant, tool, pagesTotal });
+  }, [open, variant, tool, pagesTotal]);
+
+  // Every way out without acting (Close, backdrop, Escape) counts as a dismiss.
+  const dismiss = useCallback(() => {
+    trackFunnel("paywall_dismiss", { variant, tool, pagesTotal });
+    onClose();
+  }, [onClose, variant, tool, pagesTotal]);
 
   useEffect(() => {
     if (!open) return;
@@ -94,7 +105,7 @@ export default function QuotaLimitModal({
   useEffect(() => {
     if (!open) return;
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") dismiss();
     };
     document.addEventListener("keydown", handleEscape);
     document.body.style.overflow = "hidden";
@@ -102,7 +113,7 @@ export default function QuotaLimitModal({
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "";
     };
-  }, [open, onClose]);
+  }, [open, dismiss]);
 
   if (!open) return null;
 
@@ -114,6 +125,7 @@ export default function QuotaLimitModal({
   const needsAccountToBuy = !isGuest && !userId && Boolean(PADDLE_PRICES.weekPass);
 
   const handleGoogle = async () => {
+    trackFunnel("paywall_google_click", { variant, tool, pagesTotal });
     if (unlockContext) {
       await savePendingFile(unlockContext.file, {
         tool: unlockContext.tool,
@@ -136,7 +148,7 @@ export default function QuotaLimitModal({
     >
       <button
         type="button"
-        onClick={onClose}
+        onClick={dismiss}
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
         aria-label="Close"
       />
@@ -181,6 +193,7 @@ export default function QuotaLimitModal({
                 </button>
                 <Link
                   href="/login"
+                  onClick={() => trackFunnel("paywall_email_click", { variant, tool, pagesTotal })}
                   className="text-center text-sm font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
                 >
                   or sign up with email
@@ -196,6 +209,7 @@ export default function QuotaLimitModal({
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     successMessage="Your Week Pass is active — unlimited conversions for the next 7 days."
                     onPurchased={onPurchased}
+                    source={`paywall:${variant}`}
                   >
                     {unlockContext
                       ? `Unlock all ${unlockContext.pagesTotal} pages — $2`
@@ -232,6 +246,7 @@ export default function QuotaLimitModal({
                 ) : (
                   <Link
                     href="/pricing"
+                    onClick={() => trackFunnel("paywall_pricing_click", { variant, tool, pagesTotal })}
                     className="rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-blue-700"
                   >
                     Unlock 7 Days Unlimited — $2
@@ -239,6 +254,7 @@ export default function QuotaLimitModal({
                 )}
                 <Link
                   href="/pricing"
+                  onClick={() => trackFunnel("paywall_pricing_click", { variant, tool, pagesTotal })}
                   className="text-center text-sm font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
                 >
                   Doing this every month? Pro is $5/mo →
@@ -247,7 +263,7 @@ export default function QuotaLimitModal({
             )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={dismiss}
               className="rounded-xl px-4 py-3 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
             >
               Close

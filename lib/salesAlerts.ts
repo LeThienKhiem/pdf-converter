@@ -109,7 +109,7 @@ export async function alertDailyHealth(): Promise<{ sent: boolean; reason?: stri
     const admin = getSupabase();
     const since = new Date(Date.now() - 24 * 3600_000).toISOString();
 
-    const [extRes, txRes] = await Promise.all([
+    const [extRes, txRes, funnelRes] = await Promise.all([
       admin
         .from("extractions")
         .select("status, error_code, pages_total, pages_extracted")
@@ -119,6 +119,7 @@ export async function alertDailyHealth(): Promise<{ sent: boolean; reason?: stri
         .select("amount_usd")
         .eq("status", "completed")
         .gte("created_at", since),
+      admin.from("funnel_events").select("event, guest_key, user_id, ip").gte("created_at", since),
     ]);
 
     const rows = extRes.data ?? [];
@@ -162,6 +163,15 @@ export async function alertDailyHealth(): Promise<{ sent: boolean; reason?: stri
     if (paywallHits > 0) {
       lines.push(
         `Paywall reached: <b>${paywallHits}</b>${orders.length === 0 ? " · 0 bought" : ""}`
+      );
+    }
+    // Where the paywall loses people: distinct visitors reaching each step.
+    const fev = funnelRes.data ?? [];
+    const reached = (event: string) =>
+      new Set(fev.filter((r) => r.event === event).map((r) => r.guest_key ?? r.user_id ?? r.ip)).size;
+    if (fev.length > 0) {
+      lines.push(
+        `Paywall steps: shown ${reached("paywall_shown")} → Google ${reached("paywall_google_click")} → checkout ${reached("checkout_open")} → details ${reached("checkout_customer")} → paid ${reached("checkout_completed")}`
       );
     }
     if (orders.length > 0) {

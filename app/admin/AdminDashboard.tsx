@@ -65,6 +65,10 @@ type Metrics = {
     totalUsers: number;
   };
   funnel: { stage: string; count: number }[];
+  upgradeFunnel: { stage: string; count: number }[];
+  signinFunnel: { stage: string; count: number }[];
+  paywallDismissed: number;
+  pricingCheckouts: number;
   errors: { code: string; count: number }[];
   latency: { p50: number | null; p95: number | null; samples: number };
   cost: { usd: number; samples: number; perExtraction: number | null };
@@ -401,7 +405,15 @@ function AreaChart({
 }
 
 /* ── Funnel (ordered stages → ordinal ramp) ────────────────────────────── */
-function Funnel({ stages }: { stages: { stage: string; count: number }[] }) {
+function Funnel({
+  stages,
+  title = "Conversion funnel",
+  subtitle = "Step-to-step rate on the right — the smallest one is the bottleneck",
+}: {
+  stages: { stage: string; count: number }[];
+  title?: string;
+  subtitle?: string;
+}) {
   const max = Math.max(...stages.map((s) => s.count), 1);
   const ramp = ["var(--ord-1)", "var(--ord-2)", "var(--ord-3)", "var(--ord-4)", "var(--ord-5)"];
 
@@ -411,9 +423,9 @@ function Funnel({ stages }: { stages: { stage: string; count: number }[] }) {
       style={{ background: "var(--surface)", borderColor: "var(--hairline)" }}
     >
       <figcaption className="mb-3">
-        <h3 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>Conversion funnel</h3>
+        <h3 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{title}</h3>
         <p className="text-xs" style={{ color: "var(--muted)" }}>
-          Step-to-step rate on the right — the smallest one is the bottleneck
+          {subtitle}
         </p>
       </figcaption>
       <div className="space-y-2.5">
@@ -577,6 +589,20 @@ export default function AdminDashboard({ email }: { email: string }) {
                 data={data.daily}
                 valueKey="impressions"
                 empty={data.gscConnected ? "No impressions in this range" : "Search Console not connected yet"}
+              />
+            </div>
+
+            {/* Paywall funnels — distinct people per step */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <Funnel
+                title="Upgrade paywall"
+                subtitle={`Long document or out of pages → paid · ${data.paywallDismissed} closed a paywall · ${data.pricingCheckouts} opened checkout from /pricing`}
+                stages={data.upgradeFunnel}
+              />
+              <Funnel
+                title="Sign-in to download"
+                subtitle="Guest result → Google sign-in → back → Excel downloaded"
+                stages={data.signinFunnel}
               />
             </div>
 
