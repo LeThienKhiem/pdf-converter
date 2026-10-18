@@ -163,7 +163,7 @@ export default function RootLayout({
                 "@type": "Offer",
                 price: "0",
                 priceCurrency: "USD",
-                description: "Free tier with 3 credits. Credit packs from $9.99.",
+                description: "Free tier: 3 pages every month. Week Pass $2, Pro $5/month.",
               },
               // No aggregateRating here on purpose. It previously claimed
               // 4.8 from 127 ratings, but no rating or review is displayed

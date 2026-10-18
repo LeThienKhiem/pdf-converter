@@ -214,7 +214,7 @@ function buildStructuredData(entity: BankEntity, pageUrl: string) {
         name: `Can I convert ${entity.name} statements to Excel for free?`,
         acceptedAnswer: {
           "@type": "Answer",
-          text: `Yes. The InvoiceToData converter is free for your first conversion (no signup) and offers 3 more free credits with a free account. ${entity.name} statements convert in seconds with no template setup.`,
+          text: `Yes. The InvoiceToData converter is free for your first conversion (no signup) and gives 3 free pages every month with a free account. ${entity.name} statements convert in seconds with no template setup.`,
         },
       },
       {
@@ -572,9 +572,9 @@ export default async function BankStatementLandingPage({ params }: Props) {
                 Can I convert {entity.name} statements to Excel for free?
               </dt>
               <dd className="mt-2 text-slate-600">
-                Yes. Your first conversion is free with no sign-up. Create a
-                free account to get 3 more free credits, then $9.99 buys 50
-                additional credits (about $0.20 per page).
+                Yes. Your first conversion is free with no sign-up, and a free
+                account adds 3 pages every month. Long statements unlock in
+                full with a $2 Week Pass — no subscription.
               </dd>
             </div>
             <div>

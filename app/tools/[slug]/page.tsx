@@ -184,7 +184,7 @@ export default async function ToolLandingPage({ params }: Props) {
       "@type": "Offer",
       price: "0",
       priceCurrency: "USD",
-      description: "Free tier with 3 credits. Credit packs from $9.99.",
+      description: "Free tier: 3 pages every month. Week Pass $2, Pro $5/month.",
     },
   };
 
