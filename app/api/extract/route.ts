@@ -15,10 +15,11 @@ import {
 } from "@/lib/entitlements";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase";
-import { analyzePdfPages } from "@/lib/pdfPages";
+import { analyzePdfPages, splitPdfBase64 } from "@/lib/pdfPages";
 import {
   BANK_CATEGORIZE_APPENDIX,
   BANK_SYSTEM_PROMPT,
+  mergeStatementMeta,
   structureBankResponse,
   type StatementMeta,
 } from "@/lib/bankStatement";
@@ -84,6 +85,9 @@ const FREE_MAX_BYTES = 5 * 1024 * 1024; // 5MB — also the practical serverless
 const PAID_MAX_BYTES = 23 * 1024 * 1024;
 const FREE_MAX_PAGES = 10; // free tier extracts the first 10 pages, then upsells the rest
 const STORAGE_BUCKET = "uploads";
+// Parallel extraction: slices of ~5 pages, at most 3 model calls per request.
+const PART_PAGES = 5;
+const MAX_PARALLEL_PARTS = 3;
 
 function toCell(value: unknown): string | null {
   if (value == null) return null;
@@ -291,24 +295,30 @@ export async function POST(request: Request) {
     }
 
     const client = getAnthropic();
-    console.log("[Extract API] Using model:", model, "tool:", tool, "paid:", isPaidExtract);
+    // Extract slices of the document side by side (see splitPdfBase64): a
+    // free 10-page statement took 80-140s as one call.
+    const parts =
+      mimeType === "application/pdf" ? await splitPdfBase64(base64, PART_PAGES, MAX_PARALLEL_PARTS) : [base64];
+    console.log("[Extract API] Using model:", model, "tool:", tool, "paid:", isPaidExtract, "parts:", parts.length);
 
-    let response: Anthropic.Message;
+    let responses: Anthropic.Message[];
     try {
       // Streaming with a 64K output cap: real bank statements run 5-10 pages
       // and were blowing past the old 16K cap, truncating the JSON mid-array —
       // the #1 cause of failed extractions in production.
-      response = await client.messages
-        .stream({
-          model,
-          // Highest cap each model supports — long documents must not truncate.
-          max_tokens: isPaidExtract ? 128000 : 64000,
-          system: systemPrompt,
-          messages: [
-            { role: "user", content: buildContent(mimeType, base64) },
-          ],
-        })
-        .finalMessage();
+      responses = await Promise.all(
+        parts.map((part) =>
+          client.messages
+            .stream({
+              model,
+              // Highest cap each model supports — long documents must not truncate.
+              max_tokens: isPaidExtract ? 128000 : 64000,
+              system: systemPrompt,
+              messages: [{ role: "user", content: buildContent(mimeType, part) }],
+            })
+            .finalMessage()
+        )
+      );
     } catch (err) {
       await refundExtraction(entitlement);
       await recordExtraction(entitlement, tool, "failed", {
@@ -328,9 +338,12 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    const responseText = extractText(response);
-    if (!responseText.trim()) {
-      console.error("[Extract] Empty response. Stop reason:", response.stop_reason);
+    const inputTokens = responses.reduce((a, r) => a + (r.usage?.input_tokens ?? 0), 0);
+    const outputTokens = responses.reduce((a, r) => a + (r.usage?.output_tokens ?? 0), 0);
+    const truncated = responses.some((r) => r.stop_reason === "max_tokens");
+    const texts = responses.map(extractText);
+    if (texts.every((t) => !t.trim())) {
+      console.error("[Extract] Empty response. Stop reasons:", responses.map((r) => r.stop_reason));
       await refundExtraction(entitlement);
       await recordExtraction(entitlement, tool, "failed", {
         errorCode: "empty_response",
@@ -338,8 +351,8 @@ export async function POST(request: Request) {
         pagesTotal,
         pagesExtracted,
         model,
-        inputTokens: response.usage?.input_tokens ?? null,
-        outputTokens: response.usage?.output_tokens ?? null,
+        inputTokens,
+        outputTokens,
       });
       return NextResponse.json(
         { error: "Extraction failed. No content returned." },
@@ -347,23 +360,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const parsed = parseJsonArrayLoose(responseText);
-    if (parsed == null) {
+    const parsedParts = texts.map((t) => parseJsonArrayLoose(t));
+    const failedPart = parsedParts.findIndex((p) => p == null);
+    if (failedPart !== -1) {
+      const bad = responses[failedPart]!;
       console.error(
-        "[Extract] JSON parse failed. Stop reason:",
-        response.stop_reason,
-        "Raw (first 500 chars):",
-        responseText.slice(0, 500)
+        "[Extract] JSON parse failed in part", failedPart + 1, "of", parts.length,
+        "Stop reason:", bad.stop_reason,
+        "Raw (first 500 chars):", texts[failedPart]!.slice(0, 500)
       );
       await refundExtraction(entitlement);
       await recordExtraction(entitlement, tool, "failed", {
-        errorCode: response.stop_reason === "max_tokens" ? "truncated" : "parse_failed",
+        errorCode: bad.stop_reason === "max_tokens" ? "truncated" : "parse_failed",
         durationMs: Date.now() - startedAt,
         pagesTotal,
         pagesExtracted,
         model,
-        inputTokens: response.usage?.input_tokens ?? null,
-        outputTokens: response.usage?.output_tokens ?? null,
+        inputTokens,
+        outputTokens,
       });
       return NextResponse.json(
         { error: "Extraction failed. Invalid JSON from model." },
@@ -374,10 +388,15 @@ export async function POST(request: Request) {
     let data: (string | null)[][];
     let statement: StatementMeta | null = null;
     if (isBank) {
-      const structured = structureBankResponse(parsed, categorize);
-      data = structured.grid;
-      statement = structured.statement;
-      if (structured.mode === "statement" && structured.transactions === 0) {
+      const structured = parsedParts.map((p) => structureBankResponse(p, categorize));
+      const statements = structured.filter((s) => s.mode === "statement");
+      if (statements.length === 0) {
+        data = structured.flatMap((s) => s.grid);
+      } else {
+        data = [statements[0]!.grid[0]!, ...statements.flatMap((s) => s.grid.slice(1))];
+        statement = mergeStatementMeta(statements.map((s) => s.statement));
+      }
+      if (statements.length > 0 && data.length <= 1) {
         await refundExtraction(entitlement);
         await recordExtraction(entitlement, tool, "failed", {
           errorCode: "no_transactions",
@@ -385,8 +404,8 @@ export async function POST(request: Request) {
           pagesTotal,
           pagesExtracted,
           model,
-          inputTokens: response.usage?.input_tokens ?? null,
-          outputTokens: response.usage?.output_tokens ?? null,
+          inputTokens,
+          outputTokens,
         });
         return NextResponse.json(
           { error: "No transactions were found in this document. Is it a bank or card statement?" },
@@ -394,22 +413,26 @@ export async function POST(request: Request) {
         );
       }
     } else {
-      data = normalizeTo2DArray(parsed);
+      const grids = parsedParts.map((p) => normalizeTo2DArray(p));
+      const header = grids[0]?.[0];
+      const sameAsHeader = (row: (string | null)[] | undefined) =>
+        Boolean(row && header && row.length === header.length && row.every((c, i) => (c ?? "") === (header[i] ?? "")));
+      data = [...(grids[0] ?? []), ...grids.slice(1).flatMap((g) => (sameAsHeader(g[0]) ? g.slice(1) : g))];
     }
-    const truncated = response.stop_reason === "max_tokens";
     await recordExtraction(entitlement, tool, "success", {
       errorCode: truncated ? "truncated_salvaged" : null,
       durationMs: Date.now() - startedAt,
       pagesTotal,
       pagesExtracted,
       model,
-      inputTokens: response.usage?.input_tokens ?? null,
-      outputTokens: response.usage?.output_tokens ?? null,
+      inputTokens,
+      outputTokens,
       rowsOut: data.length,
     });
     console.log(
       "[Extract API] Success, rows:", data.length,
       "cols:", data[0]?.length ?? 0,
+      "parts:", parts.length,
       truncated ? "(TRUNCATED at max_tokens — salvaged partial)" : ""
     );
     return NextResponse.json({

@@ -30,3 +30,33 @@ export async function analyzePdfPages(
     return null;
   }
 }
+
+/**
+ * Split a PDF into up to `maxParts` contiguous slices of about `partPages`
+ * pages each, so they can be extracted in parallel. Model time grows with
+ * the rows it has to write, so two 5-page calls side by side finish in
+ * roughly half the time of one 10-page call.
+ *
+ * Returns the original base64 as a single part when the PDF is short or
+ * can't be parsed (encrypted/corrupt).
+ */
+export async function splitPdfBase64(base64: string, partPages: number, maxParts: number): Promise<string[]> {
+  try {
+    const doc = await PDFDocument.load(Buffer.from(base64, "base64"), { ignoreEncryption: true });
+    const pageCount = doc.getPageCount();
+    const parts = Math.min(maxParts, Math.ceil(pageCount / partPages));
+    if (parts <= 1) return [base64];
+    const size = Math.ceil(pageCount / parts);
+    const out: string[] = [];
+    for (let start = 0; start < pageCount; start += size) {
+      const part = await PDFDocument.create();
+      const indices = Array.from({ length: Math.min(size, pageCount - start) }, (_, i) => start + i);
+      for (const p of await part.copyPages(doc, indices)) part.addPage(p);
+      out.push(Buffer.from(await part.save()).toString("base64"));
+    }
+    return out;
+  } catch (err) {
+    console.warn("[pdfPages] Could not split PDF:", err instanceof Error ? err.message : err);
+    return [base64];
+  }
+}
