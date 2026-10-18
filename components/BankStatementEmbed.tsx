@@ -183,6 +183,10 @@ export default function BankStatementEmbed({
       ) {
         setPageNotice({ extracted: outcome.pagesExtracted, total: outcome.pagesTotal });
         setUnlockFile(file);
+        // Make the offer, as the tool pages do — the amber line alone went
+        // unnoticed: 46- and 104-page visitors left without ever seeing it.
+        setModalVariant("pages_limit");
+        setShowModal(true);
       } else {
         setPageNotice(null);
       }
