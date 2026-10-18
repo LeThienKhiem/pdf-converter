@@ -8,6 +8,7 @@ import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimit
 import { createClient } from "@/lib/supabase/client";
 import { extractFileClient, PAID_MAX_BYTES, type GridData } from "@/lib/clientExtract";
 import PdfPasswordPrompt from "@/components/PdfPasswordPrompt";
+import { FORMAT_LABELS, renderFormat, countTransactions, type AccountingFormat } from "@/lib/accountingFormats";
 import { prepareFile } from "@/lib/pdfPassword";
 import { downloadQuickBooksCsv } from "@/lib/quickbooks";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
@@ -270,6 +271,41 @@ export default function BankStatementEmbed({
     downloadQuickBooksCsv(grid);
   }, [grid, isPaidExtract]);
 
+  /**
+   * Download the statement in an accounting import format.
+   *
+   * Gated like the spreadsheet rather than like the QuickBooks CSV: these are
+   * the formats that make the extraction usable at all for someone importing
+   * into Quicken, QuickBooks Desktop or Tally, so putting them behind the
+   * paid tier would hold back the point of the tool. The download wall still
+   * applies — viewing is free, taking a file needs an account.
+   */
+  const handleFormat = useCallback(
+    async (format: AccountingFormat) => {
+      if (grid.length === 0 || countTransactions(grid) === 0) return;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        savePendingResult(pendingKey, [{ name: "bank-statement", grid, statement, partial: truncated }]);
+        setModalVariant("download_signin");
+        setShowModal(true);
+        return;
+      }
+
+      const { ext, mime } = FORMAT_LABELS[format];
+      const blob = new Blob([renderFormat(format, grid, statement)], { type: `${mime};charset=utf-8` });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bank-statement.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      trackFunnel("format_downloaded", { tool, variant: format });
+    },
+    [grid, supabase, pendingKey, statement, truncated, tool]
+  );
+
   return (
     <div className="rounded-2xl border-2 border-[#217346]/30 bg-white p-6 shadow-md sm:p-8">
     {lockedFile && (
@@ -395,6 +431,28 @@ export default function BankStatementEmbed({
               )}
             </button>
           </div>
+          {countTransactions(grid) > 0 && (
+            <div className="mt-4">
+              <p className="text-sm text-slate-600">
+                Or download for your accounting software:
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(Object.keys(FORMAT_LABELS) as AccountingFormat[]).map((fmt) => (
+                  <button
+                    key={fmt}
+                    type="button"
+                    onClick={() => void handleFormat(fmt)}
+                    title={FORMAT_LABELS[fmt].note}
+                    className="inline-flex flex-col items-start rounded-lg border border-slate-300 bg-white px-3 py-2 text-left transition-colors hover:border-blue-400 hover:bg-blue-50"
+                  >
+                    <span className="text-sm font-semibold text-slate-800">{FORMAT_LABELS[fmt].label}</span>
+                    <span className="text-xs text-slate-500">{FORMAT_LABELS[fmt].note}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <p className="text-xs text-slate-500">
             {footnote ??
               (bankName

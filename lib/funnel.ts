@@ -14,6 +14,9 @@ export const FUNNEL_EVENTS = [
   "convert_resumed", // came back from Google sign-in, blocked conversion re-run
   "download_resumed", // came back from Google sign-in, stashed result restored
   "excel_downloaded",
+  // Accounting import formats (QIF/OFX/IIF/Tally) — tracked separately from
+  // the spreadsheet so the split between them is visible.
+  "format_downloaded",
   "checkout_open", // Paddle overlay requested
   "checkout_loaded",
   "checkout_customer", // entered email / country
