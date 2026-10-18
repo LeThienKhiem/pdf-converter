@@ -69,13 +69,35 @@ export async function GET(request: Request) {
         : null;
 
     const day = new Date().getUTCDay();
-    const task = validOverride ?? pickTaskForDay(day);
+
+    // ── Automated content generation: stopped 2026-10-18 ──────────────────
+    //
+    // Six months of it produced 132 posts carrying 13,736 impressions — 56% of
+    // everything the site is visible for — and 27 clicks. 0.20% click-through.
+    // Over the eight days to 2026-10-15 it added 107 new long-tail queries and
+    // the site's total clicks went down by one.
+    //
+    // For comparison, over the same 90 days: five hand-written pages (the two
+    // converters and the homepage) carried 6,751 impressions and 240 clicks.
+    // Five pages beat 132 by nine to one.
+    //
+    // It also has a cost beyond the Claude API spend. The syndication cron was
+    // publishing these posts to dev.to, and that account now appears
+    // suspended with all 62 articles removed — the content was the product
+    // being rejected.
+    //
+    // Nothing is deleted. pickTaskForDay and dispatch still work, and
+    // ?task=informational|buyer-intent|refresh still forces a run, so this is
+    // one line to undo if the judgement changes. But it no longer fires on a
+    // schedule, because the measured return on a scheduled run is zero.
+    const task = validOverride;
+    const result = task
+      ? await dispatch(task)
+      : { skipped: "content generation disabled — see comment" };
 
     console.log(
-      `[Master Cron] day=${day} task=${task}${validOverride ? " (overridden)" : ""}`
+      `[Master Cron] day=${day} task=${task ?? "none (content disabled)"}`
     );
-
-    const result = await dispatch(task);
 
     // Onboarding email drip runs every day alongside the content task.
     let emailDrip: unknown = null;

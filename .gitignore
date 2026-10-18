@@ -44,3 +44,6 @@ next-env.d.ts
 # Pre-change content dumps from scripts/backfill-internal-links.ts.
 # Full post bodies — keep them locally as an undo, never in the repo.
 backup-blogs-*.json
+
+# Pre-change dumps from scripts/repoint-internal-links.ts — full post bodies.
+backup-repoint-*.json
