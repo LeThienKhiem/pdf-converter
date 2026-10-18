@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { oauthRedirectTo } from "@/lib/authRedirect";
 
 /**
  * Google-only sign-in screen for /admin. The allowlist check happens on the
@@ -21,7 +22,7 @@ export default function AdminGate({
     setBusy(true);
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: typeof window !== "undefined" ? window.location.href : undefined },
+      options: { redirectTo: oauthRedirectTo() },
     });
   };
 

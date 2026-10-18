@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { logAnalyticsEvent } from "@/lib/firebase";
 import { trackFunnel } from "@/lib/funnel";
+import { oauthRedirectTo } from "@/lib/authRedirect";
 import { createClient } from "@/lib/supabase/client";
 import PaddleCheckoutButton from "@/components/PaddleCheckoutButton";
 import { PADDLE_PRICES } from "@/lib/paddlePrices";
@@ -135,7 +136,7 @@ export default function QuotaLimitModal({
     }
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: typeof window !== "undefined" ? window.location.href : undefined },
+      options: { redirectTo: oauthRedirectTo() },
     });
   };
 

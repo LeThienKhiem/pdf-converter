@@ -6,6 +6,7 @@ import { FileUp, Loader2, FileSpreadsheet, ExternalLink } from "lucide-react";
 import { canGuestConvert, incrementGuestUsage } from "@/lib/pdfUsage";
 import QuotaLimitModal, { type QuotaLimitVariant } from "@/components/QuotaLimitModal";
 import { createClient } from "@/lib/supabase/client";
+import { oauthRedirectTo } from "@/lib/authRedirect";
 
 const GOOGLE_SHEETS_SCOPES =
   "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file";
@@ -132,7 +133,7 @@ export default function PdfToGsheetTool({
               options: {
                 scopes: GOOGLE_SHEETS_SCOPES,
                 queryParams: { access_type: "offline", prompt: "consent" },
-                redirectTo: window.location.href,
+                redirectTo: oauthRedirectTo(),
               },
             });
             return;
@@ -155,7 +156,7 @@ export default function PdfToGsheetTool({
             options: {
               scopes: GOOGLE_SHEETS_SCOPES,
               queryParams: { access_type: "offline", prompt: "consent" },
-              redirectTo: window.location.href,
+              redirectTo: oauthRedirectTo(),
             },
           });
           return;
