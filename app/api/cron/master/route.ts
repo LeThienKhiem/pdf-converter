@@ -134,13 +134,31 @@ export async function GET(request: Request) {
     // from here. One post per run works through a 120-post backlog that had
     // never been syndicated, which is months of daily links from articles that
     // already exist.
-    let syndication: unknown = null;
-    try {
-      syndication = await runSyndicate();
-    } catch (synErr) {
-      console.error("[Master Cron] Syndication failed:", synErr);
-      syndication = { error: synErr instanceof Error ? synErr.message : "failed" };
-    }
+    // ── Syndication: stopped 2026-10-18 ──────────────────────────────────
+    //
+    // Not disabled for a bug. The dev.to account looks suspended: the API key
+    // returns 401, the profile and all 62 published articles return 404, and
+    // only the bare user record still resolves. That shape is an account whose
+    // content has been taken down, not a rotated credential — and every one of
+    // those 62 backlinks is gone with it.
+    //
+    // The likely cause is what this cron was doing: publishing roughly one
+    // AI-written SEO article a day into a developer community, each carrying a
+    // canonical link to a commercial site. That is what dev.to's rules on
+    // automated low-quality content describe.
+    //
+    // So this stays off rather than being pointed at another platform. Running
+    // the same pattern elsewhere invites the same outcome, and retrying a
+    // suspended account daily is pointless at best.
+    //
+    // Hashnode is a separate story — it moved its GraphQL API behind a paid
+    // plan in May 2026 and was removed from PLATFORMS on 2026-10-10. Nothing
+    // we did caused that one.
+    //
+    // runSyndicate and the platform code are left intact: if syndication
+    // resumes it should be with content worth a human reading, published at a
+    // pace a person could sustain, on an account in good standing.
+    const syndication: unknown = { skipped: "disabled — see comment" };
 
     return NextResponse.json({
       master: { day, task, overridden: !!validOverride },
