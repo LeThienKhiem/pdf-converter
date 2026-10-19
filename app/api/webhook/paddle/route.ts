@@ -98,13 +98,22 @@ async function handleTransactionCompleted(data: PaddleEventData) {
   const amountUsd = toAmountUsd(data.details?.totals?.total);
   const paddleTransactionId = data.id ?? null;
 
-  const isFirstDelivery = await recordTransactionOnce(supabase, {
-    userId,
-    paddleTransactionId,
-    creditsAdded: kind === "credits50" ? CREDITS_PACK_AMOUNT : null,
-    amountUsd,
-    kind,
-  });
+  let isFirstDelivery: boolean;
+  try {
+    isFirstDelivery = await recordTransactionOnce(supabase, {
+      userId,
+      paddleTransactionId,
+      // transactions.credits_added is NOT NULL — plan purchases record 0, never null,
+      // or the insert fails and the customer pays without getting the plan.
+      creditsAdded: kind === "credits50" || kind === "unknown" ? CREDITS_PACK_AMOUNT : 0,
+      amountUsd,
+      kind,
+    });
+  } catch (err) {
+    // Paddle keeps retrying a 500, so this fires once per attempt until fixed.
+    await alertApplyFailed(userId, kind, amountUsd, err instanceof Error ? err.message : String(err));
+    return NextResponse.json({ error: "Transaction record failed" }, { status: 500 });
+  }
 
   if (!isFirstDelivery) {
     console.log("[Paddle] Duplicate transaction, skipping:", paddleTransactionId);
