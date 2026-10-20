@@ -32,6 +32,7 @@ import { createClient } from "@/lib/supabase/client";
 import { gridToQuickBooksRows, quickBooksCsv } from "@/lib/quickbooks";
 import { countPdfPagesClient, estimateExtractMs, extractFileClient, PAID_MAX_BYTES } from "@/lib/clientExtract";
 import PdfPasswordPrompt from "@/components/PdfPasswordPrompt";
+import { FORMAT_LABELS, renderFormat, countTransactions, type AccountingFormat } from "@/lib/accountingFormats";
 import { prepareFile } from "@/lib/pdfPassword";
 import { savePendingResult, takePendingResult } from "@/lib/pendingResult";
 import { extractDocumentClient } from "@/lib/clientExtract";
@@ -516,6 +517,46 @@ export default function BankStatementToExcelPage() {
     queueMicrotask(() => void handleExportExcel());
   }, [resumeDownload, batchResults.length, handleExportExcel]);
 
+  /**
+   * Download the statement in an accounting import format.
+   *
+   * Only offered for results that actually look like a transaction table.
+   * QIF, OFX, IIF and Tally all describe dated money movements; an invoice
+   * extraction is not that, and writing one into a voucher file would produce
+   * something an accounting package accepts and a bookkeeper cannot explain.
+   *
+   * Batch exports take the first statement only — these formats describe one
+   * account, and silently concatenating several would merge two ledgers.
+   */
+  const handleFormatExport = useCallback(
+    async (format: AccountingFormat) => {
+      const first = batchResults.find((r) => isBankGrid(r.grid));
+      if (!first || countTransactions(first.grid) === 0) return;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        savePendingResult(PENDING_KEY, batchResults);
+        setQuotaModalVariant("download_signin");
+        setShowQuotaModal(true);
+        return;
+      }
+
+      const { ext, mime } = FORMAT_LABELS[format];
+      const blob = new Blob([renderFormat(format, first.grid, first.statement ?? null)], {
+        type: `${mime};charset=utf-8`,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bank-statement.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      trackFunnel("format_downloaded", { tool: "bank-statement-to-excel", variant: format });
+    },
+    [batchResults, supabase]
+  );
+
   const handleExportQuickBooks = useCallback(() => {
     if (batchResults.length === 0) return;
     if (!isPaidExtract) {
@@ -797,6 +838,32 @@ export default function BankStatementToExcelPage() {
                 </span>
               </button>
             </div>
+            {batchResults.some((r) => isBankGrid(r.grid) && countTransactions(r.grid) > 0) && (
+              <div className="mt-5 border-t border-slate-200 pt-5">
+                <p className="text-sm font-medium text-slate-700">
+                  Import straight into your accounting software
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Same transactions, in the file your software expects — no column mapping.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(Object.keys(FORMAT_LABELS) as AccountingFormat[]).map((fmt) => (
+                    <button
+                      key={fmt}
+                      type="button"
+                      onClick={() => void handleFormatExport(fmt)}
+                      className="inline-flex flex-col items-start rounded-lg border border-slate-300 bg-white px-3 py-2 text-left transition-colors hover:border-blue-400 hover:bg-blue-50"
+                    >
+                      <span className="text-sm font-semibold text-slate-800">
+                        {FORMAT_LABELS[fmt].label}
+                      </span>
+                      <span className="text-xs text-slate-500">{FORMAT_LABELS[fmt].note}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
 
           </>
         )}
