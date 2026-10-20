@@ -9,22 +9,31 @@ import { BANK_HEADER, parseAmount, type BankGrid, type StatementMeta } from "@/l
  * Why these four and not the obvious two
  * --------------------------------------
  * QBO and QFX are the formats people ask for most, and both are deliberately
- * left out. A QuickBooks Web Connect file carries an <INTU.BID> that
- * QuickBooks checks against Intuit's list of institutions paying for Web
- * Connect access; a file without a recognised one is rejected. The workaround
- * circulating among converter tools is to borrow another bank's identifier,
- * which makes the file claim to come from an institution it did not. That is
- * misrepresenting the source of someone's financial data to get past a
- * commercial gate, so this module does not do it. QFX has the same gate.
+ * left out. Intuit's own OFX partner documentation states that "Web Connect
+ * and Direct Connect are directly associated with a contracted Intuit
+ * Branding ID (BID)" — the identifier is part of a contract between Intuit and
+ * a financial institution, not a value a third party can issue itself. The
+ * workaround circulating among converter tools is to put some bank's BID in
+ * the file anyway, which makes it claim to have come from an institution's
+ * Web Connect service when it did not. Intuit points developers at its
+ * Accounting API for writing data instead.
+ *
+ * QFX is the same shape of gate on Quicken's side (a separate company since
+ * 2016, with its own branding identifier).
+ *
+ * This is a narrower loss than it first appears — see OFX below.
  *
  * What is here are open formats that need no vendor's permission:
  *
  *   QIF    Quicken Interchange Format. Plain text, no identifiers, read by
  *          Quicken, GnuCash, Banktivity, YNAB imports and many others.
- *   OFX    Open Financial Exchange 1.0.2, SGML form. An open spec; plain OFX
- *          imports into Quicken, Xero, MoneyWiz and others without any
- *          Intuit-issued value. The <INTU.BID> that turns an OFX into a QBO
- *          is exactly what is omitted.
+ *   OFX    Open Financial Exchange 1.0.2, SGML form. An open spec, and the
+ *          reason the missing QBO matters less than it looks: Intuit's own
+ *          help pages list .ofx among the file types QuickBooks Online
+ *          accepts for a manual bank upload, alongside .csv, .qbo and .qfx.
+ *          So Online users are served by this file; it is QuickBooks Desktop
+ *          Web Connect that strictly wants a .qbo, and IIF covers Desktop.
+ *          The <INTU.BID> that would turn this into a QBO is omitted.
  *   IIF    Intuit Interchange Format for QuickBooks Desktop. Tab-delimited
  *          and documented by Intuit as an import path; no identifier gate.
  *   Tally  Tally's XML import envelope. Tally is the dominant SMB accounting
@@ -38,7 +47,7 @@ export type AccountingFormat = "qif" | "ofx" | "iif" | "tally";
 
 export const FORMAT_LABELS: Record<AccountingFormat, { label: string; ext: string; mime: string; note: string }> = {
   qif: { label: "QIF", ext: "qif", mime: "application/qif", note: "Quicken, GnuCash, YNAB, Banktivity" },
-  ofx: { label: "OFX", ext: "ofx", mime: "application/x-ofx", note: "Quicken, Xero, MoneyWiz" },
+  ofx: { label: "OFX", ext: "ofx", mime: "application/x-ofx", note: "QuickBooks Online, Quicken, Xero" },
   iif: { label: "IIF", ext: "iif", mime: "text/plain", note: "QuickBooks Desktop" },
   tally: { label: "Tally XML", ext: "xml", mime: "application/xml", note: "Tally ERP / TallyPrime" },
 };
