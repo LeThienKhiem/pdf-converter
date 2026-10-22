@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FileDown, FileUp, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx-js-style";
 import { canGuestConvert, incrementGuestUsage } from "@/lib/pdfUsage";
@@ -66,6 +66,10 @@ export default function BankStatementEmbed({
   const [unlockFile, setUnlockFile] = useState<File | null>(null);
   const [unlockProgress, setUnlockProgress] = useState<{ done: number; total: number } | null>(null);
   const supabase = useMemo(() => createClient(), []);
+  const [resumeDownload, setResumeDownload] = useState(false);
+  const resumedDownloadRef = useRef(false);
+  const [resumeConvert, setResumeConvert] = useState(false);
+  const resumedConvertRef = useRef(false);
   const bank = isBankGrid(grid);
   const check = useMemo(
     () => reconcileStatement(grid, statement, { partial: Boolean(pageNotice) || truncated }),
@@ -82,7 +86,9 @@ export default function BankStatementEmbed({
         setTruncated(Boolean(grids[0]!.partial));
       });
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) trackFunnel("download_resumed", { tool });
+        if (!session) return;
+        trackFunnel("download_resumed", { tool });
+        setResumeDownload(true);
       });
     }
   }, [pendingKey, supabase, tool]);
@@ -124,6 +130,12 @@ export default function BankStatementEmbed({
       if (!session) return;
       const pending = await takePendingFile();
       if (!pending) return;
+      if (pending.intent.kind === "convert") {
+        trackFunnel("convert_resumed", { tool: tool });
+        setFile(pending.file);
+        setResumeConvert(true);
+        return;
+      }
       trackFunnel("unlock_resumed", { tool, pagesTotal: pending.intent.pagesTotal });
       setFile(pending.file);
       setUnlockFile(pending.file);
@@ -210,6 +222,14 @@ export default function BankStatementEmbed({
     setIsExtracting(false);
   }, [file, isExtracting, supabase, tool]);
 
+  // Back from sign-in after the guest limit: run the conversion they asked
+  // for, on the stashed file, without a re-upload or a second click.
+  useEffect(() => {
+    if (!resumeConvert || resumedConvertRef.current || !file) return;
+    resumedConvertRef.current = true;
+    queueMicrotask(() => void handleExtract());
+  }, [resumeConvert, file, handleExtract]);
+
   const handleDownload = useCallback(async () => {
     if (grid.length === 0) return;
     // Download wall: viewing is free, downloading needs a (free) account.
@@ -231,6 +251,14 @@ export default function BankStatementEmbed({
     XLSX.writeFile(wb, "bank-statement.xlsx");
     trackFunnel("excel_downloaded", { tool, variant: isPaidExtract ? "paid" : "free" });
   }, [grid, isPaidExtract, supabase, pendingKey, tool, bank, check, file, statement, truncated]);
+
+  // Back from sign-in with a restored result: they had already clicked
+  // Download, so finish it rather than asking for a second click.
+  useEffect(() => {
+    if (!resumeDownload || resumedDownloadRef.current || grid.length === 0) return;
+    resumedDownloadRef.current = true;
+    queueMicrotask(() => void handleDownload());
+  }, [resumeDownload, grid.length, handleDownload]);
 
   const handleQuickBooks = useCallback(() => {
     if (grid.length === 0) return;
@@ -385,6 +413,7 @@ export default function BankStatementEmbed({
             ? { file: unlockFile, tool, pagesTotal: pageNotice.total }
             : null
         }
+        retryContext={modalVariant === "guest" && file ? { file, tool } : null}
         onPurchased={unlockFile ? () => void runFullUnlock(unlockFile) : undefined}
       />
     </div>

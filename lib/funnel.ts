@@ -9,7 +9,9 @@ export const FUNNEL_EVENTS = [
   "paywall_google_click", // "Continue with Google" inside the paywall
   "paywall_email_click", // "or sign up with email" → /login
   "paywall_pricing_click", // a /pricing link inside the paywall
+  "signin_completed", // back on /auth/callback with a session (recorded server-side)
   "unlock_resumed", // came back from Google sign-in, stashed document picked up
+  "convert_resumed", // came back from Google sign-in, blocked conversion re-run
   "download_resumed", // came back from Google sign-in, stashed result restored
   "excel_downloaded",
   "checkout_open", // Paddle overlay requested

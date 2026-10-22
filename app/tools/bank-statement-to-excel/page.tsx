@@ -167,6 +167,10 @@ export default function BankStatementToExcelPage() {
   const [unlockProgress, setUnlockProgress] = useState<{ done: number; total: number } | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const supabase = useMemo(() => createClient(), []);
+  const [resumeDownload, setResumeDownload] = useState(false);
+  const resumedDownloadRef = useRef(false);
+  const [resumeConvert, setResumeConvert] = useState(false);
+  const resumedConvertRef = useRef(false);
 
   // Restore results stashed before the sign-in redirect (download wall).
   useEffect(() => {
@@ -180,7 +184,8 @@ export default function BankStatementToExcelPage() {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session) return;
         trackFunnel("download_resumed", { tool: "bank-statement-to-excel" });
-        setToastMessage("Signed in! Your result is ready — click Download.");
+        setToastMessage("Signed in! Your Excel file is downloading.");
+        setResumeDownload(true);
       });
     }
   }, [supabase]);
@@ -234,6 +239,12 @@ export default function BankStatementToExcelPage() {
       if (!session) return;
       const pending = await takePendingFile();
       if (!pending) return;
+      if (pending.intent.kind === "convert") {
+        trackFunnel("convert_resumed", { tool: "bank-statement-to-excel" });
+        setBatch([{ file: pending.file, status: "pending" as FileStatus, rows: 0 }]);
+        setResumeConvert(true);
+        return;
+      }
       trackFunnel("unlock_resumed", { tool: "bank-statement-to-excel", pagesTotal: pending.intent.pagesTotal });
       setUnlockFile(pending.file);
       setPageNotice({ extracted: 10, total: pending.intent.pagesTotal });
@@ -454,6 +465,14 @@ export default function BankStatementToExcelPage() {
     setIsExtracting(false);
   }, [batch, isExtracting, supabase]);
 
+  // Back from sign-in after the guest limit: run the conversion they asked
+  // for, on the stashed file, without a re-upload or a second click.
+  useEffect(() => {
+    if (!resumeConvert || resumedConvertRef.current || batch.length === 0) return;
+    resumedConvertRef.current = true;
+    queueMicrotask(() => void handleExtract());
+  }, [resumeConvert, batch.length, handleExtract]);
+
   const handleExportExcel = useCallback(async () => {
     if (batchResults.length === 0) return;
     // Download wall: viewing is free, downloading needs a (free) account.
@@ -488,6 +507,14 @@ export default function BankStatementToExcelPage() {
     XLSX.writeFile(wb, batchResults.length > 1 ? "bank-statements.xlsx" : "extracted-data.xlsx");
     trackFunnel("excel_downloaded", { tool: "bank-statement-to-excel", variant: isPaidExtract ? "paid" : "free" });
   }, [batchResults, isPaidExtract, supabase]);
+
+  // Back from sign-in with a restored result: they had already clicked
+  // Download, so finish it rather than asking for a second click.
+  useEffect(() => {
+    if (!resumeDownload || resumedDownloadRef.current || batchResults.length === 0) return;
+    resumedDownloadRef.current = true;
+    queueMicrotask(() => void handleExportExcel());
+  }, [resumeDownload, batchResults.length, handleExportExcel]);
 
   const handleExportQuickBooks = useCallback(() => {
     if (batchResults.length === 0) return;
@@ -1064,6 +1091,11 @@ export default function BankStatementToExcelPage() {
         unlockContext={
           unlockFile && pageNotice
             ? { file: unlockFile, tool: "bank-statement-to-excel", pagesTotal: pageNotice.total }
+            : null
+        }
+        retryContext={
+          quotaModalVariant === "guest" && batch[0]
+            ? { file: batch[0].file, tool: "bank-statement-to-excel" }
             : null
         }
         onPurchased={unlockFile ? () => void runFullUnlock(unlockFile) : undefined}

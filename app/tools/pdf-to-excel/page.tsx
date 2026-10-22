@@ -137,6 +137,10 @@ export default function PdfToExcelPage() {
   const [unlockProgress, setUnlockProgress] = useState<{ done: number; total: number } | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const supabase = useMemo(() => createClient(), []);
+  const [resumeDownload, setResumeDownload] = useState(false);
+  const resumedDownloadRef = useRef(false);
+  const [resumeConvert, setResumeConvert] = useState(false);
+  const resumedConvertRef = useRef(false);
 
   // Restore a result stashed before the sign-in redirect (download wall).
   useEffect(() => {
@@ -149,7 +153,8 @@ export default function PdfToExcelPage() {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session) return;
         trackFunnel("download_resumed", { tool: "pdf-to-excel" });
-        setToastMessage("Signed in! Your result is ready — click Download.");
+        setToastMessage("Signed in! Your Excel file is downloading.");
+        setResumeDownload(true);
       });
     }
   }, [supabase]);
@@ -204,6 +209,12 @@ export default function PdfToExcelPage() {
       if (!session) return;
       const pending = await takePendingFile();
       if (!pending) return;
+      if (pending.intent.kind === "convert") {
+        trackFunnel("convert_resumed", { tool: "pdf-to-excel" });
+        setSelectedFile(pending.file);
+        setResumeConvert(true);
+        return;
+      }
       trackFunnel("unlock_resumed", { tool: "pdf-to-excel", pagesTotal: pending.intent.pagesTotal });
       setSelectedFile(pending.file);
       setUnlockFile(pending.file);
@@ -370,6 +381,14 @@ export default function PdfToExcelPage() {
       });
   }, [selectedFile, supabase]);
 
+  // Back from sign-in after the guest limit: run the conversion they asked
+  // for, on the stashed file, without a re-upload or a second click.
+  useEffect(() => {
+    if (!resumeConvert || resumedConvertRef.current || !selectedFile) return;
+    resumedConvertRef.current = true;
+    queueMicrotask(() => void handleExtract());
+  }, [resumeConvert, selectedFile, handleExtract]);
+
   const handleExportExcel = useCallback(async () => {
     if (extractionResult.length === 0) return;
     // Download wall: viewing is free, downloading needs a (free) account.
@@ -394,6 +413,14 @@ export default function PdfToExcelPage() {
     XLSX.writeFile(wb, "extracted-data.xlsx");
     trackFunnel("excel_downloaded", { tool: "pdf-to-excel", variant: isPaidExtract ? "paid" : "free" });
   }, [extractionResult, isPaidExtract, extractedFileName, supabase]);
+
+  // Back from sign-in with a restored result: they had already clicked
+  // Download, so finish it rather than asking for a second click.
+  useEffect(() => {
+    if (!resumeDownload || resumedDownloadRef.current || extractionResult.length === 0) return;
+    resumedDownloadRef.current = true;
+    queueMicrotask(() => void handleExportExcel());
+  }, [resumeDownload, extractionResult.length, handleExportExcel]);
 
   const handleExportQuickBooks = useCallback(() => {
     if (extractionResult.length === 0) return;
@@ -904,6 +931,9 @@ export default function PdfToExcelPage() {
           unlockFile && pageNotice
             ? { file: unlockFile, tool: "pdf-to-excel", pagesTotal: pageNotice.total }
             : null
+        }
+        retryContext={
+          quotaModalVariant === "guest" && selectedFile ? { file: selectedFile, tool: "pdf-to-excel" } : null
         }
         onPurchased={unlockFile ? () => void runFullUnlock(unlockFile) : undefined}
       />

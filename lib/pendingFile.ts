@@ -19,6 +19,12 @@ export type UnlockIntent = {
   tool: string;
   fileName: string;
   pagesTotal: number;
+  /**
+   * "unlock": resume at the pay step (10-page gate). "convert": a guest hit
+   * the free-conversion limit, so just run the conversion on return. Absent
+   * on stashes from before this field existed — those are unlocks.
+   */
+  kind?: "unlock" | "convert";
   savedAt: number;
 };
 

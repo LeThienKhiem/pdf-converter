@@ -65,6 +65,12 @@ type QuotaLimitModalProps = {
    * redirect and restored afterwards, so paying never costs them a re-upload.
    */
   unlockContext?: { file: File; tool: string; pagesTotal: number } | null;
+  /**
+   * The document a guest was blocked from converting (free conversion used
+   * up). Stashed before the Google redirect so it converts on return instead
+   * of asking for a re-upload.
+   */
+  retryContext?: { file: File; tool: string } | null;
   /** Fired after a completed checkout so the caller can finish the job. */
   onPurchased?: () => void;
 };
@@ -74,13 +80,14 @@ export default function QuotaLimitModal({
   onClose,
   variant,
   unlockContext,
+  retryContext,
   onPurchased,
 }: QuotaLimitModalProps) {
   const supabase = useMemo(() => createClient(), []);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | undefined>(undefined);
 
-  const tool = unlockContext?.tool ?? null;
+  const tool = unlockContext?.tool ?? retryContext?.tool ?? null;
   const pagesTotal = unlockContext?.pagesTotal ?? null;
 
   useEffect(() => {
@@ -132,6 +139,14 @@ export default function QuotaLimitModal({
         tool: unlockContext.tool,
         fileName: unlockContext.file.name,
         pagesTotal: unlockContext.pagesTotal,
+        kind: "unlock",
+      });
+    } else if (retryContext) {
+      await savePendingFile(retryContext.file, {
+        tool: retryContext.tool,
+        fileName: retryContext.file.name,
+        pagesTotal: 0,
+        kind: "convert",
       });
     }
     await supabase.auth.signInWithOAuth({

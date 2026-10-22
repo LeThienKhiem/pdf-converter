@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     admin
       .from("funnel_events")
-      .select("event, variant, source, user_id, guest_key, ip")
+      .select("event, variant, source, user_id, guest_key, ip, created_at")
       .gte("created_at", windowStart)
       .limit(50000),
   ]);
@@ -170,21 +170,39 @@ export async function GET(request: Request) {
     { stage: "Entered checkout details", count: people((r) => r.event === "checkout_customer" && fromPaywall(r)) },
     { stage: "Paid", count: people((r) => r.event === "checkout_completed" && fromPaywall(r)) },
   ];
+  // Sign-in funnel: each step is a subset of the one before, in time order, so
+  // a step can never exceed the previous one. Keyed by guest cookie, then IP —
+  // not the account, which a guest doesn't have yet and so would split one
+  // person into two across the Google redirect.
+  const browser = (r: Row) => String(r.guest_key ?? r.ip ?? r.user_id);
+  const firstAt = (pred: (r: Row) => boolean, among?: Map<string, string>) => {
+    const out = new Map<string, string>();
+    for (const r of fev) {
+      if (!pred(r)) continue;
+      const k = browser(r);
+      const after = among?.get(k);
+      const at = String(r.created_at);
+      if (among && (after === undefined || at < after)) continue;
+      if (!out.has(k) || at < out.get(k)!) out.set(k, at);
+    }
+    return out;
+  };
+  const sawSignin = firstAt((r) => r.event === "paywall_shown" && SIGNIN_VARIANTS.has(String(r.variant)));
+  const clickedSignin = firstAt(
+    (r) =>
+      ["paywall_google_click", "paywall_email_click"].includes(String(r.event)) &&
+      SIGNIN_VARIANTS.has(String(r.variant)),
+    sawSignin
+  );
+  // signin_completed is written by /auth/callback; any signed-in event counts
+  // too, which covers returns from before that event existed.
+  const cameBack = firstAt((r) => r.event === "signin_completed" || r.user_id != null, clickedSignin);
+  const downloaded = firstAt((r) => r.event === "excel_downloaded", cameBack);
   const signinFunnel = [
-    {
-      stage: "Saw sign-in to download",
-      count: people((r) => r.event === "paywall_shown" && SIGNIN_VARIANTS.has(String(r.variant))),
-    },
-    {
-      stage: "Clicked sign-in",
-      count: people(
-        (r) =>
-          ["paywall_google_click", "paywall_email_click"].includes(String(r.event)) &&
-          SIGNIN_VARIANTS.has(String(r.variant))
-      ),
-    },
-    { stage: "Came back signed in", count: people((r) => r.event === "download_resumed") },
-    { stage: "Downloaded Excel", count: people((r) => r.event === "excel_downloaded") },
+    { stage: "Saw sign-in to download", count: sawSignin.size },
+    { stage: "Clicked sign-in", count: clickedSignin.size },
+    { stage: "Came back signed in", count: cameBack.size },
+    { stage: "Downloaded Excel", count: downloaded.size },
   ];
   const paywallDismissed = people((r) => r.event === "paywall_dismiss");
   const pricingCheckouts = people((r) => r.event === "checkout_open" && !fromPaywall(r));
