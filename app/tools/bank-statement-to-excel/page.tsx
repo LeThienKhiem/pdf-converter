@@ -1066,7 +1066,11 @@ export default function BankStatementToExcelPage() {
               </p>
             </div>
             <p className="mt-3 text-slate-600">
-              Step-by-step instructions for downloading and converting statements from major banks. The converter above works with any bank — these pages cover the specifics.
+              Step-by-step instructions for downloading and converting statements from major banks. The converter above works with any bank — these pages cover the specifics. Holding a card statement rather than a bank one?{" "}
+              <Link href="/tools/credit-card-statement-to-excel" className="font-medium text-blue-600 hover:underline">
+                Credit card statement to Excel
+              </Link>{" "}
+              covers what differs.
             </p>
             <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {BANK_ENTITIES.map((b) => (

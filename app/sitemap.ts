@@ -40,6 +40,10 @@ const STATIC_PAGES: { path: string; lastModified: string; priority: number; chan
   // links to a page Google has not been told exists, and this one has no
   // inbound history at all.
   { path: "/tools/password-protected-bank-statement-to-excel", lastModified: "2026-10-03", priority: 0.9, changeFrequency: "monthly" },
+  // 2026-10-31: new. The extractor has always handled card statements — the
+  // statement prompt reads "bank, credit card or account statement" — but no
+  // page said so, so nothing could rank for it.
+  { path: "/tools/credit-card-statement-to-excel", lastModified: "2026-10-31", priority: 0.9, changeFrequency: "monthly" },
   // 2026-09-06: industry grid rebuilt, duplicate and dead links removed.
   // Missing from this file until 2026-09-13 despite carrying the largest
   // impression pool on the site — nothing was telling Google it existed

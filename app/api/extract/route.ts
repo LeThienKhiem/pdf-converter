@@ -267,11 +267,14 @@ export async function POST(request: Request) {
     const isPaidExtract =
       entitlement.source === "plan" || entitlement.source === "credits";
     const model = isPaidExtract ? PDF_MODEL_PREMIUM : PDF_MODEL;
-    // Bank statements get their own extractor: one clean transaction table
-    // instead of a copy of every page's layout (see lib/bankStatement.ts).
-    const isBank = tool.includes("bank");
-    const categorize = isPaidExtract && isBank;
-    const systemPrompt = isBank
+    // Statements get their own extractor: one clean transaction table instead
+    // of a copy of every page's layout (see lib/bankStatement.ts). The prompt
+    // there covers "bank, credit card or account statement", so the credit
+    // card tool matches on "statement" rather than being forced to carry
+    // "bank" in its id just to reach the right branch.
+    const isStatement = tool.includes("bank") || tool.includes("statement");
+    const categorize = isPaidExtract && isStatement;
+    const systemPrompt = isStatement
       ? BANK_SYSTEM_PROMPT + (categorize ? BANK_CATEGORIZE_APPENDIX : "")
       : categorize
         ? BASE_SYSTEM_PROMPT + CATEGORIZE_APPENDIX
@@ -387,7 +390,7 @@ export async function POST(request: Request) {
 
     let data: (string | null)[][];
     let statement: StatementMeta | null = null;
-    if (isBank) {
+    if (isStatement) {
       const structured = parsedParts.map((p) => structureBankResponse(p, categorize));
       const statements = structured.filter((s) => s.mode === "statement");
       if (statements.length === 0) {
