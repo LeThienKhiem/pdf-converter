@@ -57,7 +57,7 @@ const STATIC_PAGES: { path: string; lastModified: string; priority: number; chan
  * lib/bankEntities.ts and app/tools/bank/[bank]/page.tsx, so they all move
  * together and one date is the honest answer for the set.
  */
-const BANK_PAGES_LAST_MODIFIED = "2026-10-03"; // five Indian banks added; password copy rewritten
+const BANK_PAGES_LAST_MODIFIED = "2026-10-31"; // five Pakistani and five South African banks added
 
 const staticRoutes: MetadataRoute.Sitemap = STATIC_PAGES.map((p) => ({
   url: `${baseUrl}${p.path}`,

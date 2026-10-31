@@ -388,6 +388,160 @@ export const BANK_ENTITIES: ReadonlyArray<BankEntity> = [
     accountTypes: ["Savings Account", "Current Account", "Credit Card"],
   },
 
+  // ─── Pakistan ───────────────────────────────────────────────────────────
+  //
+  // Added 2026-10-31 on the same evidence that justified the Indian banks,
+  // now stronger. Over the 90 days to 2026-10-28, by country:
+  //
+  //   India          145 clicks   3,002 imp   4.83%
+  //   South Africa    16 clicks     322 imp   4.97%
+  //   Pakistan        13 clicks     261 imp   4.98%
+  //   United States   31 clicks  11,277 imp   0.27%
+  //
+  // Pakistan arrived on its own, with no page targeting it, converting at
+  // eighteen times the US rate. Ten US banks were built for the market that
+  // converts worst; these are the first for one of the three that convert.
+  //
+  // HBL is the only passwordProtected: true here, and it is sourced: HBL's own
+  // e-statement page states "The E-statement PDF file is password protected,
+  // and the password instructions are always provided in the E-Statement
+  // email." The rest are "unknown" because none of them publish the
+  // convention, and guessing it on their behalf would put a confident claim in
+  // front of someone holding a file that contradicts it.
+  //
+  // statementFormats lists only what each bank documents. PDF is certain
+  // everywhere; nothing else was confirmed for these five.
+  {
+    slug: "hbl",
+    name: "HBL",
+    country: "PK",
+    currency: "PKR",
+    domain: "hbl.com",
+    statementFormats: ["PDF"],
+    passwordProtected: true,
+    note: "HBL e-statements arrive by email as password-protected PDFs, with the password rule given in the email itself. Upload the file as it came — the converter asks for the password and opens it in your browser.",
+    accountTypes: ["Current Account", "Savings Account", "Credit Card", "Business"],
+    deepDive:
+      "HBL delivers e-statements as PDF attachments, and the bank states that those files are password-protected with the password rule set out in the covering email. That makes a locked file the expected case rather than an exception here: upload the statement exactly as it arrived and enter the password when the converter asks, with the decryption happening on your own device. Amounts stay in PKR and dates in the DD/MM/YYYY convention Pakistani banking uses, both preserved rather than reformatted so the output reconciles against the original without adjustment. The extracted table carries date, description, debit, credit and the running balance, which is the column worth checking after any conversion — if the closing figure matches the last line of your statement, nothing was dropped. Output imports into Excel, QuickBooks Online via OFX, or Tally.",
+  },
+  {
+    slug: "meezan-bank",
+    name: "Meezan Bank",
+    country: "PK",
+    currency: "PKR",
+    domain: "meezanbank.com",
+    statementFormats: ["PDF"],
+    passwordProtected: "unknown",
+    note: "Meezan Bank statements come from Internet Banking, the mobile app and WhatsApp banking. If the download asks for a password, enter it in the converter rather than unlocking the PDF yourself.",
+    accountTypes: ["Current Account", "Savings Account", "Business"],
+  },
+  {
+    slug: "united-bank-limited",
+    name: "United Bank Limited",
+    country: "PK",
+    currency: "PKR",
+    domain: "ubldigital.com",
+    statementFormats: ["PDF"],
+    passwordProtected: "unknown",
+    note: "UBL statements download as PDF from UBL Digital. A password-protected file can be uploaded as it is — the converter asks for the password.",
+    accountTypes: ["Current Account", "Savings Account", "Credit Card"],
+  },
+  {
+    slug: "mcb-bank",
+    name: "MCB Bank",
+    country: "PK",
+    currency: "PKR",
+    domain: "mcb.com.pk",
+    statementFormats: ["PDF"],
+    passwordProtected: "unknown",
+    note: "MCB Bank statements download as PDF from internet and mobile banking. If yours prompts for a password, enter it in the converter instead of re-saving the file.",
+    accountTypes: ["Current Account", "Savings Account", "Credit Card"],
+  },
+  {
+    slug: "bank-alfalah",
+    name: "Bank Alfalah",
+    country: "PK",
+    currency: "PKR",
+    domain: "bankalfalah.com",
+    statementFormats: ["PDF"],
+    passwordProtected: "unknown",
+    note: "Bank Alfalah provides statement PDFs through internet banking and the Alfa app. Password-protected downloads can be uploaded as they are.",
+    accountTypes: ["Current Account", "Savings Account", "Credit Card"],
+  },
+
+  // ─── South Africa ───────────────────────────────────────────────────────
+  //
+  // 16 clicks at 4.97% over the same 90 days, from no pages at all. See the
+  // country table in the Pakistan block above.
+  //
+  // Formats are each bank's own documentation. Nedbank publishes the widest
+  // set — its online banking guide offers PDF, CSV, OFX and OFC — and FNB's
+  // export list includes CSV. Absa documents stamped PDFs and PDF
+  // eStatements. Standard Bank and Capitec publish nothing findable about
+  // download formats, so they carry PDF only, which every bank offers.
+  //
+  // No South African bank publishes a statement password convention, so all
+  // five are "unknown".
+  {
+    slug: "standard-bank",
+    name: "Standard Bank",
+    country: "ZA",
+    currency: "ZAR",
+    domain: "standardbank.co.za",
+    statementFormats: ["PDF"],
+    passwordProtected: "unknown",
+    note: "Standard Bank statements download as PDF from internet banking and the mobile app. If the file asks for a password, enter it in the converter rather than unlocking it first.",
+    accountTypes: ["Current Account", "Savings Account", "Credit Card", "Business"],
+  },
+  {
+    slug: "fnb",
+    name: "FNB",
+    country: "ZA",
+    currency: "ZAR",
+    domain: "fnb.co.za",
+    statementFormats: ["PDF", "CSV"],
+    passwordProtected: "unknown",
+    note: "FNB emails statements as PDF and offers CSV export from online banking. The PDF is what most people have to hand, and it converts the same way.",
+    accountTypes: ["Cheque Account", "Savings Account", "Credit Card", "Business"],
+    deepDive:
+      "FNB sends statements as PDF attachments and offers a CSV export from online banking, with its business channel listing a wider set that includes Swift MT940. In practice the PDF is what most people have, particularly for older periods and for accounts where the export was never set up. Amounts stay in ZAR and dates in the DD/MM/YYYY convention South African banking uses, preserved rather than reformatted. FNB statement layouts pack several fields into one description column — transaction type, reference and counterparty — and the width of that column shifts between statement periods, which is where template-based extractors break because the map they were given no longer matches the page. The AI reads the table from the layout itself, so a shift of that kind does not break it. The output carries date, description, debit, credit and running balance, ready for Excel, Xero, or QuickBooks Online via the OFX export.",
+  },
+  {
+    slug: "absa",
+    name: "Absa",
+    country: "ZA",
+    currency: "ZAR",
+    domain: "absa.co.za",
+    statementFormats: ["PDF"],
+    passwordProtected: "unknown",
+    note: "Absa eStatements arrive as PDF by email, and stamped statements download as PDF from Absa Online Banking. Both convert the same way.",
+    accountTypes: ["Cheque Account", "Savings Account", "Credit Card", "Business"],
+  },
+  {
+    slug: "nedbank",
+    name: "Nedbank",
+    country: "ZA",
+    currency: "ZAR",
+    domain: "nedbank.co.za",
+    statementFormats: ["PDF", "CSV", "OFX"],
+    passwordProtected: "unknown",
+    note: "Nedbank online banking offers statements as PDF, CSV, OFX and OFC. If you can take the CSV or OFX there is nothing to convert — this page is for the PDF-only periods.",
+    accountTypes: ["Current Account", "Savings Account", "Credit Card", "Business"],
+    deepDive:
+      "Nedbank publishes the widest set of download formats of the South African banks: its online banking statements section offers PDF, CSV, OFX and OFC for a chosen date range. Where you can take the CSV or the OFX, take it — there is nothing for a converter to do, and the bank's own file is always the more faithful source. This page is for the cases that remain: older periods no longer available for export, closed accounts, statements that arrived by email as PDF, and scanned or forwarded copies. Those convert into the same structured output, with ZAR amounts and DD/MM/YYYY dates preserved, and the running balance carried through so you can check the closing figure against the statement before importing. From there the result opens in Excel or exports as OFX for QuickBooks Online, QIF for Quicken, or Tally XML.",
+  },
+  {
+    slug: "capitec",
+    name: "Capitec",
+    country: "ZA",
+    currency: "ZAR",
+    domain: "capitecbank.co.za",
+    statementFormats: ["PDF"],
+    passwordProtected: "unknown",
+    note: "Capitec statements download as PDF from the banking app and online banking. A password-protected file can be uploaded as it is — the converter asks for the password.",
+    accountTypes: ["Savings Account", "Credit Card", "Business"],
+  },
+
 ];
 
 /** Lookup helper used by the dynamic route. */
