@@ -104,6 +104,9 @@ export async function alertCancellation(params: {
  * it only speaks when yesterday had activity or a problem, so a message in
  * the chat always means something happened.
  */
+/** Failures caused by what was uploaded, not by the service. */
+const INPUT_ERROR_CODES = new Set(["no_transactions"]);
+
 export async function alertDailyHealth(): Promise<{ sent: boolean; reason?: string }> {
   try {
     const admin = getSupabase();
@@ -140,7 +143,15 @@ export async function alertDailyHealth(): Promise<{ sent: boolean; reason?: stri
     if (total === 0 && orders.length === 0) return { sent: false, reason: "quiet day" };
 
     const rate = total > 0 ? Math.round((success / total) * 100) : null;
-    const unhealthy = rate != null && rate < 90;
+    // Red means *we* are broken. Failures caused by the upload itself (a
+    // document with no transactions) are not, and on a 7-conversion day two
+    // of them used to turn the report red. Flag only real system failures,
+    // and only once there are enough of them to be a pattern.
+    const systemFailed = rows.filter(
+      (r) => r.status === "failed" && !INPUT_ERROR_CODES.has(String(r.error_code))
+    ).length;
+    const systemRate = total > 0 ? Math.round(((total - systemFailed) / total) * 100) : null;
+    const unhealthy = systemFailed >= 3 && systemRate != null && systemRate < 90;
 
     const topError = (() => {
       const counts: Record<string, number> = {};
@@ -156,9 +167,9 @@ export async function alertDailyHealth(): Promise<{ sent: boolean; reason?: stri
     const lines = [
       unhealthy ? "🔴 <b>Daily health — needs a look</b>" : "📊 <b>Daily health</b>",
       "",
-      `Conversions: <b>${success}</b>${failed > 0 ? ` (${failed} failed)` : ""}`,
+      `Conversions: <b>${success}</b>${failed > 0 ? ` (${failed} failed${failed > systemFailed ? `, ${failed - systemFailed} from the upload itself` : ""})` : ""}`,
     ];
-    if (rate != null) lines.push(`Success rate: <b>${rate}%</b>${unhealthy ? " ⚠️ below 90%" : ""}`);
+    if (rate != null) lines.push(`Success rate: <b>${rate}%</b>${unhealthy ? ` ⚠️ ${systemFailed} system failures` : ""}`);
     if (topError) lines.push(`Top failure: ${esc(topError)}`);
     if (paywallHits > 0) {
       lines.push(

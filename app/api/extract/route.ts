@@ -125,6 +125,54 @@ function buildContent(
   ];
 }
 
+/** Stitch per-slice layout grids, dropping a header row repeated at the top of later slices. */
+function mergeLayoutParts(parsedParts: unknown[]): (string | null)[][] {
+  const grids = parsedParts.map((p) => normalizeTo2DArray(p));
+  const header = grids[0]?.[0];
+  const sameAsHeader = (row: (string | null)[] | undefined) =>
+    Boolean(row && header && row.length === header.length && row.every((c, i) => (c ?? "") === (header[i] ?? "")));
+  return [...(grids[0] ?? []), ...grids.slice(1).flatMap((g) => (sameAsHeader(g[0]) ? g.slice(1) : g))];
+}
+
+/**
+ * Re-read the same slices with the visual-layout prompt. Used when the
+ * statement extractor finds no transactions; null when that fails too.
+ */
+async function extractLayout(
+  client: ReturnType<typeof getAnthropic>,
+  model: string,
+  mimeType: string,
+  parts: string[],
+  isPaidExtract: boolean
+): Promise<{ data: (string | null)[][]; inputTokens: number; outputTokens: number } | null> {
+  try {
+    const responses = await Promise.all(
+      parts.map((part) =>
+        client.messages
+          .stream({
+            model,
+            max_tokens: isPaidExtract ? 128000 : 64000,
+            system: BASE_SYSTEM_PROMPT,
+            messages: [{ role: "user", content: buildContent(mimeType, part) }],
+          })
+          .finalMessage()
+      )
+    );
+    const parsed = responses.map((r) => parseJsonArrayLoose(extractText(r)));
+    if (parsed.some((p) => p == null)) return null;
+    const data = mergeLayoutParts(parsed);
+    if (data.length === 0) return null;
+    return {
+      data,
+      inputTokens: responses.reduce((a, r) => a + (r.usage?.input_tokens ?? 0), 0),
+      outputTokens: responses.reduce((a, r) => a + (r.usage?.output_tokens ?? 0), 0),
+    };
+  } catch (err) {
+    console.warn("[Extract] layout fallback failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   console.log("[Extract API] POST /api/extract called");
   try {
@@ -139,6 +187,8 @@ export async function POST(request: Request) {
     let base64: string;
     let mimeType: string;
     let tool = "pdf-to-excel";
+    /** One slice of a longer document (client-side chunking) — see the no-transactions fallback. */
+    let isChunk = false;
     let byteSize = 0;
 
     const contentType = request.headers.get("content-type") ?? "";
@@ -148,8 +198,10 @@ export async function POST(request: Request) {
         mimeType?: string;
         storagePath?: string;
         tool?: string;
+        chunk?: boolean;
       };
       if (typeof body.tool === "string") tool = body.tool.slice(0, 40);
+      isChunk = body.chunk === true;
 
       if (body.storagePath && typeof body.storagePath === "string") {
         // Large-file path: the file was uploaded to Supabase Storage via a
@@ -195,6 +247,7 @@ export async function POST(request: Request) {
       const formData = await request.formData();
       const file = formData.get("file") ?? formData.get("pdf");
       const toolField = formData.get("tool");
+      isChunk = formData.get("chunk") === "1";
       if (typeof toolField === "string") tool = toolField.slice(0, 40);
       if (!file || !(file instanceof File)) {
         return NextResponse.json(
@@ -341,8 +394,8 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    const inputTokens = responses.reduce((a, r) => a + (r.usage?.input_tokens ?? 0), 0);
-    const outputTokens = responses.reduce((a, r) => a + (r.usage?.output_tokens ?? 0), 0);
+    let inputTokens = responses.reduce((a, r) => a + (r.usage?.input_tokens ?? 0), 0);
+    let outputTokens = responses.reduce((a, r) => a + (r.usage?.output_tokens ?? 0), 0);
     const truncated = responses.some((r) => r.stop_reason === "max_tokens");
     const texts = responses.map(extractText);
     if (texts.every((t) => !t.trim())) {
@@ -390,6 +443,7 @@ export async function POST(request: Request) {
 
     let data: (string | null)[][];
     let statement: StatementMeta | null = null;
+    let layoutFallback = false;
     if (isStatement) {
       const structured = parsedParts.map((p) => structureBankResponse(p, categorize));
       const statements = structured.filter((s) => s.mode === "statement");
@@ -399,7 +453,22 @@ export async function POST(request: Request) {
         data = [statements[0]!.grid[0]!, ...statements.flatMap((s) => s.grid.slice(1))];
         statement = mergeStatementMeta(statements.map((s) => s.statement));
       }
-      if (statements.length > 0 && data.length <= 1) {
+      // Nothing that reads as a transaction. Inside a long document that is
+      // normal (closing pages are often disclosures) and the client skips the
+      // chunk. For a whole document, hand back the page as laid out instead of
+      // an error: a visitor who uploads a summary page or a non-statement
+      // still leaves with a spreadsheet rather than a dead end.
+      const fallback =
+        statements.length > 0 && data.length <= 1 && !isChunk
+          ? await extractLayout(client, model, mimeType, parts, isPaidExtract)
+          : null;
+      if (fallback) {
+        data = fallback.data;
+        statement = null;
+        layoutFallback = true;
+        inputTokens += fallback.inputTokens;
+        outputTokens += fallback.outputTokens;
+      } else if (statements.length > 0 && data.length <= 1) {
         await refundExtraction(entitlement);
         await recordExtraction(entitlement, tool, "failed", {
           errorCode: "no_transactions",
@@ -416,14 +485,10 @@ export async function POST(request: Request) {
         );
       }
     } else {
-      const grids = parsedParts.map((p) => normalizeTo2DArray(p));
-      const header = grids[0]?.[0];
-      const sameAsHeader = (row: (string | null)[] | undefined) =>
-        Boolean(row && header && row.length === header.length && row.every((c, i) => (c ?? "") === (header[i] ?? "")));
-      data = [...(grids[0] ?? []), ...grids.slice(1).flatMap((g) => (sameAsHeader(g[0]) ? g.slice(1) : g))];
+      data = mergeLayoutParts(parsedParts);
     }
     await recordExtraction(entitlement, tool, "success", {
-      errorCode: truncated ? "truncated_salvaged" : null,
+      errorCode: truncated ? "truncated_salvaged" : layoutFallback ? "no_transactions_layout" : null,
       durationMs: Date.now() - startedAt,
       pagesTotal,
       pagesExtracted,
@@ -443,8 +508,9 @@ export async function POST(request: Request) {
       plan: entitlement.plan,
       source: entitlement.source,
       remaining: entitlement.remaining,
-      categorized: categorize,
+      categorized: categorize && !layoutFallback,
       statement,
+      layoutFallback,
       truncated,
       pagesTotal,
       pagesExtracted,

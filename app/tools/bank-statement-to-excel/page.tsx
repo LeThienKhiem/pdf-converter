@@ -217,7 +217,11 @@ export default function BankStatementToExcelPage() {
         setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
         setPageNotice(null);
         setUnlockFile(null);
-        setToastMessage("Unlocked — your full statement is ready to download.");
+        setToastMessage(
+          outcome.layoutFallback
+            ? "We couldn't find a transaction table in this document, so here it is exactly as laid out on the page."
+            : "Unlocked — your full statement is ready to download."
+        );
       } else {
         setExtractError(outcome.error);
       }
@@ -418,6 +422,10 @@ export default function BankStatementToExcelPage() {
         if (outcome.truncated) {
           setToastMessage(
             `${items[i]!.file.name}: very long — extracted the first ${outcome.grid.length} rows.`
+          );
+        } else if (outcome.layoutFallback) {
+          setToastMessage(
+            `${items[i]!.file.name}: no transaction table found — here it is exactly as laid out on the page.`
           );
         }
         if (

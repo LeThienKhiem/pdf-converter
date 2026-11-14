@@ -58,6 +58,8 @@ export type ExtractOutcome =
       categorized?: boolean;
       /** Bank tool only: the statement's opening/closing balances, for the balance check. */
       statement?: StatementMeta | null;
+      /** Statement tool found no transactions and returned the page as laid out instead. */
+      layoutFallback?: boolean;
       truncated?: boolean;
       pagesTotal?: number | null;
       pagesExtracted?: number | null;
@@ -67,7 +69,8 @@ export type ExtractOutcome =
 export async function extractFileClient(
   file: File,
   tool: string,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  opts: { chunk?: boolean } = {}
 ): Promise<ExtractOutcome> {
   try {
     if (file.size > FREE_MAX_BYTES) {
@@ -99,11 +102,11 @@ export async function extractFileClient(
       const res = await fetch("/api/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storagePath: urlJson.path, tool }),
+        body: JSON.stringify({ storagePath: urlJson.path, tool, chunk: opts.chunk === true }),
       });
       const json = await res.json();
       if (res.ok && Array.isArray(json.data)) {
-        return { ok: true, grid: json.data, source: json.source, plan: json.plan, categorized: json.categorized, statement: json.statement ?? null, truncated: json.truncated, pagesTotal: json.pagesTotal, pagesExtracted: json.pagesExtracted };
+        return { ok: true, grid: json.data, source: json.source, plan: json.plan, categorized: json.categorized, statement: json.statement ?? null, layoutFallback: json.layoutFallback === true, truncated: json.truncated, pagesTotal: json.pagesTotal, pagesExtracted: json.pagesExtracted };
       }
       return { ok: false, status: res.status, reason: json?.reason, error: json?.error ?? "Extraction failed." };
     }
@@ -111,10 +114,11 @@ export async function extractFileClient(
     const formData = new FormData();
     formData.append("file", file);
     formData.append("tool", tool);
+    if (opts.chunk) formData.append("chunk", "1");
     const res = await fetch("/api/extract", { method: "POST", body: formData });
     const json = await res.json();
     if (res.ok && Array.isArray(json.data) && json.data.every((r: unknown) => Array.isArray(r))) {
-      return { ok: true, grid: json.data, source: json.source, plan: json.plan, categorized: json.categorized, statement: json.statement ?? null, truncated: json.truncated, pagesTotal: json.pagesTotal, pagesExtracted: json.pagesExtracted };
+      return { ok: true, grid: json.data, source: json.source, plan: json.plan, categorized: json.categorized, statement: json.statement ?? null, layoutFallback: json.layoutFallback === true, truncated: json.truncated, pagesTotal: json.pagesTotal, pagesExtracted: json.pagesExtracted };
     }
     return { ok: false, status: res.status, reason: json?.reason, error: json?.error ?? "Extraction failed." };
   } catch (err) {
@@ -192,12 +196,12 @@ export async function extractDocumentClient(
     while (!stop && next < chunkCount) {
       const c = next++;
       const part = await sliceToFile(src, file.name, c * CHUNK_PAGES, CHUNK_PAGES);
-      let outcome = await extractFileClient(part, tool, supabase);
+      let outcome = await extractFileClient(part, tool, supabase, { chunk: true });
       // Chunking fires many requests in a row; a burst limit is a pacing
       // problem, not a failure. Back off once and continue.
       if (!outcome.ok && outcome.status === 429) {
         await new Promise((r) => setTimeout(r, 20000));
-        outcome = await extractFileClient(part, tool, supabase);
+        outcome = await extractFileClient(part, tool, supabase, { chunk: true });
       }
       outcomes[c] = outcome;
       // A hard failure stops new chunks; 422 (no transactions on these

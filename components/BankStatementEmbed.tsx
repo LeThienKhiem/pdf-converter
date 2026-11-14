@@ -61,6 +61,8 @@ export default function BankStatementEmbed({
   const [truncated, setTruncated] = useState(false);
   const [isPaidExtract, setIsPaidExtract] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The statement extractor found no transactions; the grid is a copy of the page layout. */
+  const [layoutFallback, setLayoutFallback] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalVariant, setModalVariant] = useState<QuotaLimitVariant>("guest");
   const [pageNotice, setPageNotice] = useState<{ extracted: number; total: number } | null>(null);
@@ -107,6 +109,7 @@ export default function BankStatementEmbed({
       if (outcome.ok) {
         setGrid(outcome.grid);
         setStatement(outcome.statement ?? null);
+        setLayoutFallback(Boolean(outcome.layoutFallback));
         setTruncated(false);
         setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
         setPageNotice(null);
@@ -188,6 +191,7 @@ export default function BankStatementEmbed({
       setIsPaidExtract(outcome.source === "plan" || outcome.source === "credits");
       setGrid(outcome.grid);
       setStatement(outcome.statement ?? null);
+      setLayoutFallback(Boolean(outcome.layoutFallback));
       setTruncated(Boolean(outcome.truncated));
       if (
         outcome.pagesTotal != null &&
@@ -372,6 +376,11 @@ export default function BankStatementEmbed({
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
             ✓ Extracted {bank ? `${grid.length - 1} transactions` : `${grid.length} rows`} from your {noun}
           </p>
+          {layoutFallback && (
+            <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" role="status">
+              {"We couldn't find a transaction table in this document, so here it is exactly as laid out on the page."}
+            </p>
+          )}
           {check && (
             <ReconciliationBadge
               check={check}
